@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../data/spin_questions.dart';
-import 'assessment_complete_screen.dart';
+import 'triggers_and_coping_screen.dart';
 
 class SpinAssessmentScreen extends StatefulWidget {
   const SpinAssessmentScreen({super.key});
@@ -32,7 +32,7 @@ class _SpinAssessmentScreenState extends State<SpinAssessmentScreen> {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (_) => AssessmentCompleteScreen(score: totalScore),
+          builder: (_) => TriggersAndCopingScreen(score: totalScore),
         ),
       );
     }

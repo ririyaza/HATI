@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../spinAssessment/screen/spin_intro_screen.dart';
 
 class SignupScreen extends StatefulWidget {
@@ -10,29 +12,83 @@ class SignupScreen extends StatefulWidget {
 
 class _SignupScreenState extends State<SignupScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _usernameController = TextEditingController();
+  final _displayNameController = TextEditingController();
+  final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  bool _isLoading = false;
 
   @override
   void dispose() {
-    _usernameController.dispose();
+    _displayNameController.dispose();
+    _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
   }
 
-  void _handleSignup() {
-    if (_formKey.currentState!.validate()) {
-      // Navigate to spin intro screen after successful signup
+  Future<void> _handleSignup() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      final credential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+
+      final user = credential.user;
+      if (user != null) {
+        final displayName = _displayNameController.text.trim();
+        await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+          'email': user.email,
+          'displayName': displayName.isEmpty ? null : displayName,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      }
+
+      if (!mounted) return;
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
           builder: (_) => const UnderstandingSocialSituationsScreen(),
         ),
       );
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      String message;
+      switch (e.code) {
+        case 'email-already-in-use':
+          message = 'An account already exists with this email.';
+          break;
+        case 'invalid-email':
+          message = 'Invalid email address.';
+          break;
+        case 'weak-password':
+          message = 'Password is too weak. Use at least 8 characters.';
+          break;
+        case 'operation-not-allowed':
+          message = 'Email sign-up is not enabled.';
+          break;
+        default:
+          message = e.message ?? 'Sign up failed. Please try again.';
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message), backgroundColor: Colors.red.shade700),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('An error occurred. Please try again.'),
+          backgroundColor: Colors.red.shade700,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -62,9 +118,9 @@ class _SignupScreenState extends State<SignupScreen> {
                   ),
                 ),
                 const SizedBox(height: 48),
-                // Username Field
+                // Display Name Field (optional)
                 Text(
-                  'Username',
+                  'Display name (optional)',
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: Colors.black,
                     fontWeight: FontWeight.w500,
@@ -72,9 +128,50 @@ class _SignupScreenState extends State<SignupScreen> {
                 ),
                 const SizedBox(height: 8),
                 TextFormField(
-                  controller: _usernameController,
+                  controller: _displayNameController,
+                  textCapitalization: TextCapitalization.words,
                   decoration: InputDecoration(
-                    hintText: 'Enter your username',
+                    hintText: 'How we should call you',
+                    hintStyle: TextStyle(
+                      color: Colors.grey.shade400,
+                      fontSize: 16,
+                    ),
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Colors.grey.shade300),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Colors.grey.shade300),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Colors.grey.shade400, width: 1.5),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 16,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                // Email Field
+                Text(
+                  'Email',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: Colors.black,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  autocorrect: false,
+                  decoration: InputDecoration(
+                    hintText: 'Enter your email',
                     hintStyle: TextStyle(
                       color: Colors.grey.shade400,
                       fontSize: 16,
@@ -100,7 +197,11 @@ class _SignupScreenState extends State<SignupScreen> {
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Please enter your username';
+                      return 'Please enter your email';
+                    }
+                    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
+                        .hasMatch(value)) {
+                      return 'Please enter a valid email';
                     }
                     return null;
                   },
@@ -234,8 +335,17 @@ class _SignupScreenState extends State<SignupScreen> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    onPressed: _handleSignup,
-                    child: const Text(
+                    onPressed: _isLoading ? null : _handleSignup,
+                    child: _isLoading
+                        ? const SizedBox(
+                            height: 24,
+                            width: 24,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Text(
                       'Sign Up',
                       style: TextStyle(
                         fontSize: 17,
