@@ -7,15 +7,15 @@ class SpinResultScreen extends StatelessWidget {
 
   String interpretation(int score) {
     if (score <= 19) {
-      return "Low level of social anxiety / No social phobia";
+      return "You report very few difficulties in social situations.";
     } else if (score <= 30) {
-      return "Mild social phobia";
+      return "You report some challenges in social situations.";
     } else if (score <= 40) {
-      return "Moderate social phobia";
+      return "You report moderate challenges in social situations.";
     } else if (score <= 50) {
-      return "Severe social phobia";
+      return "You report significant challenges in social situations.";
     } else {
-      return "Very severe social phobia";
+      return "You report very significant challenges in social situations.";
     }
   }
 

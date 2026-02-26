@@ -3,9 +3,50 @@ import 'spin_result_screen.dart';
 import '../../dashboard/screen/dashboard_screen.dart';
 
 class AssessmentCompleteScreen extends StatelessWidget {
-  final int score;
+  static const int minimumScoreToContinue = 40;
 
-  const AssessmentCompleteScreen({super.key, required this.score});
+  final int score;
+  final String triggers;
+  final String copingStrategies;
+
+  const AssessmentCompleteScreen({
+    super.key,
+    required this.score,
+    this.triggers = '',
+    this.copingStrategies = '',
+  });
+
+  bool get _canContinueToApp => score > minimumScoreToContinue;
+
+  void _onContinuePressed(BuildContext context) {
+    if (_canContinueToApp) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const DashboardScreen(),
+        ),
+        (route) => false,
+      );
+    } else {
+      showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Cannot continue'),
+          content: Text(
+            'This app is intended for users with a SPIN score greater than 40. '
+            'Your score is $score. Please consider reaching out to a healthcare '
+            'professional for support.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,6 +68,19 @@ class AssessmentCompleteScreen extends StatelessWidget {
                 fontSize: 28,
               ),
             ),
+            if (!_canContinueToApp) ...[
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: Text(
+                  'A score greater than $minimumScoreToContinue is required to use this app.',
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: Colors.black87,
+                  ),
+                ),
+              ),
+            ],
             const Spacer(),
             // Lower section with light gray background
             Expanded(
@@ -52,16 +106,7 @@ class AssessmentCompleteScreen extends StatelessWidget {
                           borderRadius: BorderRadius.circular(26),
                         ),
                       ),
-                      onPressed: () {
-                        // Navigate to dashboard
-                        Navigator.pushAndRemoveUntil(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const DashboardScreen(),
-                          ),
-                          (route) => false,
-                        );
-                      },
+                      onPressed: () => _onContinuePressed(context),
                       child: const Text(
                         'Continue to App',
                         style: TextStyle(

@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "523234567617",
+    "project_id": "hati-25259",
+    "storage_bucket": "hati-25259.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:523234567617:android:8a1e0609df7d96248f7b40",
+        "android_client_info": {
+          "package_name": "com.example.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "523234567617-majj93tuv1tvdjrmo9e00k14jdupqdgq.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCp4TA7ImMWxJTX8VYiMZGHNYyY6BWjZkw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "523234567617-majj93tuv1tvdjrmo9e00k14jdupqdgq.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
