@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'assessment_complete_screen.dart';
 
@@ -13,6 +15,7 @@ class TriggersAndCopingScreen extends StatefulWidget {
 
 class _TriggersAndCopingScreenState extends State<TriggersAndCopingScreen> {
   final _copingController = TextEditingController();
+  bool _isSaving = false;
 
   @override
   void dispose() {
@@ -20,13 +23,40 @@ class _TriggersAndCopingScreenState extends State<TriggersAndCopingScreen> {
     super.dispose();
   }
 
-  void _continue() {
+  Future<void> _continue() async {
+    if (_isSaving) return;
+    setState(() => _isSaving = true);
+
+    final coping = _copingController.text.trim();
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      // Skip saving if not signed in.
+    } else {
+      final userRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid);
+      try {
+        await userRef.collection('spinAssessments').doc('initial').set({
+          'copingMechanism': coping,
+          'copingRecordedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+
+        await userRef.set({
+          'initialCopingMechanism': coping,
+          'initialCopingRecordedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      } catch (_) {
+        // Ignore write errors; user can still proceed.
+      }
+    }
+
+    if (!mounted) return;
+    setState(() => _isSaving = false);
+
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (_) => AssessmentCompleteScreen(
-          score: widget.score,
-        ),
+        builder: (_) => AssessmentCompleteScreen(score: widget.score),
       ),
     );
   }
@@ -111,7 +141,7 @@ class _TriggersAndCopingScreenState extends State<TriggersAndCopingScreen> {
                         ),
                         padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
-                      onPressed: _continue,
+                      onPressed: _isSaving ? null : _continue,
                       child: const Text(
                         'Skip',
                         style: TextStyle(
@@ -132,7 +162,7 @@ class _TriggersAndCopingScreenState extends State<TriggersAndCopingScreen> {
                         ),
                         padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
-                      onPressed: _continue,
+                      onPressed: _isSaving ? null : _continue,
                       child: const Text(
                         'Continue',
                         style: TextStyle(
