@@ -3,7 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'signup_screen.dart';
 import '../../dashboard/screen/dashboard_screen.dart';
-import '../../onboarding/consent_flow_screen.dart';
+import '../../onboarding/consent_intro_screen.dart';
 import '../../onboarding/profile_setup_screen.dart';
 import '../../spinAssessment/screen/spin_assessment_screen.dart';
 import '../../spinAssessment/screen/low_score_exit_screen.dart';
@@ -107,7 +107,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     Widget next;
     if (!consentGiven) {
-      next = const ConsentFlowScreen();
+      next = const ConsentIntroScreen();
     } else if (!profileCompleted) {
       next = const ProfileSetupScreen();
     } else if (!initialSpinCompleted) {

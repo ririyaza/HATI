@@ -15,8 +15,10 @@ class ModulesScreen extends StatelessWidget {
             child: SafeArea(
               bottom: false,
               child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 20,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -61,8 +63,10 @@ class ModulesScreen extends StatelessWidget {
                 borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
               ),
               child: SingleChildScrollView(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 18,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -112,20 +116,24 @@ Widget _recentActivityCard() {
                 ),
               ),
               const SizedBox(height: 10),
-              Container(
-                height: 74,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(10),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.asset(
+                  'assets/scenario.jpg',
+                  height: 110,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
                 ),
               ),
             ],
           ),
         ),
         const SizedBox(width: 12),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
             const Text(
               'Talking to\nStranger',
               style: TextStyle(
@@ -136,7 +144,7 @@ Widget _recentActivityCard() {
             ),
             const SizedBox(height: 12),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(20),
@@ -150,6 +158,7 @@ Widget _recentActivityCard() {
               ),
             ),
           ],
+          ),
         ),
       ],
     ),
@@ -167,21 +176,20 @@ Widget _scenarioGrid() {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            height: 90,
-            decoration: const BoxDecoration(
-              color: Color(0xFFE8E8F2),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+          ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+            child: Image.asset(
+              'assets/scenario.jpg',
+              height: 110,
+              width: double.infinity,
+              fit: BoxFit.cover,
             ),
           ),
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Text(
               title,
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
             ),
           ),
         ],
@@ -196,11 +204,6 @@ Widget _scenarioGrid() {
     shrinkWrap: true,
     physics: const NeverScrollableScrollPhysics(),
     childAspectRatio: 1.1,
-    children: [
-      card('Talking to Stranger'),
-      card('Group Discussion'),
-      card('Class Presentation'),
-      card('Public Speaking'),
-    ],
+    children: [card('Talking to Stranger')],
   );
 }
