@@ -4,10 +4,17 @@ import 'package:flutter/material.dart';
 import 'triggers_and_coping_screen.dart';
 import 'low_score_exit_screen.dart';
 
-class SpinResultScreen extends StatelessWidget {
+class SpinResultScreen extends StatefulWidget {
   final int score;
 
   const SpinResultScreen({super.key, required this.score});
+
+  @override
+  State<SpinResultScreen> createState() => _SpinResultScreenState();
+}
+
+class _SpinResultScreenState extends State<SpinResultScreen> {
+  bool _persisted = false;
 
   static const int severeThreshold = 40;
 
@@ -25,7 +32,46 @@ class SpinResultScreen extends StatelessWidget {
     }
   }
 
-  bool get _isSevereOrHigher => score > severeThreshold;
+  bool get _isSevereOrHigher => widget.score > severeThreshold;
+
+  @override
+  void initState() {
+    super.initState();
+    _persistInitialSpinScore();
+  }
+
+  Future<void> _persistInitialSpinScore() async {
+    if (_persisted) return;
+    _persisted = true;
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
+
+    try {
+      // Baseline score record for future comparisons.
+      await userRef.collection('spinAssessments').doc('initial').set(
+        {
+          'score': widget.score,
+          'completedAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
+
+      // Convenience flags/fields on the user document.
+      await userRef.set(
+        {
+          'initialSpinScore': widget.score,
+          'initialSpinCompleted': true,
+          'initialSpinCompletedAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
+    } catch (_) {
+      // Ignore write errors; user can still proceed.
+    }
+  }
 
   void _onContinue(BuildContext context) {
     _recordOutcomeAndNavigate(context);
@@ -52,7 +98,7 @@ class SpinResultScreen extends StatelessWidget {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (_) => LowScoreExitScreen(score: score),
+          builder: (_) => LowScoreExitScreen(score: widget.score),
         ),
       );
       return;
@@ -61,7 +107,7 @@ class SpinResultScreen extends StatelessWidget {
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (_) => TriggersAndCopingScreen(score: score),
+        builder: (_) => TriggersAndCopingScreen(score: widget.score),
       ),
     );
   }
@@ -132,7 +178,7 @@ class SpinResultScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      '$score',
+                      '${widget.score}',
                       style: const TextStyle(
                         fontSize: 40,
                         fontWeight: FontWeight.w800,
@@ -145,7 +191,7 @@ class SpinResultScreen extends StatelessWidget {
               const SizedBox(height: 24),
               Center(
                 child: Text(
-                  interpretation(score),
+                  interpretation(widget.score),
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontSize: 15,

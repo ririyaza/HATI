@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../data/spin_questions.dart';
+import '../../dashboard/screen/dashboard_screen.dart';
+import 'low_score_exit_screen.dart';
 import 'spin_result_screen.dart';
 
 class SpinAssessmentScreen extends StatefulWidget {
@@ -22,6 +24,50 @@ class _SpinAssessmentScreenState extends State<SpinAssessmentScreen> {
     "Very much",
     "Extremely",
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _guardAgainstRetake();
+  }
+
+  Future<void> _guardAgainstRetake() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+      final data = doc.data() ?? {};
+
+      if (!mounted) return;
+
+      if (data['accessBlocked'] == true) {
+        final raw = data['initialSpinScore'];
+        final score = raw is num ? raw.toInt() : (raw is int ? raw : 0);
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => LowScoreExitScreen(score: score),
+          ),
+        );
+        return;
+      }
+
+      if (data['initialSpinCompleted'] == true) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const DashboardScreen(),
+          ),
+        );
+      }
+    } catch (_) {
+      // If we can't read status, allow assessment to proceed.
+    }
+  }
 
   void nextQuestion() {
     if (currentIndex < spinQuestions.length - 1) {

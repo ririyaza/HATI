@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'features/auth/screen/login_screen.dart';
+import 'features/onboarding/loading_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 
@@ -23,7 +23,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
-      home: const LoginScreen(),
+      home: const LoadingScreen(),
     );
   }
 }
