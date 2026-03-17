@@ -2,50 +2,33 @@ import 'package:flutter/material.dart';
 import 'spin_result_screen.dart';
 import '../../dashboard/screen/dashboard_screen.dart';
 
+/// Final confirmation screen after completing the SPIN assessment
+/// and optional coping reflection.
 class AssessmentCompleteScreen extends StatelessWidget {
-  static const int minimumScoreToContinue = 40;
-
   final int score;
-  final String triggers;
-  final String copingStrategies;
 
   const AssessmentCompleteScreen({
     super.key,
     required this.score,
-    this.triggers = '',
-    this.copingStrategies = '',
   });
 
-  bool get _canContinueToApp => score > minimumScoreToContinue;
+  void _handleContinueToApp(BuildContext context) {
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const DashboardScreen(),
+      ),
+      (route) => false,
+    );
+  }
 
-  void _onContinuePressed(BuildContext context) {
-    if (_canContinueToApp) {
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(
-          builder: (_) => const DashboardScreen(),
-        ),
-        (route) => false,
-      );
-    } else {
-      showDialog<void>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Cannot continue'),
-          content: Text(
-            'This app is intended for users with a SPIN score greater than 40. '
-            'Your score is $score. Please consider reaching out to a healthcare '
-            'professional for support.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('OK'),
-            ),
-          ],
-        ),
-      );
-    }
+  void _handleViewResult(BuildContext context) {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SpinResultScreen(score: score),
+      ),
+    );
   }
 
   @override
@@ -58,7 +41,6 @@ class AssessmentCompleteScreen extends StatelessWidget {
         child: Column(
           children: [
             const Spacer(),
-            // Title
             Text(
               'Assessment Complete',
               textAlign: TextAlign.center,
@@ -68,21 +50,7 @@ class AssessmentCompleteScreen extends StatelessWidget {
                 fontSize: 28,
               ),
             ),
-            if (!_canContinueToApp) ...[
-              const SizedBox(height: 12),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 32),
-                child: Text(
-                  'A score greater than $minimumScoreToContinue is required to use this app.',
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: Colors.black87,
-                  ),
-                ),
-              ),
-            ],
             const Spacer(),
-            // Lower section with light gray background
             Expanded(
               flex: 1,
               child: Container(
@@ -90,13 +58,11 @@ class AssessmentCompleteScreen extends StatelessWidget {
                 color: const Color(0xFFF2F2F7),
               ),
             ),
-            // Buttons
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Continue to App - primary
                   SizedBox(
                     height: 52,
                     child: FilledButton(
@@ -106,7 +72,7 @@ class AssessmentCompleteScreen extends StatelessWidget {
                           borderRadius: BorderRadius.circular(26),
                         ),
                       ),
-                      onPressed: () => _onContinuePressed(context),
+                      onPressed: () => _handleContinueToApp(context),
                       child: const Text(
                         'Continue to App',
                         style: TextStyle(
@@ -118,7 +84,6 @@ class AssessmentCompleteScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  // View Result - secondary
                   SizedBox(
                     height: 52,
                     child: OutlinedButton(
@@ -129,14 +94,7 @@ class AssessmentCompleteScreen extends StatelessWidget {
                         ),
                         backgroundColor: Colors.white,
                       ),
-                      onPressed: () {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => SpinResultScreen(score: score),
-                          ),
-                        );
-                      },
+                      onPressed: () => _handleViewResult(context),
                       child: const Text(
                         'View Result',
                         style: TextStyle(
