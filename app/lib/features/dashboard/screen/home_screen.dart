@@ -7,7 +7,7 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      color: const Color(0xFF007AFF),
+      color: const Color(0xFF0B28D9),
       child: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
@@ -26,8 +26,8 @@ class HomeScreen extends StatelessWidget {
               const Spacer(),
               Center(
                 child: Image.asset(
-                  'app/images/bouncehati2.png',
-                  width: 240,
+                  'assets/bouncehati2.png',
+                  width: 300,
                   fit: BoxFit.contain,
                 ),
               ),

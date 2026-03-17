@@ -7,7 +7,7 @@ class ProgressScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      color: const Color(0xFF007AFF),
+      color: const Color(0xFF0B28D9),
       child: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24.0),

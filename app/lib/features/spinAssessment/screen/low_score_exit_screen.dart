@@ -36,8 +36,10 @@ class LowScoreExitScreen extends StatelessWidget {
               Align(
                 alignment: Alignment.center,
                 child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 16,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFF0056FF),
                     borderRadius: BorderRadius.circular(16),
@@ -54,15 +56,15 @@ class LowScoreExitScreen extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
-              Expanded(
-                child: Center(
-                  child: SizedBox(
-                    height: 160,
-                    width: 160,
-                  ),
+              Center(
+                child: Image.asset(
+                  'assets/bouncehati2.png',
+                  width: 300,
+                  fit: BoxFit.contain,
                 ),
               ),
+              const SizedBox(height: 24),
+              Expanded(child: Center(child: SizedBox(height: 160, width: 160))),
               const SizedBox(height: 24),
               SizedBox(
                 height: 52,
@@ -122,4 +124,3 @@ class LowScoreExitScreen extends StatelessWidget {
     );
   }
 }
-
