@@ -1,7 +1,12 @@
-import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 import 'signup_screen.dart';
-import '../../spinAssessment/screen/spin_intro_screen.dart';
+import '../../dashboard/screen/dashboard_screen.dart';
+import '../../onboarding/consent_flow_screen.dart';
+import '../../onboarding/profile_setup_screen.dart';
+import '../../spinAssessment/screen/spin_assessment_screen.dart';
+import '../../spinAssessment/screen/low_score_exit_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -36,12 +41,7 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       if (!mounted) return;
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => const UnderstandingSocialSituationsScreen(),
-        ),
-      );
+      await _navigateAfterLogin();
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
       String message;
@@ -78,6 +78,48 @@ class _LoginScreenState extends State<LoginScreen> {
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  Future<void> _navigateAfterLogin() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .get();
+    final data = doc.data() ?? {};
+
+    if (data['accessBlocked'] == true) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) =>
+              LowScoreExitScreen(score: (data['initialSpinScore'] ?? 0) as int),
+        ),
+      );
+      return;
+    }
+
+    final consentGiven = data['consentGiven'] == true;
+    final profileCompleted = data['profileCompleted'] == true;
+    final initialSpinCompleted = data['initialSpinCompleted'] == true;
+
+    Widget next;
+    if (!consentGiven) {
+      next = const ConsentFlowScreen();
+    } else if (!profileCompleted) {
+      next = const ProfileSetupScreen();
+    } else if (!initialSpinCompleted) {
+      next = const SpinAssessmentScreen();
+    } else {
+      next = const DashboardScreen();
+    }
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => next),
+    );
   }
 
   Future<void> _handleForgotPassword() async {
