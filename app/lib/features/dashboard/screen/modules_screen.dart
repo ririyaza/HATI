@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../emotiondetection/scenario_game.dart';
 
 class ModulesScreen extends StatelessWidget {
   const ModulesScreen({super.key});
@@ -70,7 +71,7 @@ class ModulesScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _recentActivityCard(),
+                    _recentActivityCard(context),
                     const SizedBox(height: 22),
                     const Text(
                       'Scenario Modules',
@@ -81,7 +82,7 @@ class ModulesScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    _scenarioGrid(),
+                    _scenarioGrid(context),
                   ],
                 ),
               ),
@@ -93,7 +94,7 @@ class ModulesScreen extends StatelessWidget {
   }
 }
 
-Widget _recentActivityCard() {
+Widget _recentActivityCard(BuildContext context) {
   return Container(
     width: double.infinity,
     padding: const EdgeInsets.all(16),
@@ -134,30 +135,41 @@ Widget _recentActivityCard() {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-            const Text(
-              'Talking to\nStranger',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w700,
-                fontSize: 16,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: const Text(
-                'Continue',
+              const Text(
+                'WHERE TO\nSIT?',
                 style: TextStyle(
-                  color: Color(0xFF0BA2D9),
+                  color: Colors.white,
                   fontWeight: FontWeight.w700,
+                  fontSize: 16,
                 ),
               ),
-            ),
-          ],
+              const SizedBox(height: 12),
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const EmotionPage(),
+                    ),
+                  );
+                },
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Text(
+                    'Continue',
+                    style: TextStyle(
+                      color: Color(0xFF0BA2D9),
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ],
@@ -165,34 +177,39 @@ Widget _recentActivityCard() {
   );
 }
 
-Widget _scenarioGrid() {
-  Widget card(String title) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE0E0E0)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-            child: Image.asset(
-              'assets/scenario.jpg',
-              height: 110,
-              width: double.infinity,
-              fit: BoxFit.cover,
+Widget _scenarioGrid(BuildContext context) {
+  Widget card(String title, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE0E0E0)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(12)),
+              child: Image.asset(
+                'assets/scenario.jpg',
+                height: 110,
+                width: double.infinity,
+                fit: BoxFit.cover,
+              ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Text(
-              title,
-              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text(
+                title,
+                style:
+                    const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -204,6 +221,13 @@ Widget _scenarioGrid() {
     shrinkWrap: true,
     physics: const NeverScrollableScrollPhysics(),
     childAspectRatio: 1.1,
-    children: [card('Talking to Stranger')],
+    children: [
+      card('WHERE TO SIT?', () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const EmotionPage()),
+        );
+      })
+    ],
   );
 }
