@@ -26,9 +26,9 @@ class ModulesScreen extends StatelessWidget {
                       'HATI',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1.1,
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.2,
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -128,36 +128,39 @@ Widget _recentActivityCard() {
             ],
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 50),
         Padding(
           padding: const EdgeInsets.only(top: 12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-            const Text(
-              'Talking to\nStranger',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w700,
-                fontSize: 16,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: const Text(
-                'Continue',
+              const Text(
+                'Talking to\nStranger',
                 style: TextStyle(
-                  color: Color(0xFF0BA2D9),
+                  color: Colors.white,
                   fontWeight: FontWeight.w700,
+                  fontSize: 16,
                 ),
               ),
-            ),
-          ],
+              const SizedBox(height: 20),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Text(
+                  'Continue',
+                  style: TextStyle(
+                    color: Color(0xFF0BA2D9),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ],
