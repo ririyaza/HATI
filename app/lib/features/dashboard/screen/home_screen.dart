@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../widgets/hati_sprite_animation.dart';
+
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
@@ -24,12 +26,8 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              Center(
-                child: Image.asset(
-                  'assets/bouncehati2.png',
-                  width: 300,
-                  fit: BoxFit.contain,
-                ),
+              const Center(
+                child: HatiSpriteAnimation(),
               ),
               const Spacer(),
             ],
