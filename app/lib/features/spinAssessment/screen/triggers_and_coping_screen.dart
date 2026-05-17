@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'assessment_complete_screen.dart';
 
@@ -12,25 +14,49 @@ class TriggersAndCopingScreen extends StatefulWidget {
 }
 
 class _TriggersAndCopingScreenState extends State<TriggersAndCopingScreen> {
-  final _triggersController = TextEditingController();
   final _copingController = TextEditingController();
+  bool _isSaving = false;
 
   @override
   void dispose() {
-    _triggersController.dispose();
     _copingController.dispose();
     super.dispose();
   }
 
-  void _continue() {
+  Future<void> _continue() async {
+    if (_isSaving) return;
+    setState(() => _isSaving = true);
+
+    final coping = _copingController.text.trim();
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      // Skip saving if not signed in.
+    } else {
+      final userRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid);
+      try {
+        await userRef.collection('spinAssessments').doc('initial').set({
+          'copingMechanism': coping,
+          'copingRecordedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+
+        await userRef.set({
+          'initialCopingMechanism': coping,
+          'initialCopingRecordedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      } catch (_) {
+        // Ignore write errors; user can still proceed.
+      }
+    }
+
+    if (!mounted) return;
+    setState(() => _isSaving = false);
+
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (_) => AssessmentCompleteScreen(
-          score: widget.score,
-          triggers: _triggersController.text.trim(),
-          copingStrategies: _copingController.text.trim(),
-        ),
+        builder: (_) => AssessmentCompleteScreen(score: widget.score),
       ),
     );
   }
@@ -41,64 +67,36 @@ class _TriggersAndCopingScreenState extends State<TriggersAndCopingScreen> {
 
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        foregroundColor: Colors.black,
-        title: Text(
-          'Reflect on Your Experience',
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w600,
-            color: Colors.black,
-          ),
-        ),
-      ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                'Identifying what triggers difficult emotions and what helps you cope can make your experience more meaningful. You can skip or fill these in later.',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: Colors.black.withOpacity(0.75),
-                  height: 1.4,
-                ),
-              ),
-              const SizedBox(height: 28),
-              Text(
-                'What situations or thoughts tend to increase your anxiety or distress?',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black,
-                ),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: _triggersController,
-                maxLines: 4,
-                decoration: InputDecoration(
-                  hintText:
-                      'e.g. public speaking, meeting new people, criticism, crowded places…',
-                  hintStyle: TextStyle(
-                    color: Colors.black.withOpacity(0.4),
-                    fontSize: 14,
-                  ),
-                  filled: true,
-                  fillColor: const Color(0xFFF2F2F7),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide.none,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
-                  ),
-                ),
-                style: const TextStyle(fontSize: 15),
-              ),
               const SizedBox(height: 24),
+              Center(
+                child: Text(
+                  'Reflect on\nYour Experience',
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.headlineLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: Colors.black,
+                    height: 1.1,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Center(
+                child: Text(
+                  'Identifying what helps you cope can make your\nexperience more meaningful. You can skip or fill\nthese in later.',
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: Colors.black.withOpacity(0.6),
+                    height: 1.4,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 40),
               Text(
                 'What helps you cope or feel better when you\'re stressed or anxious?',
                 style: theme.textTheme.titleMedium?.copyWith(
@@ -106,64 +104,76 @@ class _TriggersAndCopingScreenState extends State<TriggersAndCopingScreen> {
                   color: Colors.black,
                 ),
               ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: _copingController,
-                maxLines: 4,
-                decoration: InputDecoration(
-                  hintText:
-                      'e.g. deep breathing, talking to a friend, going for a walk, journaling…',
-                  hintStyle: TextStyle(
-                    color: Colors.black.withOpacity(0.4),
-                    fontSize: 14,
-                  ),
-                  filled: true,
-                  fillColor: const Color(0xFFF2F2F7),
-                  border: OutlineInputBorder(
+              const SizedBox(height: 12),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF2F2F7),
                     borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide.none,
                   ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
+                  child: TextField(
+                    controller: _copingController,
+                    maxLines: null,
+                    expands: true,
+                    decoration: InputDecoration(
+                      border: InputBorder.none,
+                      hintText:
+                          'e.g. deep breathing, talking to a friend, going for a walk, journaling…',
+                      hintStyle: TextStyle(
+                        color: Colors.black.withOpacity(0.4),
+                        fontSize: 14,
+                      ),
+                    ),
+                    style: const TextStyle(fontSize: 15),
                   ),
                 ),
-                style: const TextStyle(fontSize: 15),
               ),
               const SizedBox(height: 32),
-              SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF007AFF),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(26),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Colors.black26, width: 1),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(26),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      onPressed: _isSaving ? null : _continue,
+                      child: const Text(
+                        'Skip',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.black,
+                        ),
+                      ),
                     ),
                   ),
-                  onPressed: _continue,
-                  child: const Text(
-                    'Continue',
-                    style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF0056FF),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(26),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      onPressed: _isSaving ? null : _continue,
+                      child: const Text(
+                        'Continue',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
                     ),
                   ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Center(
-                child: TextButton(
-                  onPressed: _continue,
-                  child: Text(
-                    'Skip for now',
-                    style: TextStyle(
-                      fontSize: 15,
-                      color: Colors.black.withOpacity(0.6),
-                    ),
-                  ),
-                ),
+                ],
               ),
             ],
           ),
