@@ -74,6 +74,7 @@ flutter:
     - assets/hati bouncing.gif
     - assets/scenario.jpg
     - assets/images/HatiCharacter/
+    - assets/images/defaultProfile/
  
 
   # An image asset can refer to one or more resolution-specific "variants", see

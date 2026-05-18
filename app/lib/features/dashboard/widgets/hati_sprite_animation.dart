@@ -1,4 +1,5 @@
 import 'dart:async' as async;
+import 'dart:math' as math;
 
 import 'package:flame/components.dart';
 import 'package:flame/widgets.dart';
@@ -8,7 +9,8 @@ class HatiSpriteAnimation extends StatefulWidget {
   const HatiSpriteAnimation({
     super.key,
     this.size = 300,
-    this.message = 'Hello, I\'m Hati your virtual companion! How are you to see me?',
+    this.message =
+        'Hello, I\'m Hati your virtual companion! How are you to see me?',
     this.startDelay = const Duration(seconds: 2),
     this.persistBubble = false,
   });
@@ -25,11 +27,21 @@ class HatiSpriteAnimation extends StatefulWidget {
 class _HatiSpriteAnimationState extends State<HatiSpriteAnimation> {
   late final String _message;
   static final _frameSize = Vector2.all(512);
+  static const _idleSheet = 'HatiCharacter/frog_sprite_sheet.png';
+  static const _blinkSheet = 'HatiCharacter/blinksheet.png';
+  static const _idleFrameCount = 10;
+  static const _blinkFrameCount = 15;
+  static const _stepTime = 0.055;
+  static const _blinkDuration = Duration(milliseconds: 825);
 
   async.Timer? _startTimer;
   async.Timer? _typingTimer;
   async.Timer? _hideTimer;
+  async.Timer? _blinkTimer;
+  async.Timer? _blinkResetTimer;
+  final _random = math.Random();
   bool _showTextbox = false;
+  bool _isBlinking = false;
   int _visibleCharacters = 0;
 
   @override
@@ -41,6 +53,7 @@ class _HatiSpriteAnimationState extends State<HatiSpriteAnimation> {
     } else {
       _startTimer = async.Timer(widget.startDelay, _startTyping);
     }
+    _scheduleBlink();
   }
 
   @override
@@ -48,7 +61,31 @@ class _HatiSpriteAnimationState extends State<HatiSpriteAnimation> {
     _startTimer?.cancel();
     _typingTimer?.cancel();
     _hideTimer?.cancel();
+    _blinkTimer?.cancel();
+    _blinkResetTimer?.cancel();
     super.dispose();
+  }
+
+  void _scheduleBlink() {
+    _blinkTimer?.cancel();
+    final secondsUntilBlink = 2 + _random.nextInt(6);
+    _blinkTimer = async.Timer(
+      Duration(seconds: secondsUntilBlink),
+      _startBlink,
+    );
+  }
+
+  void _startBlink() {
+    if (!mounted) return;
+
+    setState(() => _isBlinking = true);
+
+    _blinkResetTimer?.cancel();
+    _blinkResetTimer = async.Timer(_blinkDuration, () {
+      if (!mounted) return;
+      setState(() => _isBlinking = false);
+      _scheduleBlink();
+    });
   }
 
   void _startTyping() {
@@ -118,11 +155,12 @@ class _HatiSpriteAnimationState extends State<HatiSpriteAnimation> {
         ),
         const SizedBox(height: textboxGap),
         SpriteAnimationWidget.asset(
-          path: 'HatiCharacter/frog_sprite_sheet.png',
+          key: ValueKey(_isBlinking ? _blinkSheet : _idleSheet),
+          path: _isBlinking ? _blinkSheet : _idleSheet,
           data: SpriteAnimationData.sequenced(
-            amount: 10,
-            amountPerRow: 10,
-            stepTime: 0.055,
+            amount: _isBlinking ? _blinkFrameCount : _idleFrameCount,
+            amountPerRow: _isBlinking ? _blinkFrameCount : _idleFrameCount,
+            stepTime: _stepTime,
             textureSize: _frameSize,
           ),
           size: Size.square(widget.size),

@@ -232,6 +232,7 @@ class _ProfileAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasPhoto = photoUrl.isNotEmpty;
+    final isAsset = photoUrl.startsWith('assets/');
 
     return Container(
       width: 72,
@@ -243,15 +244,17 @@ class _ProfileAvatar extends StatelessWidget {
       ),
       clipBehavior: Clip.antiAlias,
       child: hasPhoto
-          ? Image.network(
-              photoUrl,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => const Icon(
-                Icons.person,
-                size: 40,
-                color: Colors.white,
-              ),
-            )
+          ? isAsset
+                ? Image.asset(photoUrl, fit: BoxFit.cover)
+                : Image.network(
+                    photoUrl,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const Icon(
+                      Icons.person,
+                      size: 40,
+                      color: Colors.white,
+                    ),
+                  )
           : const Icon(Icons.person, size: 40, color: Colors.white),
     );
   }
