@@ -9,6 +9,7 @@ class DashboardUserData {
     required this.photoUrl,
     required this.pronouns,
     required this.goal,
+    required this.copingPreferences,
     required this.modules,
     required this.assessments,
   });
@@ -19,6 +20,7 @@ class DashboardUserData {
   final String photoUrl;
   final String pronouns;
   final String goal;
+  final String copingPreferences;
   final List<ModuleProgressData> modules;
   final List<AssessmentScoreData> assessments;
 
@@ -168,6 +170,7 @@ class DashboardUserDataParser {
     final data = userDoc.data() ?? {};
     final modules = _parseModules(moduleDocs);
     final assessments = _parseAssessments(data, assessmentDocs);
+    final copingPreferences = _parseCopingPreferences(data, assessmentDocs);
 
     return DashboardUserData(
       uid: user.uid,
@@ -184,6 +187,7 @@ class DashboardUserDataParser {
       ),
       pronouns: _string(data['pronouns']),
       goal: _string(data['goal']),
+      copingPreferences: copingPreferences,
       modules: modules,
       assessments: assessments,
     );
@@ -276,6 +280,26 @@ class DashboardUserDataParser {
         postDate: postDate,
       ),
     ];
+  }
+
+  static String _parseCopingPreferences(
+    Map<String, dynamic> userData,
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+  ) {
+    Map<String, dynamic>? initialDoc;
+
+    for (final doc in docs) {
+      if (doc.id == 'initial') {
+        initialDoc = doc.data();
+        break;
+      }
+    }
+
+    return _string(
+      userData['initialCopingMechanism'] ??
+          userData['copingMechanism'] ??
+          initialDoc?['copingMechanism'],
+    );
   }
 
   static String _string(Object? value, {String fallback = ''}) {
