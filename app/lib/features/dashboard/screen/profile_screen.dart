@@ -150,6 +150,19 @@ class _ProfileContent extends StatelessWidget {
                       _AssessmentScoresSection(entries: data.assessments),
                     const SizedBox(height: 24),
                     const Text(
+                      'Coping Preferences',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.black,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    _CopingPreferencesCard(
+                      preferences: data.copingPreferences,
+                    ),
+                    const SizedBox(height: 24),
+                    const Text(
                       'Settings',
                       style: TextStyle(
                         fontSize: 18,
@@ -610,6 +623,103 @@ class _InfoCard extends StatelessWidget {
       child: Text(
         body,
         style: const TextStyle(color: Colors.black54, height: 1.45),
+      ),
+    );
+  }
+}
+
+class _CopingPreferencesCard extends StatelessWidget {
+  const _CopingPreferencesCard({required this.preferences});
+
+  final String preferences;
+
+  List<String> get _items => preferences
+      .split(RegExp(r'[,;]'))
+      .map((item) => item.trim())
+      .where((item) => item.isNotEmpty)
+      .toList();
+
+  @override
+  Widget build(BuildContext context) {
+    final items = _items;
+    final hasPreferences = items.isNotEmpty;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE0E0E0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0B28D9).withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.self_improvement_outlined,
+                  color: Color(0xFF0B28D9),
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  hasPreferences
+                      ? 'What helps you feel steady'
+                      : 'No coping preferences yet',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.black87,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          if (hasPreferences)
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: items
+                  .map(
+                    (item) => Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 7,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8F9FF),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: const Color(0xFFE2E6FF)),
+                      ),
+                      child: Text(
+                        item,
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF0B28D9),
+                        ),
+                      ),
+                    ),
+                  )
+                  .toList(),
+            )
+          else
+            const Text(
+              'Complete the coping reflection after the SPIN assessment to show your preferences here.',
+              style: TextStyle(color: Colors.black45, height: 1.4),
+            ),
+        ],
       ),
     );
   }
