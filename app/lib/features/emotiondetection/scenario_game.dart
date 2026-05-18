@@ -3,6 +3,8 @@ import 'package:http/http.dart' as http;
 import 'package:record/record.dart';
 import 'dart:convert';
 import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:path_provider/path_provider.dart';
 import '../dashboard/screen/modules_screen.dart';
 
@@ -263,6 +265,27 @@ class _EmotionPageState extends State<EmotionPage> {
     await _stepScenario(text: text);
   }
 
+  Future<void> _recordScenarioCompletion() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
+    try {
+      await userRef.collection('moduleProgress').doc('where_to_sit').set({
+        'title': 'WHERE TO SIT?',
+        'subtitle': 'Social awareness - 1 scenario',
+        'icon': 'W',
+        'completedScenarios': 1,
+        'totalScenarios': 1,
+        'lastCompletedAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+      await userRef.set({
+        'progressUpdatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    } catch (_) {}
+  }
+
   Widget _buildChoiceButtons() {
     if (_currentUI?.type != ScenarioUIType.buttons) {
       return const SizedBox.shrink();
@@ -275,8 +298,10 @@ class _EmotionPageState extends State<EmotionPage> {
           return ElevatedButton(
             onPressed: isLoading
                 ? null
-                : () {
+                : () async {
                     if (opt == "Close") {
+                      await _recordScenarioCompletion();
+                      if (!mounted) return;
                       Navigator.pushAndRemoveUntil(
                         context,
                         MaterialPageRoute(
