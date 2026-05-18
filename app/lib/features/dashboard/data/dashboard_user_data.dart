@@ -180,7 +180,8 @@ class DashboardUserDataParser {
         fallback: user.email?.split('@').first ?? 'HATI User',
       ),
       photoUrl: _string(
-        data['profilePicUrl'] ??
+        data['profilePicAssetPath'] ??
+            data['profilePicUrl'] ??
             data['photoURL'] ??
             data['photoUrl'] ??
             user.photoURL,

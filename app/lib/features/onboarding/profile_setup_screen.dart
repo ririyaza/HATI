@@ -1,10 +1,6 @@
-import 'dart:typed_data';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../spinAssessment/screen/spin_assessment_screen.dart';
 
@@ -20,15 +16,20 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
   final _formKey = GlobalKey<FormState>();
   final _nicknameController = TextEditingController();
   final _goalController = TextEditingController();
-  final _imagePicker = ImagePicker();
   String? _selectedPronouns;
-  XFile? _selectedAvatar;
-  Uint8List? _selectedAvatarBytes;
+  String? _selectedAvatarAsset;
   bool _isSaving = false;
 
   late AnimationController _animCtrl;
   late Animation<double> _fadeAnim;
   late Animation<Offset> _slideAnim;
+
+  static const _defaultProfileAvatars = [
+    'assets/images/defaultProfile/IMG_0370.PNG',
+    'assets/images/defaultProfile/IMG_0371.PNG',
+    'assets/images/defaultProfile/IMG_0372.PNG',
+    'assets/images/defaultProfile/IMG_0373.PNG',
+  ];
 
   @override
   void initState() {
@@ -67,26 +68,20 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
     setState(() => _isSaving = true);
 
     try {
-      final profilePicUrl = await _uploadProfilePicToStorage(user.uid);
-
       await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
         'email': user.email,
         'displayName': _nicknameController.text.trim(),
         'nickname': _nicknameController.text.trim(),
         'pronouns': _selectedPronouns,
         'goal': _goalController.text.trim(),
-        if (profilePicUrl != null) ...{
-          'profilePicUrl': profilePicUrl.url,
-          'profilePicStoragePath': profilePicUrl.storagePath,
+        if (_selectedAvatarAsset != null) ...{
+          'profilePicAssetPath': _selectedAvatarAsset,
+          'profilePicSource': 'defaultProfile',
           'profilePicUpdatedAt': FieldValue.serverTimestamp(),
         },
         'profileCompleted': true,
         'profileCompletedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
-
-      if (profilePicUrl != null) {
-        await user.updatePhotoURL(profilePicUrl.url);
-      }
 
       if (!mounted) return;
       Navigator.pushReplacement(
@@ -116,38 +111,19 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
   }
 
   Future<void> _pickAvatar() async {
-    final picked = await _imagePicker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 75,
-      maxWidth: 900,
-      maxHeight: 900,
+    final selected = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) => _DefaultAvatarSheet(
+        avatars: _defaultProfileAvatars,
+        selectedAvatar: _selectedAvatarAsset,
+      ),
     );
-    if (picked == null) return;
-
-    final bytes = await picked.readAsBytes();
-    if (!mounted) return;
-    setState(() {
-      _selectedAvatar = picked;
-      _selectedAvatarBytes = bytes;
-    });
-  }
-
-  Future<_ProfilePicUpload?> _uploadProfilePicToStorage(String uid) async {
-    final avatar = _selectedAvatar;
-    final bytes = _selectedAvatarBytes;
-    if (avatar == null || bytes == null) return null;
-
-    final extension = avatar.name.split('.').last.toLowerCase();
-    final safeExtension = extension == 'png' ? 'png' : 'jpg';
-    final storagePath = 'users/$uid/profile/avatar.$safeExtension';
-    final contentType = safeExtension == 'png' ? 'image/png' : 'image/jpeg';
-    final metadata = SettableMetadata(contentType: contentType);
-    final ref = FirebaseStorage.instance.ref(storagePath);
-
-    await ref.putData(bytes, metadata);
-
-    final downloadUrl = await ref.getDownloadURL();
-    return _ProfilePicUpload(url: downloadUrl, storagePath: storagePath);
+    if (selected == null || !mounted) return;
+    setState(() => _selectedAvatarAsset = selected);
   }
 
   static const _pronounOptions = [
@@ -332,7 +308,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
                   right: 0,
                   child: Center(
                     child: _AvatarPicker(
-                      imageBytes: _selectedAvatarBytes,
+                      assetPath: _selectedAvatarAsset,
                       onTap: _isSaving ? null : _pickAvatar,
                     ),
                   ),
@@ -348,19 +324,12 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _ProfilePicUpload {
-  const _ProfilePicUpload({required this.url, required this.storagePath});
-
-  final String url;
-  final String storagePath;
-}
-
 // ── Avatar picker ─────────────────────────────────────────────────────────────
 
 class _AvatarPicker extends StatelessWidget {
-  const _AvatarPicker({required this.imageBytes, required this.onTap});
+  const _AvatarPicker({required this.assetPath, required this.onTap});
 
-  final Uint8List? imageBytes;
+  final String? assetPath;
   final VoidCallback? onTap;
 
   @override
@@ -389,17 +358,16 @@ class _AvatarPicker extends StatelessWidget {
             child: ClipOval(
               child: Container(
                 color: const Color(0xFFEEF1FF),
-                child: imageBytes == null
+                child: assetPath == null
                     ? Icon(
                         Icons.person_rounded,
                         size: 56,
                         color: const Color(0xFF0B28D9).withOpacity(0.35),
                       )
-                    : Image.memory(imageBytes!, fit: BoxFit.cover),
+                    : Image.asset(assetPath!, fit: BoxFit.cover),
               ),
             ),
           ),
-          // Camera badge
           Positioned(
             bottom: 2,
             right: 2,
@@ -421,7 +389,7 @@ class _AvatarPicker extends StatelessWidget {
                 ],
               ),
               child: const Icon(
-                Icons.camera_alt_rounded,
+                Icons.face_retouching_natural_rounded,
                 size: 15,
                 color: Colors.white,
               ),
@@ -434,6 +402,80 @@ class _AvatarPicker extends StatelessWidget {
 }
 
 // ── Field label ───────────────────────────────────────────────────────────────
+
+class _DefaultAvatarSheet extends StatelessWidget {
+  const _DefaultAvatarSheet({
+    required this.avatars,
+    required this.selectedAvatar,
+  });
+
+  final List<String> avatars;
+  final String? selectedAvatar;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Choose an Avatar',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF1A1A2E),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Pick one of HATI\'s default profile pictures.',
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.black.withOpacity(0.45),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 18),
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: avatars.length,
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 4,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+              ),
+              itemBuilder: (context, index) {
+                final avatar = avatars[index];
+                final isSelected = avatar == selectedAvatar;
+                return GestureDetector(
+                  onTap: () => Navigator.pop(context, avatar),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: isSelected
+                          ? const Color(0xFF0B28D9)
+                          : const Color(0xFFE2E6FF),
+                    ),
+                    child: ClipOval(
+                      child: Image.asset(avatar, fit: BoxFit.cover),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 class _FieldLabel extends StatelessWidget {
   final IconData icon;
