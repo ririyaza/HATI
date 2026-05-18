@@ -12,99 +12,96 @@ class ConsentFlowScreen extends StatefulWidget {
   State<ConsentFlowScreen> createState() => _ConsentFlowScreenState();
 }
 
-class _ConsentFlowScreenState extends State<ConsentFlowScreen> {
+class _ConsentFlowScreenState extends State<ConsentFlowScreen>
+    with SingleTickerProviderStateMixin {
   int _stepIndex = 0;
 
   final _consentChecks = <bool>[false, false, false, false];
-  final ScrollController _aboutScrollController = ScrollController();
-  final ScrollController _dataScrollController = ScrollController();
-  final ScrollController _risksScrollController = ScrollController();
-  final ScrollController _rightsScrollController = ScrollController();
-  bool _hasScrolledAbout = false;
-  bool _hasScrolledData = false;
-  bool _hasScrolledRisks = false;
-  bool _hasScrolledRights = false;
+
+  final _scrollControllers = List.generate(
+    4,
+    (_) => ScrollController(keepScrollOffset: false),
+  );
+  final _hasScrolled = List.generate(4, (_) => false);
+
+  late AnimationController _pageAnimCtrl;
+  late Animation<double> _pageAnim;
+
+  static const _stepTitles = [
+    'What This Study\nIs About',
+    'What Data\nWe Collect',
+    'Risks &\nSupport',
+    'Your Rights',
+    'Confirm\nConsent',
+  ];
+
+  static const _stepIcons = [
+    Icons.info_outline_rounded,
+    Icons.storage_rounded,
+    Icons.health_and_safety_outlined,
+    Icons.gavel_rounded,
+    Icons.check_circle_outline_rounded,
+  ];
 
   @override
   void initState() {
     super.initState();
-    _aboutScrollController.addListener(_handleAboutScroll);
-    _dataScrollController.addListener(_handleDataScroll);
-    _risksScrollController.addListener(_handleRisksScroll);
-    _rightsScrollController.addListener(_handleRightsScroll);
+    _pageAnimCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 320),
+    );
+    _pageAnim = CurvedAnimation(parent: _pageAnimCtrl, curve: Curves.easeOut);
+    _pageAnimCtrl.forward();
+
+    for (int i = 0; i < 4; i++) {
+      final idx = i;
+      _scrollControllers[idx].addListener(() {
+        if (_hasScrolled[idx]) return;
+        final pos = _scrollControllers[idx].position;
+        if (!pos.hasContentDimensions) return;
+        if (pos.pixels >= pos.maxScrollExtent - 2) {
+          setState(() => _hasScrolled[idx] = true);
+        }
+      });
+    }
   }
 
   @override
   void dispose() {
-    _aboutScrollController.removeListener(_handleAboutScroll);
-    _dataScrollController.removeListener(_handleDataScroll);
-    _risksScrollController.removeListener(_handleRisksScroll);
-    _rightsScrollController.removeListener(_handleRightsScroll);
-    _aboutScrollController.dispose();
-    _dataScrollController.dispose();
-    _risksScrollController.dispose();
-    _rightsScrollController.dispose();
+    _pageAnimCtrl.dispose();
+    for (final c in _scrollControllers) {
+      c.dispose();
+    }
     super.dispose();
   }
 
-  void _handleAboutScroll() {
-    if (_hasScrolledAbout) return;
-    if (!_aboutScrollController.hasClients) return;
-    final position = _aboutScrollController.position;
-    if (!position.hasContentDimensions) return;
-    final atBottom = position.pixels >= position.maxScrollExtent - 2;
-    if (atBottom) {
-      setState(() => _hasScrolledAbout = true);
-    }
+  void _goTo(int newIndex) {
+    _pageAnimCtrl.reset();
+    setState(() => _stepIndex = newIndex);
+    _pageAnimCtrl.forward();
+    _resetScrollPositionForStep(newIndex);
   }
 
-  void _handleDataScroll() {
-    if (_hasScrolledData) return;
-    if (!_dataScrollController.hasClients) return;
-    final position = _dataScrollController.position;
-    if (!position.hasContentDimensions) return;
-    final atBottom = position.pixels >= position.maxScrollExtent - 2;
-    if (atBottom) {
-      setState(() => _hasScrolledData = true);
-    }
-  }
+  void _resetScrollPositionForStep(int stepIndex) {
+    if (stepIndex >= _scrollControllers.length) return;
 
-  void _handleRisksScroll() {
-    if (_hasScrolledRisks) return;
-    if (!_risksScrollController.hasClients) return;
-    final position = _risksScrollController.position;
-    if (!position.hasContentDimensions) return;
-    final atBottom = position.pixels >= position.maxScrollExtent - 2;
-    if (atBottom) {
-      setState(() => _hasScrolledRisks = true);
-    }
-  }
-
-  void _handleRightsScroll() {
-    if (_hasScrolledRights) return;
-    if (!_rightsScrollController.hasClients) return;
-    final position = _rightsScrollController.position;
-    if (!position.hasContentDimensions) return;
-    final atBottom = position.pixels >= position.maxScrollExtent - 2;
-    if (atBottom) {
-      setState(() => _hasScrolledRights = true);
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final controller = _scrollControllers[stepIndex];
+      if (!controller.hasClients) return;
+      controller.jumpTo(controller.position.minScrollExtent);
+    });
   }
 
   void _nextStep() {
-    if (_stepIndex < 4) {
-      setState(() => _stepIndex++);
-    }
+    if (_stepIndex < 4) _goTo(_stepIndex + 1);
   }
 
   void _previousStep() {
-    if (_stepIndex > 0) {
-      setState(() => _stepIndex--);
-    }
+    if (_stepIndex > 0) _goTo(_stepIndex - 1);
   }
 
   Future<void> _handleDisagree() async {
-    // Simply pop back to login / previous screen
     if (!mounted) return;
     Navigator.of(context).popUntil((route) => route.isFirst);
   }
@@ -113,8 +110,16 @@ class _ConsentFlowScreenState extends State<ConsentFlowScreen> {
     final allChecked = _consentChecks.every((c) => c);
     if (!allChecked) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please review and check all consent statements.'),
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: const Color(0xFF1A1A2E),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          content: const Text(
+            'Please review and check all consent statements.',
+            style: TextStyle(color: Colors.white),
+          ),
         ),
       );
       return;
@@ -128,17 +133,7 @@ class _ConsentFlowScreenState extends State<ConsentFlowScreen> {
           'consentAt': FieldValue.serverTimestamp(),
         }, SetOptions(merge: true));
       }
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Consent saved locally. We will sync it when online.',
-            ),
-          ),
-        );
-      }
-    }
+    } catch (_) {}
 
     if (!mounted) return;
 
@@ -146,446 +141,700 @@ class _ConsentFlowScreenState extends State<ConsentFlowScreen> {
       context: context,
       barrierDismissible: false,
       barrierColor: Colors.black54,
-      builder: (ctx) {
-        return Dialog(
-          elevation: 0,
-          backgroundColor: Colors.transparent,
-          insetPadding: const EdgeInsets.symmetric(horizontal: 40),
-          child: Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Container(
-                  height: 64,
-                  width: 64,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Color(0xFFE6F0FF),
-                  ),
-                  child: const Icon(
-                    Icons.check,
-                    color: Color(0xFF0056FF),
-                    size: 36,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  'Consent Recorded',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 18,
-                    color: Color(0xFF0056FF),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  'Thank you. Your consent has been recorded. You may now use HATI.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.black87,
-                    height: 1.4,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: FilledButton(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF0056FF),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(24),
+      builder: (ctx) => _ConsentSuccessDialog(
+        onProceed: () {
+          Navigator.of(ctx).pop();
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const ProfileSetupScreen()),
+          );
+        },
+      ),
+    );
+  }
+
+  bool get _canProceed {
+    if (_stepIndex < 4) return _hasScrolled[_stepIndex.clamp(0, 3)];
+    return true;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: Column(
+        children: [
+          _Header(
+            stepIndex: _stepIndex,
+            totalSteps: 5,
+            stepTitles: _stepTitles,
+            stepIcons: _stepIcons,
+            onBack: () {
+              if (_stepIndex == 0) {
+                Navigator.of(context).pop();
+              } else {
+                _previousStep();
+              }
+            },
+          ),
+          Expanded(
+            child: FadeTransition(opacity: _pageAnim, child: _buildBody()),
+          ),
+          _BottomBar(
+            stepIndex: _stepIndex,
+            canProceed: _canProceed,
+            onNext: _nextStep,
+            onAgree: _handleAgreeAndContinue,
+            onDisagree: _handleDisagree,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBody() {
+    if (_stepIndex == 4) {
+      return _buildConsentConfirmStep();
+    }
+
+    final contentGroups = [
+      kConsentStudyAboutSpans,
+      kConsentDataCollectedSpans,
+      kConsentRisksSupportSpans,
+      kConsentParticipantRightsSpans,
+    ];
+
+    final hasScrolled = _hasScrolled[_stepIndex];
+
+    return Column(
+      children: [
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+            child: Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8F9FF),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0xFFE2E6FF), width: 1.2),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: Scrollbar(
+                  key: ValueKey('consent-scrollbar-$_stepIndex'),
+                  controller: _scrollControllers[_stepIndex],
+                  thumbVisibility: true,
+                  radius: const Radius.circular(8),
+                  child: SingleChildScrollView(
+                    key: ValueKey('consent-section-$_stepIndex'),
+                    controller: _scrollControllers[_stepIndex],
+                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+                    child: RichText(
+                      text: TextSpan(
+                        style: const TextStyle(
+                          color: Color(0xFF1A1A2E),
+                          fontSize: 14.5,
+                          height: 1.65,
+                        ),
+                        children: contentGroups[_stepIndex],
                       ),
                     ),
-                    onPressed: () {
-                      Navigator.of(ctx).pop();
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const ProfileSetupScreen(),
-                        ),
-                      );
-                    },
-                    child: const Text(
-                      'Proceed',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        // Scroll hint banner
+        AnimatedCrossFade(
+          duration: const Duration(milliseconds: 300),
+          crossFadeState: hasScrolled
+              ? CrossFadeState.showSecond
+              : CrossFadeState.showFirst,
+          firstChild: Container(
+            margin: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF8E7),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFFFD966), width: 1),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.arrow_downward_rounded,
+                  size: 15,
+                  color: Color(0xFF8A6500),
+                ),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Please scroll to the bottom to read everything before continuing.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF8A6500),
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ),
               ],
             ),
           ),
-        );
-      },
+          secondChild: Container(
+            margin: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFECFDF5),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFF86EFAC), width: 1),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.check_circle_rounded,
+                  size: 15,
+                  color: Color(0xFF166534),
+                ),
+                SizedBox(width: 8),
+                Text(
+                  'Section read — you may proceed.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF166534),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+      ],
     );
   }
 
+  Widget _buildConsentConfirmStep() {
+    const checkLabels = [
+      'I understand this is a research study and not a clinical service.',
+      'I understand HATI is a self-help tool and not a therapy app.',
+      'I understand what data will be collected and how it will be used.',
+      'I know I can withdraw my participation at any time.',
+    ];
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Summary card
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEEF1FF),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0B28D9),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.shield_rounded,
+                    color: Colors.white,
+                    size: 18,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    'You have read all sections. Please confirm the following statements to complete your consent.',
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      color: Color(0xFF1A1A2E),
+                      height: 1.5,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          const Text(
+            'Consent Statements',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF1A1A2E),
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          ...List.generate(4, (i) {
+            return _ConsentCheckItem(
+              label: checkLabels[i],
+              checked: _consentChecks[i],
+              onChanged: (v) => setState(() => _consentChecks[i] = v ?? false),
+            );
+          }),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Header ────────────────────────────────────────────────────────────────────
+
+class _Header extends StatelessWidget {
+  final int stepIndex;
+  final int totalSteps;
+  final List<String> stepTitles;
+  final List<IconData> stepIcons;
+  final VoidCallback onBack;
+
+  const _Header({
+    required this.stepIndex,
+    required this.totalSteps,
+    required this.stepTitles,
+    required this.stepIcons,
+    required this.onBack,
+  });
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    Widget content;
-    String title;
-    final String subtitle = 'Step ${_stepIndex + 1} of 5';
-
-    switch (_stepIndex) {
-      case 0:
-        title = 'What This Study Is About';
-        content = _buildStudyAboutBox(theme);
-        break;
-      case 1:
-        title = 'What Data We Collect';
-        content = _buildDataCollectedBox(theme);
-        break;
-      case 2:
-        title = 'Possible Risks & Support';
-        content = _buildRisksSupportBox(theme);
-        break;
-      case 3:
-        title = 'Your Rights as a Participant';
-        content = _buildParticipantRightsBox(theme);
-        break;
-      case 4:
-      default:
-        title = 'Consent Confirmation';
-        content = Align(
-          alignment: Alignment.topCenter,
-          child: _buildConsentCard(theme),
-        );
-        break;
-    }
-
-    final isLastStep = _stepIndex == 4;
-    final isAboutStep = _stepIndex == 0;
-
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
+    return Container(
+      color: const Color(0xFF0B28D9),
+      child: SafeArea(
+        bottom: false,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          padding: const EdgeInsets.fromLTRB(16, 12, 24, 24),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Align(
-                alignment: Alignment.centerLeft,
-                child: IconButton(
-                  onPressed: () {
-                    if (_stepIndex == 0) {
-                      Navigator.of(context).pop();
-                    } else {
-                      _previousStep();
-                    }
-                  },
-                  icon: const Icon(Icons.arrow_back),
-                  tooltip: 'Back',
-                ),
-              ),
-              Center(
-                child: Text(
-                  title,
-                  style: theme.textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: Colors.black,
+              // Back button row
+              Row(
+                children: [
+                  GestureDetector(
+                    onTap: onBack,
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Icons.arrow_back_rounded,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
                   ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Center(
-                child: Text(
-                  subtitle,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: Colors.black.withOpacity(0.6),
+                  const Spacer(),
+                  Text(
+                    'Step ${stepIndex + 1} of $totalSteps',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.65),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
+                ],
               ),
-              const SizedBox(height: 32),
-              content,
-              const SizedBox(height: 50),
-              if (isLastStep)
-                _buildConsentButtons(theme)
-              else
-                _buildNavigationButtons(theme),
+              const SizedBox(height: 16),
+
+              // Current step title
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.18),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      stepIcons[stepIndex],
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    stepTitles[stepIndex].replaceAll('\n', ' '),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Progress bar with step dots
+              _ProgressBar(stepIndex: stepIndex, totalSteps: totalSteps),
             ],
           ),
         ),
       ),
     );
   }
+}
 
-  Widget _placeholderBox() {
-    return Center(
-      child: Container(
-        width: double.infinity,
-        height: 260,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFE0E0E0)),
-        ),
-      ),
-    );
-  }
+class _ProgressBar extends StatelessWidget {
+  final int stepIndex;
+  final int totalSteps;
 
-  Widget _buildStudyAboutBox(ThemeData theme) {
-    return SizedBox(
-      width: double.infinity,
-      height: 400,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFE0E0E0)),
-        ),
-        child: Scrollbar(
-          controller: _aboutScrollController,
-          thumbVisibility: true,
-          child: SingleChildScrollView(
-            controller: _aboutScrollController,
-            child: RichText(
-              text: TextSpan(
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: Colors.black87,
-                  height: 1.5,
-                ),
-                children: kConsentStudyAboutSpans,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  const _ProgressBar({required this.stepIndex, required this.totalSteps});
 
-  Widget _buildDataCollectedBox(ThemeData theme) {
-    return SizedBox(
-      width: double.infinity,
-      height: 400,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFE0E0E0)),
-        ),
-        child: Scrollbar(
-          controller: _dataScrollController,
-          thumbVisibility: true,
-          child: SingleChildScrollView(
-            controller: _dataScrollController,
-            child: RichText(
-              text: TextSpan(
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: Colors.black87,
-                  height: 1.5,
-                ),
-                children: kConsentDataCollectedSpans,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildRisksSupportBox(ThemeData theme) {
-    return SizedBox(
-      width: double.infinity,
-      height: 400,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFE0E0E0)),
-        ),
-        child: Scrollbar(
-          controller: _risksScrollController,
-          thumbVisibility: true,
-          child: SingleChildScrollView(
-            controller: _risksScrollController,
-            child: RichText(
-              text: TextSpan(
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: Colors.black87,
-                  height: 1.5,
-                ),
-                children: kConsentRisksSupportSpans,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildParticipantRightsBox(ThemeData theme) {
-    return SizedBox(
-      width: double.infinity,
-      height: 400,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFE0E0E0)),
-        ),
-        child: Scrollbar(
-          controller: _rightsScrollController,
-          thumbVisibility: true,
-          child: SingleChildScrollView(
-            controller: _rightsScrollController,
-            child: RichText(
-              text: TextSpan(
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: Colors.black87,
-                  height: 1.5,
-                ),
-                children: kConsentParticipantRightsSpans,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNavigationButtons(ThemeData theme) {
-    final canProceed = switch (_stepIndex) {
-      0 => _hasScrolledAbout,
-      1 => _hasScrolledData,
-      2 => _hasScrolledRisks,
-      3 => _hasScrolledRights,
-      _ => true,
-    };
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        SizedBox(
-          height: 52,
-          child: FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF0056FF),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(26),
-              ),
-            ),
-            onPressed: canProceed ? _nextStep : null,
-            child: const Text(
-              'Next',
-              style: TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w600,
-                color: Colors.white,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildConsentCard(ThemeData theme) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE0E0E0)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Consent Statements',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 12),
-          _buildCheckboxRow(0, 'I understand this is a research study'),
-          _buildCheckboxRow(1, 'I understand HATI is not a therapy app'),
-          _buildCheckboxRow(2, 'I understand what data is collected'),
-          _buildCheckboxRow(3, 'I know I can withdraw at any time'),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildConsentButtons(ThemeData theme) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const SizedBox(height: 24),
-        SizedBox(
-          height: 52,
-          child: FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF0026A8),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(26),
-              ),
-            ),
-            onPressed: _handleAgreeAndContinue,
-            child: const Text(
-              'I Agree and Continue',
-              style: TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w600,
-                color: Colors.white,
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          height: 52,
-          child: OutlinedButton(
-            style: OutlinedButton.styleFrom(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(26),
-              ),
-            ),
-            onPressed: _handleDisagree,
-            child: const Text(
-              'I Do Not Agree',
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w500),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCheckboxRow(int index, String label) {
+  @override
+  Widget build(BuildContext context) {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Checkbox(
-          value: _consentChecks[index],
-          onChanged: (value) {
-            setState(() {
-              _consentChecks[index] = value ?? false;
-            });
-          },
-          activeColor: const Color(0xFF0056FF),
+      children: List.generate(totalSteps * 2 - 1, (i) {
+        if (i.isOdd) {
+          // Connector line
+          final leftStep = i ~/ 2;
+          final filled = leftStep < stepIndex;
+          return Expanded(
+            child: Container(
+              height: 2,
+              color: filled
+                  ? Colors.white.withOpacity(0.7)
+                  : Colors.white.withOpacity(0.2),
+            ),
+          );
+        }
+        final idx = i ~/ 2;
+        final isDone = idx < stepIndex;
+        final isActive = idx == stepIndex;
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          width: isActive ? 28 : 20,
+          height: isActive ? 28 : 20,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: isDone
+                ? Colors.white
+                : isActive
+                ? Colors.white
+                : Colors.white.withOpacity(0.2),
+            border: Border.all(
+              color: isActive ? Colors.white : Colors.white.withOpacity(0.35),
+              width: isActive ? 0 : 1.5,
+            ),
+          ),
+          alignment: Alignment.center,
+          child: isDone
+              ? Icon(
+                  Icons.check_rounded,
+                  size: 12,
+                  color: const Color(0xFF0B28D9),
+                )
+              : isActive
+              ? Text(
+                  '${idx + 1}',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF0B28D9),
+                  ),
+                )
+              : Text(
+                  '${idx + 1}',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white.withOpacity(0.6),
+                  ),
+                ),
+        );
+      }),
+    );
+  }
+}
+
+// ── Bottom Bar ────────────────────────────────────────────────────────────────
+
+class _BottomBar extends StatelessWidget {
+  final int stepIndex;
+  final bool canProceed;
+  final VoidCallback onNext;
+  final VoidCallback onAgree;
+  final VoidCallback onDisagree;
+
+  const _BottomBar({
+    required this.stepIndex,
+    required this.canProceed,
+    required this.onNext,
+    required this.onAgree,
+    required this.onDisagree,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isLastStep = stepIndex == 4;
+
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (isLastStep) ...[
+              SizedBox(
+                height: 52,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0B28D9),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    disabledBackgroundColor: const Color(
+                      0xFF0B28D9,
+                    ).withOpacity(0.35),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(26),
+                    ),
+                  ),
+                  onPressed: onAgree,
+                  child: const Text(
+                    'I Agree & Continue',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                height: 48,
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(
+                      color: Color(0xFFD1D5DB),
+                      width: 1.2,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(26),
+                    ),
+                  ),
+                  onPressed: onDisagree,
+                  child: const Text(
+                    'I Do Not Agree',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF6B7280),
+                    ),
+                  ),
+                ),
+              ),
+            ] else ...[
+              SizedBox(
+                height: 52,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0B28D9),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    disabledBackgroundColor: const Color(
+                      0xFF0B28D9,
+                    ).withOpacity(0.35),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(26),
+                    ),
+                  ),
+                  onPressed: canProceed ? onNext : null,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        canProceed ? 'Next' : 'Scroll to continue',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      if (canProceed) ...[
+                        const SizedBox(width: 6),
+                        const Icon(Icons.arrow_forward_rounded, size: 18),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ],
         ),
-        const SizedBox(width: 4),
-        Expanded(child: Text(label)),
-      ],
+      ),
+    );
+  }
+}
+
+// ── Consent check item ────────────────────────────────────────────────────────
+
+class _ConsentCheckItem extends StatelessWidget {
+  final String label;
+  final bool checked;
+  final ValueChanged<bool?> onChanged;
+
+  const _ConsentCheckItem({
+    required this.label,
+    required this.checked,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => onChanged(!checked),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        decoration: BoxDecoration(
+          color: checked ? const Color(0xFFEEF1FF) : Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: checked
+                ? const Color(0xFF0B28D9).withOpacity(0.5)
+                : const Color(0xFFE2E8F0),
+            width: 1.2,
+          ),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: 22,
+              height: 22,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: checked ? const Color(0xFF0B28D9) : Colors.white,
+                border: Border.all(
+                  color: checked
+                      ? const Color(0xFF0B28D9)
+                      : const Color(0xFFCBD5E1),
+                  width: 1.5,
+                ),
+              ),
+              child: checked
+                  ? const Icon(
+                      Icons.check_rounded,
+                      size: 13,
+                      color: Colors.white,
+                    )
+                  : null,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: checked
+                      ? const Color(0xFF1A1A2E)
+                      : const Color(0xFF64748B),
+                  fontWeight: checked ? FontWeight.w600 : FontWeight.w400,
+                  height: 1.45,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Consent success dialog ────────────────────────────────────────────────────
+
+class _ConsentSuccessDialog extends StatelessWidget {
+  final VoidCallback onProceed;
+  const _ConsentSuccessDialog({required this.onProceed});
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      elevation: 0,
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 36),
+      child: Container(
+        padding: const EdgeInsets.all(28),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.12),
+              blurRadius: 30,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 68,
+              height: 68,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFF0B28D9).withOpacity(0.1),
+              ),
+              child: const Icon(
+                Icons.check_rounded,
+                color: Color(0xFF0B28D9),
+                size: 36,
+              ),
+            ),
+            const SizedBox(height: 18),
+            const Text(
+              'Consent Recorded',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF0B28D9),
+              ),
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              'Your consent has been saved. You\'re ready to start setting up your HATI profile.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: Color(0xFF64748B),
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0B28D9),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(25),
+                  ),
+                ),
+                onPressed: onProceed,
+                child: const Text(
+                  'Set Up My Profile',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

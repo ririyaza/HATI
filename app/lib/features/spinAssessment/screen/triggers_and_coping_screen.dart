@@ -16,49 +16,94 @@ class TriggersAndCopingScreen extends StatefulWidget {
 class _TriggersAndCopingScreenState extends State<TriggersAndCopingScreen> {
   final _copingController = TextEditingController();
   bool _isSaving = false;
+  bool _hasInput = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _copingController.addListener(_onCopingTextChanged);
+    _redirectIfCopingAlreadySaved();
+  }
+
+  Future<void> _redirectIfCopingAlreadySaved() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+      final coping = doc.data()?['initialCopingMechanism'];
+      if (coping is String && coping.trim().isNotEmpty && mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _goToAssessmentComplete();
+        });
+      }
+    } catch (_) {}
+  }
 
   @override
   void dispose() {
+    _copingController.removeListener(_onCopingTextChanged);
     _copingController.dispose();
     super.dispose();
   }
 
-  Future<void> _continue() async {
-    if (_isSaving) return;
-    setState(() => _isSaving = true);
-
-    final coping = _copingController.text.trim();
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      // Skip saving if not signed in.
-    } else {
-      final userRef = FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid);
-      try {
-        await userRef.collection('spinAssessments').doc('initial').set({
-          'copingMechanism': coping,
-          'copingRecordedAt': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
-
-        await userRef.set({
-          'initialCopingMechanism': coping,
-          'initialCopingRecordedAt': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
-      } catch (_) {
-        // Ignore write errors; user can still proceed.
-      }
+  void _onCopingTextChanged() {
+    final hasInput = _copingController.text.trim().isNotEmpty;
+    if (hasInput != _hasInput) {
+      setState(() => _hasInput = hasInput);
     }
+  }
 
-    if (!mounted) return;
-    setState(() => _isSaving = false);
+  Future<void> _saveCoping(String coping) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
 
+    final userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
+    try {
+      await userRef.collection('spinAssessments').doc('initial').set({
+        'copingMechanism': coping,
+        'copingRecordedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      await userRef.set({
+        'initialCopingMechanism': coping,
+        'initialCopingRecordedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    } catch (_) {
+      // Ignore write errors; user can still proceed.
+    }
+  }
+
+  void _goToAssessmentComplete() {
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
         builder: (_) => AssessmentCompleteScreen(score: widget.score),
       ),
     );
+  }
+
+  Future<void> _skip() async {
+    if (_isSaving) return;
+    setState(() => _isSaving = true);
+
+    if (!mounted) return;
+    setState(() => _isSaving = false);
+    _goToAssessmentComplete();
+  }
+
+  Future<void> _continue() async {
+    if (_isSaving || !_hasInput) return;
+    setState(() => _isSaving = true);
+
+    await _saveCoping(_copingController.text.trim());
+
+    if (!mounted) return;
+    setState(() => _isSaving = false);
+    _goToAssessmentComplete();
   }
 
   @override
@@ -141,7 +186,7 @@ class _TriggersAndCopingScreenState extends State<TriggersAndCopingScreen> {
                         ),
                         padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
-                      onPressed: _isSaving ? null : _continue,
+                      onPressed: _isSaving ? null : _skip,
                       child: const Text(
                         'Skip',
                         style: TextStyle(
@@ -157,12 +202,15 @@ class _TriggersAndCopingScreenState extends State<TriggersAndCopingScreen> {
                     child: FilledButton(
                       style: FilledButton.styleFrom(
                         backgroundColor: const Color(0xFF0056FF),
+                        disabledBackgroundColor: const Color(
+                          0xFF0056FF,
+                        ).withOpacity(0.35),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(26),
                         ),
                         padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
-                      onPressed: _isSaving ? null : _continue,
+                      onPressed: (_hasInput && !_isSaving) ? _continue : null,
                       child: const Text(
                         'Continue',
                         style: TextStyle(

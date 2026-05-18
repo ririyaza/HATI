@@ -5,16 +5,25 @@ import 'package:flame/widgets.dart';
 import 'package:flutter/material.dart';
 
 class HatiSpriteAnimation extends StatefulWidget {
-  const HatiSpriteAnimation({super.key, this.size = 300});
+  const HatiSpriteAnimation({
+    super.key,
+    this.size = 300,
+    this.message = 'Hello, I\'m Hati! Welcome to my dashboard!',
+    this.startDelay = const Duration(seconds: 2),
+    this.persistBubble = false,
+  });
 
   final double size;
+  final String message;
+  final Duration startDelay;
+  final bool persistBubble;
 
   @override
   State<HatiSpriteAnimation> createState() => _HatiSpriteAnimationState();
 }
 
 class _HatiSpriteAnimationState extends State<HatiSpriteAnimation> {
-  static const _message = 'Hello, I\'m Hati! Welcome to my dashboard!';
+  late final String _message;
   static final _frameSize = Vector2.all(512);
 
   async.Timer? _startTimer;
@@ -26,7 +35,12 @@ class _HatiSpriteAnimationState extends State<HatiSpriteAnimation> {
   @override
   void initState() {
     super.initState();
-    _startTimer = async.Timer(const Duration(seconds: 2), _startTyping);
+    _message = widget.message;
+    if (widget.startDelay == Duration.zero) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _startTyping());
+    } else {
+      _startTimer = async.Timer(widget.startDelay, _startTyping);
+    }
   }
 
   @override
@@ -56,7 +70,9 @@ class _HatiSpriteAnimationState extends State<HatiSpriteAnimation> {
       if (_visibleCharacters >= _message.length) {
         timer.cancel();
         _typingTimer = null;
-        _hideTimer = async.Timer(const Duration(seconds: 2), _hideTextbox);
+        if (!widget.persistBubble) {
+          _hideTimer = async.Timer(const Duration(seconds: 2), _hideTextbox);
+        }
         return;
       }
 
@@ -77,14 +93,17 @@ class _HatiSpriteAnimationState extends State<HatiSpriteAnimation> {
 
   @override
   Widget build(BuildContext context) {
-    const textboxHeight = 50.0;
     const textboxGap = 10.0;
+    final bubbleMaxHeight = (widget.size * 0.55).clamp(72.0, 120.0);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        SizedBox(
-          height: textboxHeight,
+        ConstrainedBox(
+          constraints: BoxConstraints(
+            minHeight: bubbleMaxHeight,
+            maxHeight: bubbleMaxHeight,
+          ),
           child: Center(
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 250),
@@ -125,8 +144,8 @@ class _HatiTextbox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      constraints: const BoxConstraints(minWidth: 132),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      constraints: const BoxConstraints(maxWidth: 320),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
@@ -143,8 +162,9 @@ class _HatiTextbox extends StatelessWidget {
         textAlign: TextAlign.center,
         style: const TextStyle(
           color: Color(0xFF0B28D9),
-          fontSize: 16,
+          fontSize: 15,
           fontWeight: FontWeight.w700,
+          height: 1.4,
         ),
       ),
     );
