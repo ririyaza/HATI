@@ -30,7 +30,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  firebase_core: ^4.7.0 
+  firebase_core: ^4.7.0
   firebase_auth: ^6.4.0
   cloud_firestore: ^6.3.0
   firebase_storage: ^13.4.1
@@ -75,6 +75,7 @@ flutter:
     - assets/scenario.jpg
     - assets/images/HatiCharacter/
     - assets/images/defaultProfile/
+    - assets/images/Scenario/
  
 
   # An image asset can refer to one or more resolution-specific "variants", see

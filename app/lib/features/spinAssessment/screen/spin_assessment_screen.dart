@@ -95,12 +95,53 @@ class _SpinAssessmentScreenState extends State<SpinAssessmentScreen> {
   }
 
   Future<void> _recordAndNavigate(int totalScore) async {
+    final themeRawScores = <String, int>{};
+    final themeAverages = <String, double>{};
+
+    for (final question in spinQuestions) {
+      final theme = question.theme;
+      final score = question.selectedScore ?? 0;
+      themeRawScores[theme] = (themeRawScores[theme] ?? 0) + score;
+    }
+
+    for (final entry in themeRawScores.entries) {
+      final theme = entry.key;
+      final raw = entry.value;
+      final average = theme == 'Fear of Negative Evaluation & Embarassment'
+          ? raw / 20 * 100
+          : theme == 'Physiological Symptoms'
+          ? raw / 16 * 100
+          : raw / 8 * 100;
+      themeAverages[theme] = average;
+    }
+
+    var priorityScenario = '';
+    var maxAverage = -1.0;
+    final candidates = <String>[];
+    for (final entry in themeAverages.entries) {
+      if (entry.value > maxAverage) {
+        maxAverage = entry.value;
+        candidates
+          ..clear()
+          ..add(entry.key);
+      } else if (entry.value == maxAverage) {
+        candidates.add(entry.key);
+      }
+    }
+    if (candidates.isNotEmpty) {
+      candidates.shuffle();
+      priorityScenario = candidates.first;
+    }
+
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       final ref = FirebaseFirestore.instance.collection('users').doc(user.uid);
       try {
         await ref.collection('spinAssessments').doc('initial').set({
           'score': totalScore,
+          'themeRawScores': themeRawScores,
+          'themeAverages': themeAverages,
+          'priorityScenario': priorityScenario,
           'completedAt': FieldValue.serverTimestamp(),
         });
         await ref.set({
@@ -110,6 +151,7 @@ class _SpinAssessmentScreenState extends State<SpinAssessmentScreen> {
         }, SetOptions(merge: true));
       } catch (_) {}
     }
+
     if (!mounted) return;
     Navigator.pushReplacement(
       context,
