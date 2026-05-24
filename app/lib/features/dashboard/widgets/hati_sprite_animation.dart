@@ -10,7 +10,7 @@ class HatiSpriteAnimation extends StatefulWidget {
     super.key,
     this.size = 300,
     this.message =
-        'Hello, I\'m Hati your virtual companion! How are you to see me?',
+        'Hello, I\'m Hati your virtual companion! Nice to meet you! How are you??',
     this.startDelay = const Duration(seconds: 2),
     this.persistBubble = false,
   });
