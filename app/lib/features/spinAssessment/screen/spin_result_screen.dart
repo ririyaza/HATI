@@ -375,7 +375,7 @@ class _HeroHeader extends StatelessWidget {
             // Arc gauge
             AnimatedBuilder(
               animation: arcAnim,
-              builder: (_, __) => _ArcGauge(
+              builder: (_, _) => _ArcGauge(
                 progress: progress * arcAnim.value,
                 score: score,
                 color: theme.secondary,
