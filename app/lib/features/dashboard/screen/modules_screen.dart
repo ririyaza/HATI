@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../../emotiondetection/scenario_game.dart';
+import '../../emotiondetection/professor_signature/professor_signature_page.dart';
 
 class ModulesScreen extends StatelessWidget {
   const ModulesScreen({super.key});
@@ -254,16 +255,25 @@ Widget _recentActivityCard(BuildContext context) {
 
                         if (!context.mounted) return;
 
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => EmotionPage(
-                              scenarioTitle: scenarioTitle,
-                              scenarioTheme: scenarioTheme,
-                              scenarioKey: scenarioKey,
+                        if (scenarioKey == 'foa_supervisor') {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const ProfessorSignaturePage(),
                             ),
-                          ),
-                        );
+                          );
+                        } else {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => EmotionPage(
+                                scenarioTitle: scenarioTitle,
+                                scenarioTheme: scenarioTheme,
+                                scenarioKey: scenarioKey,
+                              ),
+                            ),
+                          );
+                        }
                       },
                       child: Container(
                         padding: const EdgeInsets.symmetric(
@@ -306,6 +316,7 @@ class _ScenarioTemplate {
   });
 }
 
+/// SPIN sometimes stores "Embarassment" (one r); Firestore keys must still match %.
 double _matchPercent(Map<String, double> themeAverages, String backendTheme) {
   switch (backendTheme) {
     case 'Fear of Negative Evaluation & Embarrassment':
@@ -316,12 +327,6 @@ double _matchPercent(Map<String, double> themeAverages, String backendTheme) {
       return themeAverages[backendTheme] ?? 0;
   }
 }
-
-const _whereToSitModule = _ScenarioTemplate(
-  theme: 'Fear of Authority',
-  scenarioKey: 'foa_classroom',
-  title: 'WHERE TO SIT?',
-);
 
 Future<Map<String, dynamic>?> _loadLastScenario() async {
   final user = FirebaseAuth.instance.currentUser;
@@ -367,6 +372,7 @@ Future<void> _saveLastScenario({
   );
 }
 
+/// One module per SPIN theme; `scenarioKey` must match `THEME_SCENARIO_KEYS` in `scenario_engine.py`.
 const List<_ScenarioTemplate> _kAllScenarioModules = [
   _ScenarioTemplate(
     theme: 'Fear of Authority',
@@ -406,7 +412,7 @@ List<_ScenarioTemplate> _buildScenarioTemplates(Map<String, double> themeAverage
           (a, b) => _matchPercent(themeAverages, b.theme)
           .compareTo(_matchPercent(themeAverages, a.theme)),
     );
-  return [...ranked, _whereToSitModule];
+  return [...ranked];
 }
 
 String _backgroundAssetForScenario(String scenarioKey) {
@@ -446,16 +452,25 @@ Widget _scenarioGrid(BuildContext context, Map<String, double> themeAverages) {
             scenarioKey: template.scenarioKey,
           );
           if (!context.mounted) return;
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => EmotionPage(
-                scenarioTitle: template.title,
-                scenarioTheme: template.theme,
-                scenarioKey: template.scenarioKey,
+          if (template.scenarioKey == 'foa_supervisor') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const ProfessorSignaturePage(),
               ),
-            ),
-          );
+            );
+          } else {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => EmotionPage(
+                  scenarioTitle: template.title,
+                  scenarioTheme: template.theme,
+                  scenarioKey: template.scenarioKey,
+                ),
+              ),
+            );
+          }
         },
         child: Container(
           decoration: BoxDecoration(
