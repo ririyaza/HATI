@@ -28,6 +28,8 @@
 	<true/>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>HATI lets you choose a profile picture from your photo library.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>HATI uses your microphone to let you speak your responses during scenario practice.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
