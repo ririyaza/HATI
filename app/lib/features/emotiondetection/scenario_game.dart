@@ -10,6 +10,7 @@ import '../dashboard/screen/modules_screen.dart';
 class EmotionPage extends StatefulWidget {
   final String? scenarioTitle;
   final String? scenarioTheme;
+  /// Optional; server maps each theme to one canonical key in `scenario_engine.py`.
   final String? scenarioKey;
 
   const EmotionPage({
@@ -31,7 +32,7 @@ class _EmotionPageState extends State<EmotionPage> {
   bool isRecording = false;
   bool isLoading = false;
 
-  String baseUrl = "http://10.246.147.110:5000";
+  String baseUrl = "http://192.168.254.194:5000";
   String? _sessionId;
 
   final List<_ChatMessage> _messages = [];
@@ -70,9 +71,7 @@ class _EmotionPageState extends State<EmotionPage> {
         final role = item["role"]?.toString();
         final payload = item["payload"];
         if (role == "user" && payload is Map) {
-          final text = payload["text"]?.toString().trim().isNotEmpty == true
-              ? payload["text"]?.toString()
-              : payload["transcript"]?.toString();
+          final text = payload["text"]?.toString();
           if (text != null && text.isNotEmpty) {
             messages.add(_ChatMessage(text: text, isUser: true));
           }
@@ -123,6 +122,7 @@ class _EmotionPageState extends State<EmotionPage> {
     await _startScenario();
   }
 
+  /// Reads `displayName` from Firestore `users/{uid}`, then falls back to Auth displayName.
   Future<String?> _loadUserDisplayNameFromFirestore() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return null;
@@ -209,6 +209,7 @@ class _EmotionPageState extends State<EmotionPage> {
         }
       }
     } catch (_) {
+      // ignore errors and fall back to passed theme
     }
   }
 
@@ -401,6 +402,7 @@ class _EmotionPageState extends State<EmotionPage> {
     }
 
     try {
+      // show temporary UI message
       setState(() {
         _messages.add(_ChatMessage(
           text: "[Processing voice...]",
@@ -413,10 +415,12 @@ class _EmotionPageState extends State<EmotionPage> {
 
       final request = http.MultipartRequest("POST", uri);
 
+      // session id
       request.fields["session_id"] = _sessionId!;
 
       request.fields["user_id"] = FirebaseAuth.instance.currentUser?.uid ?? "";
 
+      // attach audio file
       request.files.add(
         await http.MultipartFile.fromPath(
           "audio",
@@ -434,10 +438,12 @@ class _EmotionPageState extends State<EmotionPage> {
 
       final data = jsonDecode(response.body);
 
+      // remove placeholder message
       setState(() {
         _messages.removeWhere((m) => m.text == "[Processing voice...]");
       });
 
+      // show transcript (optional)
       if ((data["transcript"] ?? "").toString().isNotEmpty) {
         _messages.add(
           _ChatMessage(
@@ -447,6 +453,7 @@ class _EmotionPageState extends State<EmotionPage> {
         );
       }
 
+      // show emotion result
       final emotion = data["emotion"] ?? "";
       if (emotion.isNotEmpty) {
         _messages.add(
@@ -457,6 +464,7 @@ class _EmotionPageState extends State<EmotionPage> {
         );
       }
 
+      // scenario engine response (IMPORTANT)
       final historyMsgs = _buildMessagesFromHistory(data);
 
       setState(() {
