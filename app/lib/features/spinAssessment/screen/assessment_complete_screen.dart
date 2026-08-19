@@ -1,10 +1,16 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'spin_result_screen.dart';
+
+import '../../dashboard/widgets/hati_sprite_animation.dart';
+import '../../onboarding/tutorial_screen.dart';
 import '../../dashboard/screen/dashboard_screen.dart';
+import '../data/assessment_complete_hati_dialogue.dart';
+import 'spin_result_screen.dart';
 
 /// Final confirmation screen after completing the SPIN assessment
 /// and optional coping reflection.
-class AssessmentCompleteScreen extends StatelessWidget {
+class AssessmentCompleteScreen extends StatefulWidget {
   final int score;
 
   const AssessmentCompleteScreen({
@@ -12,21 +18,70 @@ class AssessmentCompleteScreen extends StatelessWidget {
     required this.score,
   });
 
-  void _handleContinueToApp(BuildContext context) {
+  @override
+  State<AssessmentCompleteScreen> createState() =>
+      _AssessmentCompleteScreenState();
+}
+
+class _AssessmentCompleteScreenState extends State<AssessmentCompleteScreen> {
+  bool _isNavigatingToApp = false;
+
+  Future<void> _handleContinueToApp() async {
+    if (_isNavigatingToApp) return;
+    setState(() => _isNavigatingToApp = true);
+
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        if (!mounted) return;
+        _goDashboard();
+        return;
+      }
+
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+      final data = doc.data() ?? {};
+      final tutorialDone = data['tutorialCompleted'] == true;
+
+      if (!mounted) return;
+      if (tutorialDone) {
+        _goDashboard();
+      } else {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute<void>(
+            builder: (_) => const TutorialScreen(),
+          ),
+          (route) => false,
+        );
+      }
+    } catch (_) {
+      if (!mounted) return;
+      _goDashboard();
+    } finally {
+      if (mounted) {
+        setState(() => _isNavigatingToApp = false);
+      }
+    }
+  }
+
+  void _goDashboard() {
     Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute(
+      MaterialPageRoute<void>(
         builder: (_) => const DashboardScreen(),
       ),
       (route) => false,
     );
   }
 
-  void _handleViewResult(BuildContext context) {
+  void _handleViewResult() {
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(
-        builder: (_) => SpinResultScreen(score: score),
+      MaterialPageRoute<void>(
+        builder: (_) => SpinResultScreen(score: widget.score),
       ),
     );
   }
@@ -40,7 +95,7 @@ class AssessmentCompleteScreen extends StatelessWidget {
       body: SafeArea(
         child: Column(
           children: [
-            const Spacer(),
+            const SizedBox(height: 8),
             Text(
               'Assessment Complete',
               textAlign: TextAlign.center,
@@ -50,12 +105,25 @@ class AssessmentCompleteScreen extends StatelessWidget {
                 fontSize: 28,
               ),
             ),
-            const Spacer(),
+            const SizedBox(height: 16),
             Expanded(
               flex: 1,
-              child: Container(
-                width: double.infinity,
+              child: ColoredBox(
                 color: const Color(0xFFF2F2F7),
+                child: Center(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 16,
+                    ),
+                    child: HatiSpriteAnimation(
+                      size: 220,
+                      message: AssessmentCompleteHatiDialogue.message,
+                      startDelay: Duration.zero,
+                      persistBubble: true,
+                    ),
+                  ),
+                ),
               ),
             ),
             Padding(
@@ -72,15 +140,24 @@ class AssessmentCompleteScreen extends StatelessWidget {
                           borderRadius: BorderRadius.circular(26),
                         ),
                       ),
-                      onPressed: () => _handleContinueToApp(context),
-                      child: const Text(
-                        'Continue to App',
-                        style: TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                        ),
-                      ),
+                      onPressed: _isNavigatingToApp ? null : _handleContinueToApp,
+                      child: _isNavigatingToApp
+                          ? const SizedBox(
+                              height: 22,
+                              width: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text(
+                              'Continue to App',
+                              style: TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            ),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -94,7 +171,8 @@ class AssessmentCompleteScreen extends StatelessWidget {
                         ),
                         backgroundColor: Colors.white,
                       ),
-                      onPressed: () => _handleViewResult(context),
+                      onPressed:
+                          _isNavigatingToApp ? null : _handleViewResult,
                       child: const Text(
                         'View Result',
                         style: TextStyle(
