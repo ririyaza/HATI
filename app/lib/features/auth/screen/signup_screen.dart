@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../onboarding/consent_intro_screen.dart';
+import 'email_verification_screen.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -44,13 +44,14 @@ class _SignupScreenState extends State<SignupScreen> {
           'email': user.email,
           'createdAt': FieldValue.serverTimestamp(),
         });
+        await user.sendEmailVerification();
       }
 
       if (!mounted) return;
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (_) => const ConsentIntroScreen(),
+          builder: (_) => const EmailVerificationScreen(),
         ),
       );
     } on FirebaseAuthException catch (e) {
