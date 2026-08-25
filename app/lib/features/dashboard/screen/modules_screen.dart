@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../../emotiondetection/themed_scenario/scenario_models.dart';
 import '../../emotiondetection/themed_scenario/scenario_play_page.dart';
 
 class ModulesScreen extends StatelessWidget {
@@ -411,17 +412,13 @@ List<_ScenarioTemplate> _buildScenarioTemplates(Map<String, double> themeAverage
   return [...ranked, _whereToSitModule];
 }
 
+/// Same background art the scenario itself uses (see
+/// scenario_models.dart's kScenarioConfigs / assets/scenario_themes/) —
+/// delegated rather than duplicated so the grid thumbnail can never drift
+/// out of sync with the actual in-scenario background.
 String _backgroundAssetForScenario(String scenarioKey) {
-  const assets = {
-    'foa_supervisor': 'assets/images/Scenario/foa_bg.jpg',
-    'foa_classroom': 'assets/images/Scenario/fosnp_bg_2.jpg',
-    'fsn_seat': 'assets/images/Scenario/fosnp_bg.jpg',
-    'fbop_spotlight': 'assets/images/Scenario/fobap_bg.jpg',
-    'fsg_party': 'assets/images/Scenario/fosg_bg.jpg',
-    'fne_stage': 'assets/images/Scenario/fonae_bg.jpg',
-    'phys_classroom': 'assets/images/Scenario/phys_bg.jpg',
-  };
-  return assets[scenarioKey] ?? 'assets/images/Scenario/foa_bg.jpg';
+  return kScenarioConfigs[scenarioKey]?.backgroundAsset ??
+      kScenarioConfigs['foa_supervisor']!.backgroundAsset;
 }
 
 Widget _scenarioGrid(BuildContext context, Map<String, double> themeAverages) {

@@ -19,8 +19,16 @@ import 'scenario_models.dart';
 import 'scenario_provider.dart';
 import 'shared_widgets.dart';
 
-class Scene5Coping extends StatelessWidget {
+class Scene5Coping extends StatefulWidget {
   const Scene5Coping({super.key});
+
+  @override
+  State<Scene5Coping> createState() => _Scene5CopingState();
+}
+
+class _Scene5CopingState extends State<Scene5Coping> {
+  String? _trackedStep;
+  bool _dialogueComplete = false;
 
   @override
   Widget build(BuildContext context) {
@@ -32,6 +40,11 @@ class Scene5Coping extends StatelessWidget {
         .where((t) => t.trim().isNotEmpty)
         .toList();
 
+    if (step != _trackedStep) {
+      _trackedStep = step;
+      _dialogueComplete = false;
+    }
+
     Widget body;
     Widget? bottomBar;
     String persistentMessage;
@@ -40,7 +53,7 @@ class Scene5Coping extends StatelessWidget {
       persistentMessage = parsedTexts.join('\n\n');
       body = _PracticeWalkthrough(
         key: const ValueKey('practice'),
-        isLoading: provider.isLoading,
+        isLoading: provider.isLoading || !_dialogueComplete,
         onFinished: () => provider.submitText(
           provider.ui.options.isNotEmpty ? provider.ui.options.first : "I'm done",
         ),
@@ -65,11 +78,15 @@ class Scene5Coping extends StatelessWidget {
                   ? HatiButton(
                       label: opt,
                       icon: Icons.play_circle_rounded,
-                      onTap: provider.isLoading ? null : () => provider.submitText(opt),
+                      onTap: (provider.isLoading || !_dialogueComplete)
+                          ? null
+                          : () => provider.submitText(opt),
                     )
                   : HatiOutlineButton(
                       label: opt,
-                      onTap: provider.isLoading ? () {} : () => provider.submitText(opt),
+                      onTap: (provider.isLoading || !_dialogueComplete)
+                          ? () {}
+                          : () => provider.submitText(opt),
                     ),
             ),
         ],
@@ -93,6 +110,11 @@ class Scene5Coping extends StatelessWidget {
             child: HatiSceneShell(
               showCoach: true,
               persistentMessage: persistentMessage,
+              onSequenceComplete: () {
+                if (mounted && !_dialogueComplete) {
+                  setState(() => _dialogueComplete = true);
+                }
+              },
               body: body,
               bottomBar: bottomBar,
             ),
@@ -248,8 +270,15 @@ class _PracticeWalkthroughState extends State<_PracticeWalkthrough> {
 // screens/scene6_closing.dart
 // ─────────────────────────────────────────────
 
-class Scene6Closing extends StatelessWidget {
+class Scene6Closing extends StatefulWidget {
   const Scene6Closing({super.key});
+
+  @override
+  State<Scene6Closing> createState() => _Scene6ClosingState();
+}
+
+class _Scene6ClosingState extends State<Scene6Closing> {
+  bool _dialogueComplete = false;
 
   @override
   Widget build(BuildContext context) {
@@ -370,13 +399,20 @@ class Scene6Closing extends StatelessWidget {
                   HatiSpeakingBlock(
                     persistentMessage: closingLine,
                     frogSize: 150,
+                    onSequenceComplete: () {
+                      if (mounted && !_dialogueComplete) {
+                        setState(() => _dialogueComplete = true);
+                      }
+                    },
                   ),
                   const Spacer(),
                   HatiButton(
                     label: finishLabel,
                     icon: Icons.check_rounded,
                     color: HatiColors.leafGreen,
-                    onTap: provider.isLoading ? null : () => provider.submitText(finishLabel),
+                    onTap: (provider.isLoading || !_dialogueComplete)
+                        ? null
+                        : () => provider.submitText(finishLabel),
                   ),
                   const SizedBox(height: 8),
                 ],

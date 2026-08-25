@@ -18,8 +18,18 @@ import 'scenario_models.dart';
 import 'scenario_provider.dart';
 import 'shared_widgets.dart';
 
-class Scene2Preparation extends StatelessWidget {
+class Scene2Preparation extends StatefulWidget {
   const Scene2Preparation({super.key});
+
+  @override
+  State<Scene2Preparation> createState() => _Scene2PreparationState();
+}
+
+class _Scene2PreparationState extends State<Scene2Preparation> {
+  // See Scene0PreSetup/Scene1OfficePies: don't let the player act on a
+  // button/script choice until Hati's coach text has finished typing.
+  String? _trackedStep;
+  bool _dialogueComplete = false;
 
   @override
   Widget build(BuildContext context) {
@@ -27,6 +37,11 @@ class Scene2Preparation extends StatelessWidget {
     final step = provider.backendStep;
     final ui = provider.ui;
     final hatiText = joinMessageText(provider.messages);
+
+    if (step != _trackedStep) {
+      _trackedStep = step;
+      _dialogueComplete = false;
+    }
 
     Widget? body;
     Widget? bottomBar;
@@ -38,14 +53,16 @@ class Scene2Preparation extends StatelessWidget {
           label: ui.options.first,
           icon: Icons.directions_walk_rounded,
           color: HatiColors.leafGreen,
-          onTap: provider.isLoading ? null : () => provider.submitText(ui.options.first),
+          onTap: (provider.isLoading || !_dialogueComplete)
+              ? null
+              : () => provider.submitText(ui.options.first),
         );
       } else {
         // foa_s2_script -> canned scripts + "write your own" option.
         body = _ScriptChoiceList(
           key: ValueKey(step),
           options: ui.options,
-          isLoading: provider.isLoading,
+          isLoading: provider.isLoading || !_dialogueComplete,
           onSubmit: provider.submitText,
         );
       }
@@ -76,6 +93,11 @@ class Scene2Preparation extends StatelessWidget {
             child: HatiSceneShell(
               showCoach: true,
               persistentMessage: hatiText,
+              onSequenceComplete: () {
+                if (mounted && !_dialogueComplete) {
+                  setState(() => _dialogueComplete = true);
+                }
+              },
               body: body,
               bottomBar: bottomBar,
             ),

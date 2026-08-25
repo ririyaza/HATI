@@ -17,8 +17,19 @@ import 'scenario_models.dart';
 import 'scenario_provider.dart';
 import 'shared_widgets.dart';
 
-class Scene1OfficePies extends StatelessWidget {
+class Scene1OfficePies extends StatefulWidget {
   const Scene1OfficePies({super.key});
+
+  @override
+  State<Scene1OfficePies> createState() => _Scene1OfficePiesState();
+}
+
+class _Scene1OfficePiesState extends State<Scene1OfficePies> {
+  // Hati's P.I.E.S. prompt types out on the coach bubble; don't let the
+  // player pick a chip until it's finished, or the tail end of the
+  // question never gets shown before the step advances.
+  String? _trackedStep;
+  bool _dialogueComplete = false;
 
   int _stepIndex(String? step) {
     switch (step) {
@@ -37,6 +48,11 @@ class Scene1OfficePies extends StatelessWidget {
     final provider = context.watch<ScenarioProvider>();
     final step = provider.backendStep;
     final index = _stepIndex(step);
+
+    if (step != _trackedStep) {
+      _trackedStep = step;
+      _dialogueComplete = false;
+    }
 
     const labels = ['Physical', 'Emotional', 'Environmental'];
     const emojis = ['🫀', '🧠', '👁️'];
@@ -75,6 +91,11 @@ class Scene1OfficePies extends StatelessWidget {
             child: HatiSceneShell(
               showCoach: true,
               persistentMessage: hatiText,
+              onSequenceComplete: () {
+                if (mounted && !_dialogueComplete) {
+                  setState(() => _dialogueComplete = true);
+                }
+              },
               body: provider.ui.type == ScenarioUIType.buttons
                   ? _PiesChipStep(
                       key: ValueKey(step),
@@ -83,7 +104,7 @@ class Scene1OfficePies extends StatelessWidget {
                       stepSubtitle: subtitles[index],
                       selectedColor: selectedColors[index],
                       options: provider.ui.options,
-                      isLoading: provider.isLoading,
+                      isLoading: provider.isLoading || !_dialogueComplete,
                       onSubmit: provider.submitText,
                     )
                   : null,

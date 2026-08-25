@@ -85,8 +85,14 @@ class ScenarioConfig {
 /// Default background used for any scenario key not present in
 /// [kScenarioConfigs] (shouldn't happen for the 7 known reachable
 /// scenarios, but keeps [scenarioConfigFor] total/safe).
-const String _kFallbackBackground = 'assets/images/Scenario/foa_bg.jpg';
+const String _kFallbackBackground =
+    'assets/scenario_themes/foa_supervisor/background.jpg';
 
+/// Per-scenario asset folder: `assets/scenario_themes/{scenarioKey}/`. Drop
+/// a same-named background.jpg (and npc.png, where applicable) into the
+/// matching folder to swap the art — no code changes needed, just a
+/// hot-restart/rebuild so Flutter re-reads the bundled asset.
+///
 /// One row per reachable scenario, verified against modules_screen.dart's
 /// scenario grid and scenario_engine.py's THEME_SCENARIO_KEYS.
 const Map<String, ScenarioConfig> kScenarioConfigs = {
@@ -94,44 +100,44 @@ const Map<String, ScenarioConfig> kScenarioConfigs = {
     scenarioKey: 'foa_supervisor',
     theme: 'Fear of Authority',
     title: "The Professor's Signature",
-    backgroundAsset: 'assets/professor_signature/classroom_bg.jpg',
-    spriteAsset: 'assets/professor_signature/prof.png',
+    backgroundAsset: 'assets/scenario_themes/foa_supervisor/background.jpg',
+    spriteAsset: 'assets/scenario_themes/foa_supervisor/npc.png',
   ),
   'foa_classroom': ScenarioConfig(
     scenarioKey: 'foa_classroom',
     theme: 'Fear of Authority',
     title: 'WHERE TO SIT?',
-    backgroundAsset: 'assets/images/Scenario/fosnp_bg_2.jpg',
+    backgroundAsset: 'assets/scenario_themes/foa_classroom/background.jpg',
   ),
   'fsn_seat': ScenarioConfig(
     scenarioKey: 'fsn_seat',
     theme: 'Fear of Strangers & New People',
     title: "The Food Hall's Seat",
-    backgroundAsset: 'assets/images/Scenario/fosnp_bg.jpg',
+    backgroundAsset: 'assets/scenario_themes/fsn_seat/background.jpg',
   ),
   'fbop_spotlight': ScenarioConfig(
     scenarioKey: 'fbop_spotlight',
     theme: 'Fear of Being Observed & Performing',
     title: 'Project Defense: Defended or Offended',
-    backgroundAsset: 'assets/images/Scenario/fobap_bg.jpg',
+    backgroundAsset: 'assets/scenario_themes/fbop_spotlight/background.jpg',
   ),
   'fsg_party': ScenarioConfig(
     scenarioKey: 'fsg_party',
     theme: 'Fear of Social Gatherings',
     title: 'The House Party: To Approach or Not?',
-    backgroundAsset: 'assets/images/Scenario/fosg_bg.jpg',
+    backgroundAsset: 'assets/scenario_themes/fsg_party/background.jpg',
   ),
   'fne_stage': ScenarioConfig(
     scenarioKey: 'fne_stage',
     theme: 'Fear of Negative Evaluation & Embarrassment',
     title: 'The Group Project: Defending Your Work',
-    backgroundAsset: 'assets/images/Scenario/fonae_bg.jpg',
+    backgroundAsset: 'assets/scenario_themes/fne_stage/background.jpg',
   ),
   'phys_classroom': ScenarioConfig(
     scenarioKey: 'phys_classroom',
     theme: 'Physiological Symptoms',
     title: 'The Bus Stop: Hiding Visible Anxiety',
-    backgroundAsset: 'assets/images/Scenario/phys_bg.jpg',
+    backgroundAsset: 'assets/scenario_themes/phys_classroom/background.jpg',
   ),
 };
 

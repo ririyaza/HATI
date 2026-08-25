@@ -28,6 +28,12 @@ class _Scene0PreSetupState extends State<Scene0PreSetup>
   late Animation<double> _fade;
   late Animation<Offset> _slide;
 
+  // Hati's intro dialogue plays as a multi-step typewriter sequence
+  // (see HatiSpeakingBlock/onSequenceComplete). Don't let the player
+  // advance past this scene until every line has actually been shown,
+  // otherwise the later lines get torn down mid-animation.
+  bool _dialogueComplete = false;
+
   @override
   void initState() {
     super.initState();
@@ -71,6 +77,7 @@ class _Scene0PreSetupState extends State<Scene0PreSetup>
     final canBegin =
         provider.ui.type == ScenarioUIType.buttons && provider.ui.options.isNotEmpty;
     final beginLabel = canBegin ? provider.ui.options.first : 'Begin Scenario';
+    final readyToBegin = canBegin && _dialogueComplete;
 
     return Scaffold(
       body: Stack(
@@ -180,6 +187,11 @@ class _Scene0PreSetupState extends State<Scene0PreSetup>
                                     introMessage: introMessage,
                                     persistentMessage: persistentMessage,
                                     frogSize: 180,
+                                    onSequenceComplete: () {
+                                      if (mounted && !_dialogueComplete) {
+                                        setState(() => _dialogueComplete = true);
+                                      }
+                                    },
                                   ),
 
                                 const Spacer(),
@@ -188,7 +200,7 @@ class _Scene0PreSetupState extends State<Scene0PreSetup>
                                 HatiButton(
                                   label: beginLabel,
                                   icon: Icons.play_arrow_rounded,
-                                  onTap: (!canBegin || provider.isLoading)
+                                  onTap: (!readyToBegin || provider.isLoading)
                                       ? null
                                       : () => provider.submitText(beginLabel),
                                   color: HatiColors.leafGreen,
