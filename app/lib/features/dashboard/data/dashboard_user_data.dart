@@ -153,10 +153,10 @@ class DashboardDataService {
 
 class DashboardUserDataParser {
   static const _knownModules = {
-    'where_to_sit': _ModuleDefinition(
-      title: 'WHERE TO SIT?',
-      subtitle: 'Social awareness - 1 scenario',
-      icon: 'W',
+    'foa_supervisor': _ModuleDefinition(
+      title: "THE PROFESSOR'S SIGNATURE",
+      subtitle: 'Fear of Authority - 1 scenario',
+      icon: 'P',
       totalScenarios: 1,
     ),
   };

@@ -46,10 +46,7 @@ class ModulesScreen extends StatelessWidget {
             child: SafeArea(
               bottom: false,
               child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 20,
-                ),
+                padding: const EdgeInsets.fromLTRB(24, 20, 24, 28),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -57,12 +54,21 @@ class ModulesScreen extends StatelessWidget {
                       'HATI',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1.1,
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.2,
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Practice Scenarios',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
                     Container(
                       height: 44,
                       decoration: BoxDecoration(
@@ -80,7 +86,6 @@ class ModulesScreen extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 14),
                   ],
                 ),
               ),
@@ -93,11 +98,9 @@ class ModulesScreen extends StatelessWidget {
                 color: Colors.white,
                 borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
               ),
+              transform: Matrix4.translationValues(0, -20, 0),
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 18,
-                ),
+                padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -137,7 +140,6 @@ class ModulesScreen extends StatelessWidget {
 }
 
 Widget _recentActivityCard(BuildContext context) {
-  const defaultTitle = '';
   const defaultTheme = '';
   const defaultKey = '';
 
@@ -158,26 +160,32 @@ Widget _recentActivityCard(BuildContext context) {
     builder: (context, snapshot) {
       if (snapshot.connectionState == ConnectionState.waiting) {
         return const SizedBox(
-          height: 170,
+          height: 150,
           child: Center(child: CircularProgressIndicator()),
         );
       }
 
       final doc = snapshot.data;
       final raw = doc?.data()?['lastScenario'];
+      if (raw == null) {
+        // No scenario started yet — leave this blank instead of showing a
+        // placeholder card with nothing real to say.
+        return const SizedBox(height: 4);
+      }
+
       final scenarioTitle =
-      (raw?['scenarioTitle'] as String? ?? defaultTitle).toString();
+          (raw['scenarioTitle'] as String? ?? 'Pick a scenario').toString();
       final scenarioTheme =
-      (raw?['scenarioTheme'] as String? ?? defaultTheme).toString();
+          (raw['scenarioTheme'] as String? ?? defaultTheme).toString();
       final scenarioKey =
-      (raw?['scenarioKey'] as String? ?? defaultKey).toString();
+          (raw['scenarioKey'] as String? ?? defaultKey).toString();
 
       return Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: const Color(0xFF0B28D9),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(24),
         ),
         child: Row(
           children: [
@@ -185,117 +193,96 @@ Widget _recentActivityCard(BuildContext context) {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Recent Activity',
-                    style: TextStyle(
+                  Text(
+                    scenarioTitle,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
                       color: Colors.white,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 20,
+                      height: 1.15,
                     ),
                   ),
-                  const SizedBox(height: 10),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Container(
-                      height: 110,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        image: DecorationImage(
-                          image: AssetImage(_backgroundAssetForScenario(scenarioKey)),
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              Colors.black.withOpacity(0.22),
-                              Colors.black.withOpacity(0.05),
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Hop back in with Hati!',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  GestureDetector(
+                    onTap: () async {
+                      await _saveLastScenario(
+                        scenarioTitle: scenarioTitle,
+                        scenarioTheme: scenarioTheme,
+                        scenarioKey: scenarioKey,
+                      );
+
+                      if (!context.mounted) return;
+
+                      if (scenarioKey == 'foa_supervisor') {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                const ProfessorSignaturePage(),
                           ),
-                        ),
-                        child: const Center(
-                        ),
+                        );
+                      } else if (scenarioKey.isNotEmpty) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => EmotionPage(
+                              scenarioTitle: scenarioTitle,
+                              scenarioTheme: scenarioTheme,
+                              scenarioKey: scenarioKey,
+                            ),
+                          ),
+                        );
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 22,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.play_arrow_rounded,
+                            color: Color(0xFF0BA2D9),
+                            size: 18,
+                          ),
+                          const SizedBox(width: 4),
+                          const Text(
+                            'Continue',
+                            style: TextStyle(
+                              color: Color(0xFF0BA2D9),
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.only(top: 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      scenarioTitle,
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                      softWrap: true,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 16,
-                        height: 1.2,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    GestureDetector(
-                      onTap: () async {
-                        await _saveLastScenario(
-                          scenarioTitle: scenarioTitle,
-                          scenarioTheme: scenarioTheme,
-                          scenarioKey: scenarioKey,
-                        );
-
-                        if (!context.mounted) return;
-
-                        if (scenarioKey == 'foa_supervisor') {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const ProfessorSignaturePage(),
-                            ),
-                          );
-                        } else {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => EmotionPage(
-                                scenarioTitle: scenarioTitle,
-                                scenarioTheme: scenarioTheme,
-                                scenarioKey: scenarioKey,
-                              ),
-                            ),
-                          );
-                        }
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: const Text(
-                          'Continue',
-                          style: TextStyle(
-                            color: Color(0xFF0BA2D9),
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+            const SizedBox(width: 8),
+            Image.asset(
+              'assets/bouncehati2.png',
+              width: 84,
+              height: 84,
+              fit: BoxFit.contain,
             ),
           ],
         ),
@@ -431,147 +418,121 @@ String _backgroundAssetForScenario(String scenarioKey) {
 Widget _scenarioGrid(BuildContext context, Map<String, double> themeAverages) {
   final templates = _buildScenarioTemplates(themeAverages);
 
-  return GridView.builder(
-    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-      crossAxisCount: 2,
-      crossAxisSpacing: 12,
-      mainAxisSpacing: 12,
-      childAspectRatio: 0.84,
-    ),
-    shrinkWrap: true,
-    physics: const NeverScrollableScrollPhysics(),
-    itemCount: templates.length,
-    itemBuilder: (context, index) {
+  return Column(
+    children: List.generate(templates.length, (index) {
       final template = templates[index];
       final score = _matchPercent(themeAverages, template.theme);
-      return GestureDetector(
-        onTap: () async {
-          await _saveLastScenario(
-            scenarioTitle: template.title,
-            scenarioTheme: template.theme,
-            scenarioKey: template.scenarioKey,
-          );
-          if (!context.mounted) return;
-          if (template.scenarioKey == 'foa_supervisor') {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const ProfessorSignaturePage(),
-              ),
+      return Padding(
+        padding: EdgeInsets.only(
+          bottom: index == templates.length - 1 ? 0 : 14,
+        ),
+        child: GestureDetector(
+          onTap: () async {
+            await _saveLastScenario(
+              scenarioTitle: template.title,
+              scenarioTheme: template.theme,
+              scenarioKey: template.scenarioKey,
             );
-          } else {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => EmotionPage(
-                  scenarioTitle: template.title,
-                  scenarioTheme: template.theme,
-                  scenarioKey: template.scenarioKey,
+            if (!context.mounted) return;
+            if (template.scenarioKey == 'foa_supervisor') {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const ProfessorSignaturePage(),
                 ),
-              ),
-            );
-          }
-        },
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFE0E0E0)),
-            color: Colors.white,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 12,
-                offset: const Offset(0, 5),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Stack(
-                children: [
-                  Container(
-                    height: 110,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      borderRadius:
-                      const BorderRadius.vertical(top: Radius.circular(12)),
-                      image: DecorationImage(
-                        image:
-                        AssetImage(_backgroundAssetForScenario(template.scenarioKey)),
-                        fit: BoxFit.cover,
-                        colorFilter: ColorFilter.mode(
-                          Colors.black.withOpacity(0.32),
-                          BlendMode.darken,
-                        ),
-                      ),
-                    ),
+              );
+            } else {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => EmotionPage(
+                    scenarioTitle: template.title,
+                    scenarioTheme: template.theme,
+                    scenarioKey: template.scenarioKey,
                   ),
-                  Container(
-                    height: 110,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      borderRadius:
-                      const BorderRadius.vertical(top: Radius.circular(12)),
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.black.withOpacity(0.14),
-                          Colors.black.withOpacity(0.45),
-                        ],
-                      ),
-                    ),
+                ),
+              );
+            }
+          },
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: const Color(0xFFE0E0E0)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.04),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: Image.asset(
+                    _backgroundAssetForScenario(template.scenarioKey),
+                    width: 84,
+                    height: 84,
+                    fit: BoxFit.cover,
                   ),
-                  Positioned(
-                    top: 12,
-                    left: 12,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.85),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Text(
-                        '#${index + 1}',
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        template.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                          color: Colors.black87,
                           fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                          color: Colors.black,
+                          height: 1.25,
                         ),
                       ),
+                      const SizedBox(height: 5),
+                      Text(
+                        template.theme,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          color: Colors.black45,
+                          height: 1.3,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF0F3FF),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Text(
+                    '${score.round()}% match',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF0B28D9),
                     ),
                   ),
-                ],
-              ),
-              Padding(
-                padding:
-                const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      template.title,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 14,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '${score.round()}% match',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.black.withAlpha(170),
-                      ),
-                    ),
-                  ],
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       );
-    },
+    }),
   );
 }

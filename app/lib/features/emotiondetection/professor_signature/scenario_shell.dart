@@ -123,8 +123,44 @@ class _ScenarioShellState extends State<ScenarioShell> {
 }
 
 // ── Dashboard return screen ─────────────────────────────────────────────────
-class _ScenarioDashboardScene extends StatelessWidget {
+//
+// Reaching this scene means the backend FSM has hit its terminal step
+// (scene7_dashboard/complete) — the one deterministic "scenario finished"
+// signal available client-side for this flow. That's why module-progress
+// completion is recorded here rather than on any "Close" tap, which can
+// fire mid-conversation.
+class _ScenarioDashboardScene extends StatefulWidget {
   const _ScenarioDashboardScene({super.key});
+
+  @override
+  State<_ScenarioDashboardScene> createState() =>
+      _ScenarioDashboardSceneState();
+}
+
+class _ScenarioDashboardSceneState extends State<_ScenarioDashboardScene> {
+  @override
+  void initState() {
+    super.initState();
+    _recordModuleCompletion();
+  }
+
+  Future<void> _recordModuleCompletion() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('moduleProgress')
+          .doc('foa_supervisor')
+          .set({
+        'completedScenarios': 1,
+        'totalScenarios': 1,
+        'lastCompletedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    } catch (_) {}
+  }
 
   Future<Map<String, int>> _loadEmotionCounts(String? sessionId) async {
     final user = FirebaseAuth.instance.currentUser;
