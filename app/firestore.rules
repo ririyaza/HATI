@@ -1,0 +1,48 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isSignedIn() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid))
+          .data.role == 'admin';
+    }
+
+    // User document + ALL subcollections under the user
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+
+      match /{document=**} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+
+    // SPIN questions: app can read; writes should be admin-only
+    match /spin_questions/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Admin-only cross-user read of Contact-Developer messages, plus
+    // the ability to toggle their `read` flag — nothing else.
+    match /{path=**}/supportMessages/{messageId} {
+      allow read: if isAdmin();
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data)
+             .affectedKeys().hasOnly(['read']);
+    }
+
+    // Deny everything else
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

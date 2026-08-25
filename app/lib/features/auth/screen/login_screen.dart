@@ -1,12 +1,10 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'signup_screen.dart';
-import '../../dashboard/screen/dashboard_screen.dart';
-import '../../onboarding/consent_intro_screen.dart';
-import '../../onboarding/profile_setup_screen.dart';
-import '../../spinAssessment/screen/spin_assessment_screen.dart';
-import '../../spinAssessment/screen/low_score_exit_screen.dart';
+import 'email_verification_screen.dart';
+import '../auth_navigation.dart';
+import '../services/social_auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -21,6 +19,10 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
   bool _isLoading = false;
+  bool _isGoogleLoading = false;
+  bool _isFacebookLoading = false;
+
+  bool get _anyLoading => _isLoading || _isGoogleLoading || _isFacebookLoading;
 
   @override
   void dispose() {
@@ -35,13 +37,22 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
+      final credential = await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
 
       if (!mounted) return;
-      await _navigateAfterLogin();
+
+      if (credential.user?.emailVerified != true) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const EmailVerificationScreen()),
+        );
+        return;
+      }
+
+      await navigateAfterAuth(context);
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
       String message;
@@ -80,48 +91,6 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  Future<void> _navigateAfterLogin() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-
-    final doc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .get();
-    final data = doc.data() ?? {};
-
-    if (data['accessBlocked'] == true) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) =>
-              LowScoreExitScreen(score: (data['initialSpinScore'] ?? 0) as int),
-        ),
-      );
-      return;
-    }
-
-    final consentGiven = data['consentGiven'] == true;
-    final profileCompleted = data['profileCompleted'] == true;
-    final initialSpinCompleted = data['initialSpinCompleted'] == true;
-
-    Widget next;
-    if (!consentGiven) {
-      next = const ConsentIntroScreen();
-    } else if (!profileCompleted) {
-      next = const ProfileSetupScreen();
-    } else if (!initialSpinCompleted) {
-      next = const SpinAssessmentScreen();
-    } else {
-      next = const DashboardScreen();
-    }
-
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => next),
-    );
-  }
-
   Future<void> _handleForgotPassword() async {
     final email = _emailController.text.trim();
     if (email.isEmpty) {
@@ -150,6 +119,82 @@ class _LoginScreenState extends State<LoginScreen> {
           backgroundColor: Colors.red.shade700,
         ),
       );
+    }
+  }
+
+  Future<void> _handleGoogleSignIn() async {
+    setState(() => _isGoogleLoading = true);
+    try {
+      final credential = await SocialAuthService.signInWithGoogle();
+      if (!mounted) return;
+
+      if (credential.user?.emailVerified != true) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const EmailVerificationScreen()),
+        );
+        return;
+      }
+
+      await navigateAfterAuth(context);
+    } on SocialSignInCancelledException {
+      // User backed out of the account picker; nothing to report.
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.message ?? 'Google sign-in failed. Please try again.'),
+          backgroundColor: Colors.red.shade700,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Google sign-in failed. Please try again.'),
+          backgroundColor: Colors.red.shade700,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isGoogleLoading = false);
+    }
+  }
+
+  Future<void> _handleFacebookSignIn() async {
+    setState(() => _isFacebookLoading = true);
+    try {
+      final credential = await SocialAuthService.signInWithFacebook();
+      if (!mounted) return;
+
+      if (credential.user?.emailVerified != true) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const EmailVerificationScreen()),
+        );
+        return;
+      }
+
+      await navigateAfterAuth(context);
+    } on SocialSignInCancelledException {
+      // User backed out of the Facebook login dialog; nothing to report.
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.message ?? 'Facebook sign-in failed. Please try again.'),
+          backgroundColor: Colors.red.shade700,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Facebook sign-in failed. Please try again.'),
+          backgroundColor: Colors.red.shade700,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isFacebookLoading = false);
     }
   }
 
@@ -326,7 +371,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    onPressed: _isLoading ? null : _handleLogin,
+                    onPressed: _anyLoading ? null : _handleLogin,
                     child: _isLoading
                         ? const SizedBox(
                             height: 24,
@@ -379,20 +424,30 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       backgroundColor: Colors.white,
                     ),
-                    onPressed: () {
-                      // Handle Facebook login
-                    },
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          'Continue with Facebook',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: Colors.black,
+                    onPressed: _anyLoading ? null : _handleFacebookSignIn,
+                    child: _isFacebookLoading
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const FaIcon(
+                                FontAwesomeIcons.facebook,
+                                size: 20,
+                                color: Color(0xFF1877F2),
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                'Continue with Facebook',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: Colors.black,
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                      ],
-                    ),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -406,20 +461,30 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       backgroundColor: Colors.white,
                     ),
-                    onPressed: () {
-                      // Handle Google login
-                    },
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          'Continue with Google',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: Colors.black,
+                    onPressed: _anyLoading ? null : _handleGoogleSignIn,
+                    child: _isGoogleLoading
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const FaIcon(
+                                FontAwesomeIcons.google,
+                                size: 18,
+                                color: Color(0xFFEA4335),
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                'Continue with Google',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: Colors.black,
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                      ],
-                    ),
                   ),
                 ),
                 const SizedBox(height: 32),

@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../data/spin_scoring.dart';
 import 'assessment_complete_screen.dart';
 import 'triggers_and_coping_screen.dart';
 import 'low_score_exit_screen.dart';
@@ -114,8 +115,6 @@ class SpinResultScreen extends StatefulWidget {
 
 class _SpinResultScreenState extends State<SpinResultScreen>
     with SingleTickerProviderStateMixin {
-  bool _persisted = false;
-  static const int _severeThreshold = 40;
   static const int _maxScore = 68; // SPIN max
 
   late AnimationController _animCtrl;
@@ -130,12 +129,11 @@ class _SpinResultScreenState extends State<SpinResultScreen>
     return _ScoreTier.guided;
   }
 
-  bool get _qualifies => widget.score > _severeThreshold;
+  bool get _qualifies => spinQualifies(widget.score);
 
   @override
   void initState() {
     super.initState();
-    _persistInitialSpinScore();
 
     _animCtrl = AnimationController(
       vsync: this,
@@ -159,31 +157,6 @@ class _SpinResultScreenState extends State<SpinResultScreen>
   void dispose() {
     _animCtrl.dispose();
     super.dispose();
-  }
-
-  // ── Firestore persistence (unchanged logic) ──────────────────
-  Future<void> _persistInitialSpinScore() async {
-    if (_persisted) return;
-    _persisted = true;
-
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-
-    final userRef = FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid);
-
-    try {
-      await userRef.collection('spinAssessments').doc('initial').set({
-        'score': widget.score,
-        'completedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
-      await userRef.set({
-        'initialSpinScore': widget.score,
-        'initialSpinCompleted': true,
-        'initialSpinCompletedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
-    } catch (_) {}
   }
 
   Future<void> _onContinue() async {
@@ -375,7 +348,7 @@ class _HeroHeader extends StatelessWidget {
             // Arc gauge
             AnimatedBuilder(
               animation: arcAnim,
-              builder: (_, __) => _ArcGauge(
+              builder: (_, _) => _ArcGauge(
                 progress: progress * arcAnim.value,
                 score: score,
                 color: theme.secondary,
