@@ -47,7 +47,13 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
   final TextEditingController _controller = TextEditingController();
   final AudioRecorder _record = AudioRecorder();
   bool _isRecording = false;
+  bool _isTranscribing = false;
   String? _lastSentText;
+
+  // Hati's coach line types out over the scene; don't let "Continue"
+  // advance past it before the last of it has actually been shown.
+  String? _trackedBubbleKey;
+  bool _dialogueComplete = false;
 
   Future<void> _startRecording() async {
     if (await _record.hasPermission()) {
@@ -70,11 +76,17 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
 
   Future<void> _stopRecording(ScenarioProvider provider) async {
     final path = await _record.stop();
-    if (mounted) setState(() => _isRecording = false);
+    if (!mounted) return;
+    setState(() => _isRecording = false);
     if (path == null) return;
 
+    setState(() => _isTranscribing = true);
     final userId = FirebaseAuth.instance.currentUser?.uid ?? '';
-    await provider.submitAudio(path, userId: userId);
+    try {
+      await provider.submitAudio(path, userId: userId);
+    } finally {
+      if (mounted) setState(() => _isTranscribing = false);
+    }
     if (!mounted) return;
     setState(() {
       _lastSentText = provider.lastTranscript?.trim().isNotEmpty == true
@@ -126,6 +138,14 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
     final profText = profLines.isNotEmpty ? profLines.join('\n\n') : 'Yes? What is it?';
     final hatiText = hatiLines.join('\n\n');
     final isTextInput = provider.ui.type == ScenarioUIType.textInput;
+
+    final bubbleKey = '$step:$hatiText';
+    if (bubbleKey != _trackedBubbleKey) {
+      _trackedBubbleKey = bubbleKey;
+      _dialogueComplete = false;
+    }
+    // No Hati line to wait for on this turn -> nothing blocks "Continue".
+    final dialogueReady = hatiText.isEmpty || _dialogueComplete;
 
     return Scaffold(
       backgroundColor: _kApproachBlue,
@@ -180,8 +200,13 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
                     child: _ApproachHatiLane(
                       showBubble: hatiText.isNotEmpty,
                       message: hatiText,
-                      bubbleKey: '$step:$hatiText',
+                      bubbleKey: bubbleKey,
                       frogSize: _kFrogSize,
+                      onSequenceComplete: () {
+                        if (mounted && !_dialogueComplete) {
+                          setState(() => _dialogueComplete = true);
+                        }
+                      },
                     ),
                   ),
                 ],
@@ -190,9 +215,14 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
             if (isTextInput)
               _ApproachInputBar(
                 controller: _controller,
-                enabled: !provider.isLoading && !_isRecording,
+                enabled: !provider.isLoading && !_isRecording && !_isTranscribing,
                 isRecording: _isRecording,
-                hintText: _isRecording ? 'Listening…' : 'Type your response...',
+                isTranscribing: _isTranscribing,
+                hintText: _isRecording
+                    ? 'Listening…'
+                    : (_isTranscribing
+                        ? 'Converting your voice…'
+                        : 'Type your response...'),
                 onSend: () => _sendText(provider),
                 onMicTap: () =>
                     _isRecording ? _stopRecording(provider) : _startRecording(),
@@ -208,7 +238,7 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
                         ? provider.ui.options.first
                         : 'Continue',
                     icon: Icons.arrow_forward_rounded,
-                    onTap: provider.isLoading
+                    onTap: (provider.isLoading || !dialogueReady)
                         ? null
                         : () => provider.submitText(
                               provider.ui.options.isNotEmpty
@@ -232,12 +262,14 @@ class _ApproachHatiLane extends StatelessWidget {
   final String message;
   final String bubbleKey;
   final double frogSize;
+  final VoidCallback? onSequenceComplete;
 
   const _ApproachHatiLane({
     required this.showBubble,
     required this.message,
     required this.bubbleKey,
     this.frogSize = 100,
+    this.onSequenceComplete,
   });
 
   @override
@@ -258,21 +290,32 @@ class _ApproachHatiLane extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          SizedBox(
-            width: frogSize + 16,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                if (showBubble && message.isNotEmpty)
-                  HatiSpeakingBlock(
-                    key: ValueKey(bubbleKey),
-                    persistentMessage: message,
-                    frogSize: frogSize,
-                  )
-                else
-                  HatiFrogAvatar(size: frogSize),
-              ],
+          Flexible(
+            // Lets the bubble grow up to its full HatiLayout.bubbleMaxWidth
+            // — it used to be a fixed SizedBox(width: frogSize + 16), just
+            // enough for the frog, which squeezed the bubble down to that
+            // width and made it wrap into a tall, narrow column instead of
+            // using its intended width. Flexible (rather than a fixed
+            // SizedBox) also means it can't overflow on a screen narrower
+            // than bubbleMaxWidth — it just uses whatever's available.
+            child: ConstrainedBox(
+              constraints:
+                  const BoxConstraints(maxWidth: HatiLayout.bubbleMaxWidth),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  if (showBubble && message.isNotEmpty)
+                    HatiSpeakingBlock(
+                      key: ValueKey(bubbleKey),
+                      persistentMessage: message,
+                      frogSize: frogSize,
+                      onSequenceComplete: onSequenceComplete,
+                    )
+                  else
+                    HatiFrogAvatar(size: frogSize),
+                ],
+              ),
             ),
           ),
           const Spacer(),
@@ -415,6 +458,7 @@ class _ApproachInputBar extends StatelessWidget {
   final TextEditingController controller;
   final bool enabled;
   final bool isRecording;
+  final bool isTranscribing;
   final String hintText;
   final VoidCallback onSend;
   final VoidCallback onMicTap;
@@ -423,6 +467,7 @@ class _ApproachInputBar extends StatelessWidget {
     required this.controller,
     required this.enabled,
     required this.isRecording,
+    this.isTranscribing = false,
     required this.hintText,
     required this.onSend,
     required this.onMicTap,
@@ -435,15 +480,32 @@ class _ApproachInputBar extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
       child: Row(
         children: [
-          IconButton(
-            icon: Icon(
-              isRecording ? Icons.stop_circle_rounded : Icons.mic_none_rounded,
-              color: isRecording
-                  ? Colors.red
-                  : (enabled ? _kApproachBlue : Colors.grey),
-              size: 28,
-            ),
-            onPressed: (enabled || isRecording) ? onMicTap : null,
+          SizedBox(
+            width: 48,
+            height: 48,
+            child: isTranscribing
+                ? const Center(
+                    child: SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.4,
+                        color: _kApproachBlue,
+                      ),
+                    ),
+                  )
+                : IconButton(
+                    icon: Icon(
+                      isRecording
+                          ? Icons.stop_circle_rounded
+                          : Icons.mic_none_rounded,
+                      color: isRecording
+                          ? Colors.red
+                          : (enabled ? _kApproachBlue : Colors.grey),
+                      size: 28,
+                    ),
+                    onPressed: (enabled || isRecording) ? onMicTap : null,
+                  ),
           ),
           Expanded(
             child: TextField(

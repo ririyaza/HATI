@@ -18,8 +18,16 @@ import 'scenario_models.dart';
 import 'scenario_provider.dart';
 import 'shared_widgets.dart';
 
-class Scene4Debrief extends StatelessWidget {
+class Scene4Debrief extends StatefulWidget {
   const Scene4Debrief({super.key});
+
+  @override
+  State<Scene4Debrief> createState() => _Scene4DebriefState();
+}
+
+class _Scene4DebriefState extends State<Scene4Debrief> {
+  String? _trackedStep;
+  bool _dialogueComplete = false;
 
   @override
   Widget build(BuildContext context) {
@@ -27,6 +35,11 @@ class Scene4Debrief extends StatelessWidget {
     final step = provider.backendStep;
     final ui = provider.ui;
     final hatiText = joinMessageText(provider.messages);
+
+    if (step != _trackedStep) {
+      _trackedStep = step;
+      _dialogueComplete = false;
+    }
 
     Widget body;
     if (step == 'scene4_predicted' || step == 'scene4_actual') {
@@ -36,14 +49,14 @@ class Scene4Debrief extends StatelessWidget {
       body = _AnxietySliderCard(
         key: ValueKey(step),
         question: question,
-        isLoading: provider.isLoading,
+        isLoading: provider.isLoading || !_dialogueComplete,
         onSubmit: (v) => provider.submitText(v.toString()),
       );
     } else if (ui.type == ScenarioUIType.buttons) {
       body = _DebriefChoiceCard(
         key: ValueKey(step),
         options: ui.options,
-        isLoading: provider.isLoading,
+        isLoading: provider.isLoading || !_dialogueComplete,
         onSubmit: provider.submitText,
       );
     } else {
@@ -73,6 +86,11 @@ class Scene4Debrief extends StatelessWidget {
               showCoach: true,
               persistentMessage: hatiText,
               frogWidthScale: 1.08,
+              onSequenceComplete: () {
+                if (mounted && !_dialogueComplete) {
+                  setState(() => _dialogueComplete = true);
+                }
+              },
               body: body,
             ),
           ),

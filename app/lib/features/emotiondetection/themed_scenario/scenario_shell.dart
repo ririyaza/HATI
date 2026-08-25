@@ -19,6 +19,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'app_theme.dart';
 import 'scenario_models.dart';
 import 'scenario_provider.dart';
 import 'scene0_pre_setup.dart';
@@ -27,6 +28,7 @@ import 'scene2_preparation.dart';
 import 'scene3_interaction.dart';
 import 'scene4_debrief.dart';
 import 'scene5_coping.dart';
+import 'shared_widgets.dart';
 
 class ScenarioShell extends StatefulWidget {
   const ScenarioShell({super.key});
@@ -149,46 +151,10 @@ class _ScenarioDashboardScene extends StatelessWidget {
 
   Future<void> _showProgressDialog(BuildContext context, String? sessionId) async {
     final counts = await _loadEmotionCounts(sessionId);
-    final sorted = counts.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-
     if (!context.mounted) return;
     await showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Emotion Summary'),
-        content: sorted.isEmpty
-            ? const Text('No emotion logs are available yet.')
-            : SizedBox(
-                width: double.maxFinite,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: sorted
-                      .map(
-                        (e) => Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 4),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                e.key.toUpperCase(),
-                                style: const TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                              Text('${e.value}'),
-                            ],
-                          ),
-                        ),
-                      )
-                      .toList(),
-                ),
-              ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
+      builder: (context) => _EmotionSummaryDialog(counts: counts),
     );
   }
 
@@ -198,54 +164,298 @@ class _ScenarioDashboardScene extends StatelessWidget {
     final summary = joinMessageText(provider.messages, separator: ' ');
 
     return Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text('🐸', style: TextStyle(fontSize: 60)),
-            const SizedBox(height: 20),
-            const Text(
-              'Great work!',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32),
-              child: Text(
-                summary.isNotEmpty
-                    ? summary
-                    : "I've logged your emotions. Over time, you'll see patterns.",
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 16, color: Colors.grey),
+      body: Stack(
+        children: [
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [HatiColors.deepForest, Color(0xFF2A4A2A)],
               ),
             ),
-            const SizedBox(height: 40),
-            for (final opt in provider.ui.options)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: ElevatedButton.icon(
-                  onPressed: () async {
-                    if (opt == 'Close') {
-                      // Pop immediately, client-side, without waiting on a
-                      // network round trip — mirrors EmotionPage's exit.
-                      Navigator.pop(context);
-                      return;
-                    }
-                    if (opt == 'Open Progress') {
-                      await _showProgressDialog(context, provider.sessionId);
-                      if (context.mounted) {
-                        await provider.submitText(opt);
-                      }
-                      return;
-                    }
-                    await provider.submitText(opt);
-                  },
-                  icon: Icon(opt == 'Close' ? Icons.close : Icons.bar_chart_rounded),
-                  label: Text(opt),
-                ),
+          ),
+          Positioned(
+            top: -60,
+            right: -60,
+            child: Container(
+              width: 200,
+              height: 200,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: HatiColors.leafGreen.withValues(alpha: 0.15),
               ),
+            ),
+          ),
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const HatiFrogAvatar(size: 160),
+                  const SizedBox(height: 20),
+                  Text(
+                    'Nice work!',
+                    style: HatiTextStyles.heading1.copyWith(
+                      color: HatiColors.warmCream,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    summary.isNotEmpty
+                        ? summary
+                        : "I've logged your emotions. Over time, you'll see patterns.",
+                    textAlign: TextAlign.center,
+                    style: HatiTextStyles.bodyMedium.copyWith(
+                      color: HatiColors.warmCream.withValues(alpha: 0.8),
+                    ),
+                  ),
+                  const SizedBox(height: 36),
+                  for (final opt in provider.ui.options)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: HatiButton(
+                        label: opt,
+                        icon: opt == 'Close'
+                            ? Icons.close_rounded
+                            : Icons.bar_chart_rounded,
+                        color: opt == 'Close'
+                            ? HatiColors.mossGreen
+                            : HatiColors.softGold,
+                        onTap: () async {
+                          if (opt == 'Close') {
+                            // Pop immediately, client-side, without waiting on a
+                            // network round trip — mirrors EmotionPage's exit.
+                            Navigator.pop(context);
+                            return;
+                          }
+                          if (opt == 'Open Progress') {
+                            await _showProgressDialog(context, provider.sessionId);
+                            if (context.mounted) {
+                              await provider.submitText(opt);
+                            }
+                            return;
+                          }
+                          await provider.submitText(opt);
+                        },
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Emotion summary: horizontal bar chart ───────────────────────────────────
+
+/// Categorical colors for each detected emotion. Distinct from the app's
+/// PIES-selection colors (HatiColors.anxious/calm/etc.) — those fail
+/// colorblind-safe separation as a group, so this is a validated palette
+/// (see dataviz skill) that keeps a similar hue per emotion where possible.
+const Map<String, Color> _emotionChartColors = {
+  'anxious': Color(0xFFEF6C00),
+  'calm': Color(0xFF00897B),
+  'neutral': Color(0xFF3949AB),
+  'scared': Color(0xFFAB47BC),
+  'angry': Color(0xFFC62828),
+};
+const Color _emotionChartFallbackColor = Color(0xFF78909C);
+
+const Map<String, String> _emotionChartLabels = {
+  'anxious': 'Anxious',
+  'calm': 'Calm',
+  'neutral': 'Neutral',
+  'scared': 'Scared',
+  'angry': 'Angry',
+};
+
+String _emotionLabelFor(String key) {
+  final known = _emotionChartLabels[key];
+  if (known != null) return known;
+  if (key.isEmpty) return key;
+  return key[0].toUpperCase() + key.substring(1);
+}
+
+class _EmotionSummaryDialog extends StatelessWidget {
+  final Map<String, int> counts;
+
+  const _EmotionSummaryDialog({required this.counts});
+
+  @override
+  Widget build(BuildContext context) {
+    final sorted = counts.entries.where((e) => e.value > 0).toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    final maxCount = sorted.isNotEmpty ? sorted.first.value.toDouble() : 1.0;
+
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      child: Container(
+        decoration: BoxDecoration(
+          color: HatiColors.cardBg,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.2),
+              blurRadius: 24,
+              offset: const Offset(0, 12),
+            ),
           ],
         ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [HatiColors.deepForest, HatiColors.mossGreen],
+                ),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.insights_rounded,
+                      color: HatiColors.softGold,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Text(
+                      'Emotions Felt',
+                      style: HatiTextStyles.heading3.copyWith(
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+              child: sorted.isEmpty
+                  ? Text(
+                      'No emotion logs are available yet.',
+                      style: HatiTextStyles.bodyMedium,
+                    )
+                  : Column(
+                      children: sorted
+                          .map(
+                            (entry) => _EmotionBarRow(
+                              emotion: entry.key,
+                              count: entry.value,
+                              maxCount: maxCount,
+                            ),
+                          )
+                          .toList(),
+                    ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+              child: SizedBox(
+                width: double.infinity,
+                child: HatiButton(
+                  label: 'Close',
+                  color: HatiColors.mossGreen,
+                  onTap: () => Navigator.pop(context),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EmotionBarRow extends StatelessWidget {
+  final String emotion;
+  final int count;
+  final double maxCount;
+
+  const _EmotionBarRow({
+    required this.emotion,
+    required this.count,
+    required this.maxCount,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _emotionChartColors[emotion] ?? _emotionChartFallbackColor;
+    final label = _emotionLabelFor(emotion);
+    // A visible sliver even for a small count against a much larger max,
+    // so a single occurrence never renders as an invisible bar.
+    final factor = maxCount > 0 ? (count / maxCount).clamp(0.08, 1.0) : 0.0;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 72,
+            child: Text(
+              label,
+              style: HatiTextStyles.bodyMedium.copyWith(
+                fontWeight: FontWeight.w700,
+                color: HatiColors.textDark,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Stack(
+              alignment: Alignment.centerLeft,
+              children: [
+                Container(
+                  height: 22,
+                  decoration: BoxDecoration(
+                    color: HatiColors.divider,
+                    borderRadius: BorderRadius.circular(11),
+                  ),
+                ),
+                FractionallySizedBox(
+                  widthFactor: factor,
+                  child: Container(
+                    height: 22,
+                    decoration: BoxDecoration(
+                      color: color,
+                      borderRadius: BorderRadius.circular(11),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          SizedBox(
+            width: 22,
+            child: Text(
+              '$count',
+              textAlign: TextAlign.right,
+              style: HatiTextStyles.bodyMedium.copyWith(
+                fontWeight: FontWeight.w700,
+                color: HatiColors.textDark,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

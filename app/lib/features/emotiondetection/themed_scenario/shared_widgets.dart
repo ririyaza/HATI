@@ -737,7 +737,76 @@ class _HatiSpeechSequenceState extends State<HatiSpeechSequence> {
   }
 }
 
-/// Speech-bubble text that shrinks to fit [maxWidth] × [maxHeight] (no scrolling).
+/// Largest font size (down to [HatiLayout.bubbleMinFontSize]) at which
+/// [content] fits within [innerMaxH]; `fits: false` means even the
+/// smallest size overflows, so the caller should paginate instead of
+/// letting the bubble clip it.
+(double fontSize, bool fits) _fitBubbleFontSize(
+  String content,
+  double innerMaxW,
+  double innerMaxH,
+) {
+  if (content.isEmpty) return (HatiLayout.bubbleBaseFontSize, true);
+
+  for (var size = HatiLayout.bubbleBaseFontSize;
+      size >= HatiLayout.bubbleMinFontSize;
+      size -= 0.5) {
+    if (_measureBubbleTextHeight(content, size, innerMaxW) <= innerMaxH) {
+      return (size, true);
+    }
+  }
+  return (HatiLayout.bubbleMinFontSize, false);
+}
+
+double _measureBubbleTextHeight(String content, double fontSize, double innerMaxW) {
+  final painter = TextPainter(
+    text: TextSpan(
+      text: content,
+      style: TextStyle(
+        fontSize: fontSize,
+        fontWeight: FontWeight.bold,
+        height: _ScaledBubbleText._lineHeight,
+      ),
+    ),
+    textAlign: TextAlign.center,
+    textDirection: TextDirection.ltr,
+    maxLines: null,
+  )..layout(maxWidth: innerMaxW);
+  return painter.height;
+}
+
+/// Greedily packs [text] into word-wrapped chunks that each fit within
+/// [innerMaxH] at [fontSize], so a chunk too long for one bubble can be
+/// shown as a sequence of bubbles (like separate dialogue lines) instead
+/// of overflowing or scrolling a single one.
+List<String> _paginateBubbleText(
+  String text,
+  double fontSize,
+  double innerMaxW,
+  double innerMaxH,
+) {
+  final words = text.trim().split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
+  if (words.isEmpty) return const [];
+
+  final pages = <String>[];
+  var current = '';
+  for (final word in words) {
+    final candidate = current.isEmpty ? word : '$current $word';
+    if (current.isEmpty ||
+        _measureBubbleTextHeight(candidate, fontSize, innerMaxW) <= innerMaxH) {
+      current = candidate;
+    } else {
+      pages.add(current);
+      current = word;
+    }
+  }
+  if (current.isNotEmpty) pages.add(current);
+  return pages;
+}
+
+/// Speech-bubble text that shrinks to fit [maxWidth] × [maxHeight]. Assumes
+/// the caller (see [_AnimatedHatiSpeechBubbleState]'s pagination) already
+/// guarantees [text] fits — this only picks the font size.
 class _ScaledBubbleText extends StatelessWidget {
   static const _padding = EdgeInsets.fromLTRB(24, 22, 24, 34);
   static const double _lineHeight = 1.45;
@@ -750,43 +819,19 @@ class _ScaledBubbleText extends StatelessWidget {
   final double maxHeight;
 
   const _ScaledBubbleText({
+    super.key,
     required this.text,
     required this.layoutReference,
     required this.maxWidth,
     required this.maxHeight,
   });
 
-  double _fitFontSize(String content, double innerMaxW, double innerMaxH) {
-    if (content.isEmpty) return HatiLayout.bubbleBaseFontSize;
-
-    for (var size = HatiLayout.bubbleBaseFontSize;
-        size >= HatiLayout.bubbleMinFontSize;
-        size -= 0.5) {
-      final painter = TextPainter(
-        text: TextSpan(
-          text: content,
-          style: TextStyle(
-            fontSize: size,
-            fontWeight: FontWeight.bold,
-            height: _lineHeight,
-          ),
-        ),
-        textAlign: TextAlign.center,
-        textDirection: TextDirection.ltr,
-        maxLines: null,
-      )..layout(maxWidth: innerMaxW);
-
-      if (painter.height <= innerMaxH) return size;
-    }
-    return HatiLayout.bubbleMinFontSize;
-  }
-
   @override
   Widget build(BuildContext context) {
     final innerMaxW = (maxWidth - _padding.horizontal).clamp(0.0, maxWidth);
     final innerMaxH = (maxHeight - _padding.vertical).clamp(0.0, maxHeight);
     final reference = layoutReference.isNotEmpty ? layoutReference : text;
-    final fontSize = _fitFontSize(reference, innerMaxW, innerMaxH);
+    final (fontSize, _) = _fitBubbleFontSize(reference, innerMaxW, innerMaxH);
 
     return SizedBox(
       width: innerMaxW,
@@ -804,6 +849,24 @@ class _ScaledBubbleText extends StatelessWidget {
   }
 }
 
+/// Splits a message into sentence-sized chunks so a speech bubble can
+/// reveal one at a time instead of typing (and overflowing on) the whole
+/// block at once. Splits on sentence-ending punctuation and blank lines;
+/// falls back to the whole trimmed message when no boundary is found.
+List<String> _splitIntoSentences(String text) {
+  final trimmed = text.trim();
+  if (trimmed.isEmpty) return const [];
+
+  final boundary = RegExp(r'(?<=[.!?])\s+|\n{2,}');
+  final parts = trimmed
+      .split(boundary)
+      .map((s) => s.trim())
+      .where((s) => s.isNotEmpty)
+      .toList();
+
+  return parts.isEmpty ? [trimmed] : parts;
+}
+
 class _AnimatedHatiSpeechBubble extends StatefulWidget {
   final String message;
   final bool dissolves;
@@ -817,7 +880,7 @@ class _AnimatedHatiSpeechBubble extends StatefulWidget {
     super.key,
     required this.message,
     this.dissolves = true,
-    this.holdAfterTyping = const Duration(seconds: 5),
+    this.holdAfterTyping = const Duration(seconds: 2),
     this.maxWidth = HatiLayout.bubbleMaxWidth,
     this.maxHeight = HatiLayout.bubbleMaxHeight,
     this.onDismissed,
@@ -831,6 +894,7 @@ class _AnimatedHatiSpeechBubble extends StatefulWidget {
 class _AnimatedHatiSpeechBubbleState extends State<_AnimatedHatiSpeechBubble>
     with TickerProviderStateMixin {
   static const _charInterval = Duration(milliseconds: 20);
+  static const _sentenceHold = Duration(seconds: 2);
 
   late final AnimationController _entranceController;
   late final AnimationController _dissolveController;
@@ -839,14 +903,38 @@ class _AnimatedHatiSpeechBubbleState extends State<_AnimatedHatiSpeechBubble>
   late final Animation<Offset> _entranceSlide;
   late final Animation<double> _dissolveOpacity;
 
+  late final List<String> _sentences;
+  late final String _layoutReference;
+
   Timer? _typewriterTimer;
+  Timer? _sentenceHoldTimer;
   Timer? _dissolveDelayTimer;
+  int _sentenceIndex = 0;
   int _visibleChars = 0;
   bool _dissolved = false;
 
   @override
   void initState() {
     super.initState();
+    final rawSentences = _splitIntoSentences(widget.message);
+    _layoutReference = rawSentences.isEmpty
+        ? widget.message
+        : rawSentences.reduce((a, b) => a.length >= b.length ? a : b);
+
+    final innerMaxW = (widget.maxWidth - _ScaledBubbleText._padding.horizontal)
+        .clamp(0.0, widget.maxWidth);
+    final innerMaxH = (widget.maxHeight - _ScaledBubbleText._padding.vertical)
+        .clamp(0.0, widget.maxHeight);
+    final (fontSize, _) = _fitBubbleFontSize(_layoutReference, innerMaxW, innerMaxH);
+
+    // A sentence that alone still doesn't fit at that font size gets
+    // paginated further, so it pages like separate dialogue lines instead
+    // of overflowing the bubble.
+    _sentences = rawSentences.expand((s) {
+      if (_measureBubbleTextHeight(s, fontSize, innerMaxW) <= innerMaxH) return [s];
+      return _paginateBubbleText(s, fontSize, innerMaxW, innerMaxH);
+    }).toList();
+
     _entranceController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 200),
@@ -876,9 +964,17 @@ class _AnimatedHatiSpeechBubbleState extends State<_AnimatedHatiSpeechBubble>
   }
 
   void _startTypewriter() {
-    final total = widget.message.length;
-    if (total == 0) {
+    if (_sentences.isEmpty) {
       _scheduleDissolve();
+      return;
+    }
+    _typeCurrentSentence();
+  }
+
+  void _typeCurrentSentence() {
+    final sentence = _sentences[_sentenceIndex];
+    if (sentence.isEmpty) {
+      _holdThenAdvance();
       return;
     }
 
@@ -887,12 +983,29 @@ class _AnimatedHatiSpeechBubbleState extends State<_AnimatedHatiSpeechBubble>
         timer.cancel();
         return;
       }
-      if (_visibleChars >= total) {
+      if (_visibleChars >= sentence.length) {
         timer.cancel();
-        _scheduleDissolve();
+        _holdThenAdvance();
         return;
       }
       setState(() => _visibleChars++);
+    });
+  }
+
+  void _holdThenAdvance() {
+    final isLast = _sentenceIndex >= _sentences.length - 1;
+    if (isLast) {
+      _scheduleDissolve();
+      return;
+    }
+
+    _sentenceHoldTimer = Timer(_sentenceHold, () {
+      if (!mounted) return;
+      setState(() {
+        _sentenceIndex++;
+        _visibleChars = 0;
+      });
+      _typeCurrentSentence();
     });
   }
 
@@ -918,6 +1031,7 @@ class _AnimatedHatiSpeechBubbleState extends State<_AnimatedHatiSpeechBubble>
   @override
   void dispose() {
     _typewriterTimer?.cancel();
+    _sentenceHoldTimer?.cancel();
     _dissolveDelayTimer?.cancel();
     _entranceController.dispose();
     _dissolveController.dispose();
@@ -930,11 +1044,14 @@ class _AnimatedHatiSpeechBubbleState extends State<_AnimatedHatiSpeechBubble>
       return const SizedBox.shrink();
     }
 
-    final displayed = widget.message.substring(
+    final sentence = _sentences.isNotEmpty
+        ? _sentences[_sentenceIndex.clamp(0, _sentences.length - 1)]
+        : '';
+    final displayed = sentence.substring(
       0,
-      _visibleChars.clamp(0, widget.message.length),
+      _visibleChars.clamp(0, sentence.length),
     );
-    final isTyping = _visibleChars < widget.message.length;
+    final isTyping = _visibleChars < sentence.length;
 
     return Align(
       alignment: Alignment.bottomCenter,
@@ -980,11 +1097,17 @@ class _AnimatedHatiSpeechBubbleState extends State<_AnimatedHatiSpeechBubble>
               painter: const _HatiSpeechBubblePainter(),
               child: Padding(
                 padding: _ScaledBubbleText._padding,
-                child: _ScaledBubbleText(
-                  text: isTyping ? '$displayed|' : displayed,
-                  layoutReference: widget.message,
-                  maxWidth: widget.maxWidth,
-                  maxHeight: widget.maxHeight,
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 220),
+                  switchInCurve: Curves.easeOut,
+                  switchOutCurve: Curves.easeIn,
+                  child: _ScaledBubbleText(
+                    key: ValueKey(_sentenceIndex),
+                    text: isTyping ? '$displayed|' : displayed,
+                    layoutReference: _layoutReference,
+                    maxWidth: widget.maxWidth,
+                    maxHeight: widget.maxHeight,
+                  ),
                 ),
               ),
             ),
@@ -1042,7 +1165,7 @@ class HatiLayout {
 
   static const double frogSize = 210;
   static const double bubbleMaxWidth = 328;
-  static const double bubbleMaxHeight = 180;
+  static const double bubbleMaxHeight = 220;
   static const double bubbleBaseFontSize = 16;
   /// Smallest font used in speech bubbles; text never scales below this.
   static const double bubbleMinFontSize = 12;
@@ -1128,7 +1251,7 @@ class HatiSpeakingBlock extends StatelessWidget {
     this.onBubbleDismissed,
     this.frogSize = HatiLayout.frogSize,
     this.dissolveBubble = false,
-    this.holdAfterTyping = const Duration(seconds: 5),
+    this.holdAfterTyping = const Duration(seconds: 2),
   });
 
   @override
@@ -1201,7 +1324,7 @@ class HatiCoachSpeech extends StatelessWidget {
     this.onSequenceComplete,
     this.onBubbleDismissed,
     this.dissolveBubble = false,
-    this.holdAfterTyping = const Duration(seconds: 5),
+    this.holdAfterTyping = const Duration(seconds: 2),
   });
 
   @override
@@ -1265,7 +1388,7 @@ class HatiCoachZone extends StatelessWidget {
     this.onSequenceComplete,
     this.onBubbleDismissed,
     this.dissolveBubble = false,
-    this.holdAfterTyping = const Duration(seconds: 5),
+    this.holdAfterTyping = const Duration(seconds: 2),
     this.showBubble = true,
     this.frogWidthScale = 1,
   });
@@ -1377,7 +1500,7 @@ class HatiSceneShell extends StatelessWidget {
                   frogWidthScale: frogWidthScale,
                 ),
               Expanded(
-                child: SingleChildScrollView(
+                child: _ScrollHintArea(
                   padding: const EdgeInsets.fromLTRB(
                     HatiLayout.horizontalPadding,
                     8,
@@ -1392,6 +1515,144 @@ class HatiSceneShell extends StatelessWidget {
         ),
         if (bottomBar != null) HatiFixedBottomBar(child: bottomBar!),
       ],
+    );
+  }
+}
+
+/// A scrollable region that shows a fading edge + a gently bouncing
+/// chevron at the bottom whenever there's more content below the fold —
+/// e.g. a long list of choice chips/cards that the fixed coach zone above
+/// pushes past the visible area. Hides itself once there's nothing left
+/// to scroll to (including when the content already fits with no
+/// scrolling needed at all).
+class _ScrollHintArea extends StatefulWidget {
+  final EdgeInsetsGeometry padding;
+  final Widget child;
+
+  const _ScrollHintArea({required this.padding, required this.child});
+
+  @override
+  State<_ScrollHintArea> createState() => _ScrollHintAreaState();
+}
+
+class _ScrollHintAreaState extends State<_ScrollHintArea> {
+  final ScrollController _controller = ScrollController();
+  bool _hasMoreBelow = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.addListener(_updateHint);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _updateHint());
+  }
+
+  void _updateHint() {
+    if (!_controller.hasClients) return;
+    final position = _controller.position;
+    // A few px of slack so rounding at the very bottom doesn't leave the
+    // hint flickering on/off.
+    final hasMore = position.maxScrollExtent - position.pixels > 4;
+    if (hasMore != _hasMoreBelow) {
+      setState(() => _hasMoreBelow = hasMore);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.removeListener(_updateHint);
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        NotificationListener<ScrollMetricsNotification>(
+          onNotification: (_) {
+            // Fires when content size/viewport changes (e.g. options load
+            // in), after the frame that produced it — safe to check now.
+            WidgetsBinding.instance.addPostFrameCallback((_) => _updateHint());
+            return false;
+          },
+          child: SingleChildScrollView(
+            controller: _controller,
+            padding: widget.padding,
+            child: widget.child,
+          ),
+        ),
+        if (_hasMoreBelow)
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: IgnorePointer(
+              child: Container(
+                height: 40,
+                alignment: Alignment.bottomCenter,
+                padding: const EdgeInsets.only(bottom: 4),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.white.withValues(alpha: 0),
+                      Colors.white.withValues(alpha: 0.95),
+                    ],
+                  ),
+                ),
+                child: const _BouncingChevron(),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _BouncingChevron extends StatefulWidget {
+  const _BouncingChevron();
+
+  @override
+  State<_BouncingChevron> createState() => _BouncingChevronState();
+}
+
+class _BouncingChevronState extends State<_BouncingChevron>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _offset;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    )..repeat(reverse: true);
+    _offset = Tween<double>(begin: 0, end: 5).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _offset,
+      builder: (context, child) => Transform.translate(
+        offset: Offset(0, _offset.value),
+        child: child,
+      ),
+      child: Icon(
+        Icons.keyboard_arrow_down_rounded,
+        color: HatiColors.mossGreen.withValues(alpha: 0.6),
+        size: 24,
+      ),
     );
   }
 }

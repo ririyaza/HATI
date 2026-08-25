@@ -76,10 +76,16 @@ flutter:
     - assets/scenario.jpg
     - assets/images/HatiCharacter/
     - assets/images/defaultProfile/
-    - assets/images/Scenario/
     - assets/professor_signature/frog_sprite_sheet.png
-    - assets/professor_signature/classroom_bg.jpg
-    - assets/professor_signature/prof.png
+    # Per-scenario background/NPC art — drop a same-named file into the
+    # matching folder to swap it out, no code changes needed.
+    - assets/scenario_themes/foa_supervisor/
+    - assets/scenario_themes/foa_classroom/
+    - assets/scenario_themes/fsn_seat/
+    - assets/scenario_themes/fbop_spotlight/
+    - assets/scenario_themes/fsg_party/
+    - assets/scenario_themes/fne_stage/
+    - assets/scenario_themes/phys_classroom/
 
 
   # An image asset can refer to one or more resolution-specific "variants", see

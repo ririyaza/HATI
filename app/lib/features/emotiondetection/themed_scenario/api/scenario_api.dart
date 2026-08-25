@@ -9,14 +9,30 @@
 // (see ScenarioProvider.start) rather than hardcoded here.
 // ─────────────────────────────────────────────
 
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 
 /// Thin HTTP client shared by every themed scenario. Talks to
 /// `/scenario/start|step|step_audio` with whatever `theme`/`scenario_key`
 /// it's given.
 class ScenarioApi {
-  static const String baseUrl = "http://192.168.254.194:5000";
+  static const String baseUrl = "http://192.168.1.8:5000";
+
+  /// Without a timeout, an unreachable [baseUrl] (server not running, IP
+  /// changed, device on a different network) just hangs indefinitely with
+  /// no error — the scenario looks "stuck loading" forever instead of
+  /// failing visibly. This caps every request so ScenarioProvider's
+  /// try/catch always gets a chance to surface a real error message.
+  static const Duration _requestTimeout = Duration(seconds: 15);
+
+  Never _throwUnreachable() {
+    throw Exception(
+      "Couldn't reach the scenario server at $baseUrl. Make sure it's "
+      "running and that this device is on the same network.",
+    );
+  }
 
   Future<Map<String, dynamic>> start({
     required String scenarioKey,
@@ -25,18 +41,27 @@ class ScenarioApi {
     String? userName,
     bool forceNew = false,
   }) async {
-    final response = await http.post(
-      Uri.parse("$baseUrl/scenario/start"),
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode({
-        "theme": theme,
-        "scenario_key": scenarioKey,
-        if (userName != null && userName.trim().isNotEmpty)
-          "user_name": userName.trim(),
-        "user_id": userId,
-        "force_new": forceNew,
-      }),
-    );
+    final http.Response response;
+    try {
+      response = await http
+          .post(
+            Uri.parse("$baseUrl/scenario/start"),
+            headers: {"Content-Type": "application/json"},
+            body: jsonEncode({
+              "theme": theme,
+              "scenario_key": scenarioKey,
+              if (userName != null && userName.trim().isNotEmpty)
+                "user_name": userName.trim(),
+              "user_id": userId,
+              "force_new": forceNew,
+            }),
+          )
+          .timeout(_requestTimeout);
+    } on TimeoutException {
+      _throwUnreachable();
+    } on SocketException {
+      _throwUnreachable();
+    }
 
     if (response.statusCode != 200) {
       throw Exception("Server error: ${response.statusCode}");
@@ -50,17 +75,26 @@ class ScenarioApi {
     String? userName,
     required String userId,
   }) async {
-    final response = await http.post(
-      Uri.parse("$baseUrl/scenario/step"),
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode({
-        "session_id": sessionId,
-        "text": text,
-        if (userName != null && userName.trim().isNotEmpty)
-          "user_name": userName.trim(),
-        "user_id": userId,
-      }),
-    );
+    final http.Response response;
+    try {
+      response = await http
+          .post(
+            Uri.parse("$baseUrl/scenario/step"),
+            headers: {"Content-Type": "application/json"},
+            body: jsonEncode({
+              "session_id": sessionId,
+              "text": text,
+              if (userName != null && userName.trim().isNotEmpty)
+                "user_name": userName.trim(),
+              "user_id": userId,
+            }),
+          )
+          .timeout(_requestTimeout);
+    } on TimeoutException {
+      _throwUnreachable();
+    } on SocketException {
+      _throwUnreachable();
+    }
 
     if (response.statusCode != 200) {
       throw Exception("Server error: ${response.statusCode}");
@@ -85,8 +119,15 @@ class ScenarioApi {
       ),
     );
 
-    final streamed = await request.send();
-    final response = await http.Response.fromStream(streamed);
+    final http.Response response;
+    try {
+      final streamed = await request.send().timeout(_requestTimeout);
+      response = await http.Response.fromStream(streamed);
+    } on TimeoutException {
+      _throwUnreachable();
+    } on SocketException {
+      _throwUnreachable();
+    }
 
     if (response.statusCode != 200) {
       throw Exception("Server error: ${response.statusCode} ${response.body}");
