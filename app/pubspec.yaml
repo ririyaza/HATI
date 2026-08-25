@@ -46,6 +46,8 @@ dependencies:
   google_fonts: ^8.1.0
   font_awesome_flutter: ^11.0.0
   flame: ^1.37.0
+  google_sign_in: ^7.2.0
+  flutter_facebook_auth: ^7.2.0
 
 dev_dependencies:
   flutter_test:
@@ -76,9 +78,13 @@ flutter:
     - assets/scenario.jpg
     - assets/images/HatiCharacter/
     - assets/images/defaultProfile/
+    - assets/images/Scenario/
     - assets/professor_signature/frog_sprite_sheet.png
-    # Per-scenario background/NPC art — drop a same-named file into the
-    # matching folder to swap it out, no code changes needed.
+    - assets/professor_signature/classroom_bg.jpg
+    - assets/professor_signature/prof.png
+    # Per-scenario background/NPC art (themed_scenario feature) — drop a
+    # same-named file into the matching folder to swap it out, no code
+    # changes needed.
     - assets/scenario_themes/foa_supervisor/
     - assets/scenario_themes/foa_classroom/
     - assets/scenario_themes/fsn_seat/

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">app</string>
+
+    <!-- TODO: replace with the values from your Facebook Developer app
+         (Settings > Basic) before Facebook login will work. -->
+    <string name="facebook_app_id">1782107466305005</string>
+    <string name="fb_login_protocol_scheme">fb1782107466305005</string>
+    <string name="facebook_client_token">3890cc9d9cf552e6a5c654b99549645e</string>
+</resources>

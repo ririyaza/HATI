@@ -3,12 +3,19 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../data/spin_questions.dart';
+import '../data/spin_scoring.dart';
 import '../../dashboard/screen/dashboard_screen.dart';
 import 'low_score_exit_screen.dart';
 import 'spin_result_screen.dart';
 
 class SpinAssessmentScreen extends StatefulWidget {
-  const SpinAssessmentScreen({super.key});
+  /// True when the user is retaking the assessment after being blocked by
+  /// a low score. Skips the completed/blocked redirect guard (eligibility
+  /// was already verified by [LowScoreExitScreen] before navigating here)
+  /// and clears any leftover answers from the prior attempt.
+  final bool isRetake;
+
+  const SpinAssessmentScreen({super.key, this.isRetake = false});
 
   @override
   State<SpinAssessmentScreen> createState() => _SpinAssessmentScreenState();
@@ -32,10 +39,17 @@ class _SpinAssessmentScreenState extends State<SpinAssessmentScreen> {
   @override
   void initState() {
     super.initState();
+    if (widget.isRetake) {
+      for (final q in spinQuestions) {
+        q.selectedScore = null;
+      }
+    }
     _guardAgainstRetake();
   }
 
   Future<void> _guardAgainstRetake() async {
+    if (widget.isRetake) return;
+
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
     try {
@@ -148,10 +162,10 @@ class _SpinAssessmentScreenState extends State<SpinAssessmentScreen> {
           'initialSpinScore': totalScore,
           'initialSpinCompleted': true,
           'initialSpinCompletedAt': FieldValue.serverTimestamp(),
+          'accessBlocked': !spinQualifies(totalScore),
         }, SetOptions(merge: true));
       } catch (_) {}
     }
-
     if (!mounted) return;
     Navigator.pushReplacement(
       context,

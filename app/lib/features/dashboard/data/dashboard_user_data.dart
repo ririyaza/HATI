@@ -159,6 +159,12 @@ class DashboardUserDataParser {
       icon: 'W',
       totalScenarios: 1,
     ),
+    'foa_supervisor': _ModuleDefinition(
+      title: "THE PROFESSOR'S SIGNATURE",
+      subtitle: 'Fear of Authority - 1 scenario',
+      icon: 'P',
+      totalScenarios: 1,
+    ),
   };
 
   static DashboardUserData parse({
