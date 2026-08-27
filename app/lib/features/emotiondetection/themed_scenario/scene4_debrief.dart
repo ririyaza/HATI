@@ -13,7 +13,6 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'app_theme.dart';
 import 'scenario_models.dart';
 import 'scenario_provider.dart';
 import 'shared_widgets.dart';
@@ -63,38 +62,37 @@ class _Scene4DebriefState extends State<Scene4Debrief> {
       body = TextResponseCard(
         key: ValueKey(step),
         hintText: ui.placeholder ?? 'Type your response...',
-        isLoading: provider.isLoading,
+        isLoading: provider.isLoading || !_dialogueComplete,
         onSubmit: provider.submitText,
       );
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Debrief')),
-      body: Column(
-        children: [
-          Container(
-            color: HatiColors.deepForest,
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-            child: const SceneProgressBar(
+      body: ScenarioGradientBackground(
+        child: Column(
+          children: [
+            const SceneTopHeader(
               currentStep: 4,
               totalSteps: 7,
               sceneLabel: 'Post-Interaction Reflection',
             ),
-          ),
-          Expanded(
-            child: HatiSceneShell(
-              showCoach: true,
-              persistentMessage: hatiText,
-              frogWidthScale: 1.08,
-              onSequenceComplete: () {
-                if (mounted && !_dialogueComplete) {
-                  setState(() => _dialogueComplete = true);
-                }
-              },
-              body: body,
+            const SceneSpeedToggleRow(),
+            Expanded(
+              child: HatiSceneShell(
+                showCoach: true,
+                persistentMessage: hatiText,
+                frogWidthScale: 1.08,
+                onSequenceComplete: () {
+                  if (mounted && !_dialogueComplete) {
+                    setState(() => _dialogueComplete = true);
+                  }
+                },
+                body: body,
+                contentBackgroundColor: Colors.white,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -121,16 +119,8 @@ class _AnxietySliderCardState extends State<_AnxietySliderCard> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return Padding(
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: HatiColors.divider),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8),
-        ],
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -180,6 +170,7 @@ class _DebriefChoiceCard extends StatelessWidget {
             padding: const EdgeInsets.only(bottom: 10),
             child: HatiOutlineButton(
               label: opt,
+              enabled: !isLoading,
               onTap: isLoading ? () {} : () => onSubmit(opt),
             ),
           ),
