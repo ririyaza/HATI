@@ -160,6 +160,11 @@ class _Scene0PreSetupState extends State<Scene0PreSetup>
                                     ),
                                   ),
                                 ),
+                                const SizedBox(height: 10),
+                                const Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: HatiSpeedToggle(),
+                                ),
 
                                 const Spacer(),
 

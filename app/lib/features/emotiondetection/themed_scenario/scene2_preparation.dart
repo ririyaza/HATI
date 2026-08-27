@@ -45,6 +45,8 @@ class _Scene2PreparationState extends State<Scene2Preparation> {
 
     Widget? body;
     Widget? bottomBar;
+    Widget? fixedHeader;
+    Color? contentBackgroundColor;
 
     if (ui.type == ScenarioUIType.buttons) {
       if (ui.options.length == 1) {
@@ -58,7 +60,15 @@ class _Scene2PreparationState extends State<Scene2Preparation> {
               : () => provider.submitText(ui.options.first),
         );
       } else {
-        // foa_s2_script -> canned scripts + "write your own" option.
+        // foa_s2_script -> canned scripts + "write your own" option. Solid
+        // white behind the whole section (not just a card) so none of the
+        // green background shows through on the sides or below a short
+        // list of options.
+        contentBackgroundColor = Colors.white;
+        fixedHeader = const SectionHeader(
+          title: 'Choose Your Script',
+          subtitle: 'Select one or write your own',
+        );
         body = _ScriptChoiceList(
           key: ValueKey(step),
           options: ui.options,
@@ -71,44 +81,44 @@ class _Scene2PreparationState extends State<Scene2Preparation> {
       body = TextResponseCard(
         key: ValueKey(step),
         hintText: ui.placeholder ?? 'Type your response...',
-        isLoading: provider.isLoading,
+        isLoading: provider.isLoading || !_dialogueComplete,
         onSubmit: provider.submitText,
       );
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Preparation')),
-      body: Column(
-        children: [
-          Container(
-            color: HatiColors.deepForest,
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-            child: const SceneProgressBar(
+      body: ScenarioGradientBackground(
+        child: Column(
+          children: [
+            const SceneTopHeader(
               currentStep: 2,
               totalSteps: 7,
               sceneLabel: 'Preparation & Intention',
             ),
-          ),
-          Expanded(
-            child: HatiSceneShell(
-              showCoach: true,
-              persistentMessage: hatiText,
-              onSequenceComplete: () {
-                if (mounted && !_dialogueComplete) {
-                  setState(() => _dialogueComplete = true);
-                }
-              },
-              body: body,
-              bottomBar: bottomBar,
+            const SceneSpeedToggleRow(),
+            Expanded(
+              child: HatiSceneShell(
+                showCoach: true,
+                persistentMessage: hatiText,
+                onSequenceComplete: () {
+                  if (mounted && !_dialogueComplete) {
+                    setState(() => _dialogueComplete = true);
+                  }
+                },
+                fixedHeader: fixedHeader,
+                body: body,
+                bottomBar: bottomBar,
+                contentBackgroundColor: contentBackgroundColor,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 }
 
-class _ScriptChoiceList extends StatelessWidget {
+class _ScriptChoiceList extends StatefulWidget {
   final List<String> options;
   final bool isLoading;
   final ValueChanged<String> onSubmit;
@@ -121,21 +131,29 @@ class _ScriptChoiceList extends StatelessWidget {
   });
 
   @override
+  State<_ScriptChoiceList> createState() => _ScriptChoiceListState();
+}
+
+class _ScriptChoiceListState extends State<_ScriptChoiceList> {
+  int? _selectedIndex;
+
+  @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SectionHeader(
-          title: 'Choose Your Script',
-          subtitle: 'Select one or write your own',
-        ),
-        const SizedBox(height: 12),
-        for (var i = 0; i < options.length; i++)
+        for (var i = 0; i < widget.options.length; i++)
           ScriptOptionCard(
             label: String.fromCharCode(65 + i), // A, B, C, ...
-            script: options[i],
-            selected: false,
-            onTap: isLoading ? () {} : () => onSubmit(options[i]),
+            script: widget.options[i],
+            selected: _selectedIndex == i,
+            enabled: !widget.isLoading,
+            onTap: widget.isLoading
+                ? () {}
+                : () {
+                    setState(() => _selectedIndex = i);
+                    widget.onSubmit(widget.options[i]);
+                  },
           ),
       ],
     );

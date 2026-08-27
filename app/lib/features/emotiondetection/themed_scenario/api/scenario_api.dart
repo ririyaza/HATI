@@ -18,7 +18,7 @@ import 'package:http/http.dart' as http;
 /// `/scenario/start|step|step_audio` with whatever `theme`/`scenario_key`
 /// it's given.
 class ScenarioApi {
-  static const String baseUrl = "http://192.168.1.8:5000";
+  static const String baseUrl = "http://192.168.1.10:5000";
 
   /// Without a timeout, an unreachable [baseUrl] (server not running, IP
   /// changed, device on a different network) just hangs indefinitely with

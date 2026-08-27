@@ -135,7 +135,7 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
         .where((t) => t.trim().isNotEmpty)
         .toList();
 
-    final profText = profLines.isNotEmpty ? profLines.join('\n\n') : 'Yes? What is it?';
+    final profText = profLines.join('\n\n');
     final hatiText = hatiLines.join('\n\n');
     final isTextInput = provider.ui.type == ScenarioUIType.textInput;
 
@@ -154,6 +154,7 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
         child: Column(
           children: [
             _ApproachTopBar(progress: _progressForStep(step, provider.ui.type)),
+            const SceneSpeedToggleRow(),
             Expanded(
               child: Stack(
                 fit: StackFit.expand,
@@ -166,33 +167,49 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
                     height: double.infinity,
                   ),
                   Positioned(
+                    left: 16,
                     right: 4,
                     top: 12,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.end,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _CharacterSpeechBubble(text: profText),
-                        if (config.spriteAsset != null) ...[
-                          const SizedBox(height: 8),
-                          Image.asset(
-                            config.spriteAsset!,
-                            height: sceneHeight * 0.34,
-                            fit: BoxFit.contain,
-                          ),
-                        ],
+                        // User's own last message lives in its own lane so a
+                        // long reply can never grow into the NPC bubble's
+                        // space — each is capped to its own share of the
+                        // width instead of both being free to reach 55% of
+                        // the full screen and colliding in the middle.
+                        Expanded(
+                          child: (_lastSentText != null &&
+                                  _lastSentText!.isNotEmpty)
+                              ? Align(
+                                  alignment: Alignment.topLeft,
+                                  child: _CharacterSpeechBubble(
+                                    text: _lastSentText!,
+                                    alignEnd: false,
+                                  ),
+                                )
+                              : const SizedBox.shrink(),
+                        ),
+                        const SizedBox(width: 12),
+                        Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            if (profText.isNotEmpty)
+                              _CharacterSpeechBubble(text: profText),
+                            if (config.spriteAsset != null) ...[
+                              const SizedBox(height: 8),
+                              Image.asset(
+                                config.spriteAsset!,
+                                height: sceneHeight * 0.34,
+                                fit: BoxFit.contain,
+                              ),
+                            ],
+                          ],
+                        ),
                       ],
                     ),
                   ),
-                  if (_lastSentText != null && _lastSentText!.isNotEmpty)
-                    Positioned(
-                      left: 16,
-                      top: 100,
-                      child: _CharacterSpeechBubble(
-                        text: _lastSentText!,
-                        alignEnd: false,
-                      ),
-                    ),
                   Positioned(
                     left: 0,
                     right: 0,
@@ -215,7 +232,10 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
             if (isTextInput)
               _ApproachInputBar(
                 controller: _controller,
-                enabled: !provider.isLoading && !_isRecording && !_isTranscribing,
+                enabled: !provider.isLoading &&
+                    !_isRecording &&
+                    !_isTranscribing &&
+                    dialogueReady,
                 isRecording: _isRecording,
                 isTranscribing: _isTranscribing,
                 hintText: _isRecording

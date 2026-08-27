@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'dashboard_screen.dart';
+
 class SupportResourcesScreen extends StatelessWidget {
   const SupportResourcesScreen({super.key});
 
@@ -94,7 +96,10 @@ class SupportResourcesScreen extends StatelessWidget {
                     ),
                     backgroundColor: Colors.white,
                   ),
-                  onPressed: () => Navigator.of(context).pop(),
+                  onPressed: () => Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (_) => const DashboardScreen()),
+                    (route) => false,
+                  ),
                   child: const Text(
                     'Return Home',
                     style: TextStyle(

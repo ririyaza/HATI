@@ -36,7 +36,8 @@ class HatiBubble extends StatefulWidget {
   State<HatiBubble> createState() => _HatiBubbleState();
 }
 
-class _HatiBubbleState extends State<HatiBubble> with SingleTickerProviderStateMixin {
+class _HatiBubbleState extends State<HatiBubble>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _fadeIn;
 
@@ -87,10 +88,7 @@ class _HatiBubbleState extends State<HatiBubble> with SingleTickerProviderStateM
                   width: 1,
                 ),
               ),
-              child: Text(
-                widget.text,
-                style: HatiTextStyles.hatiSpeech,
-              ),
+              child: Text(widget.text, style: HatiTextStyles.hatiSpeech),
             ),
           ),
         ],
@@ -213,6 +211,9 @@ class PIESChip extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
   final Color? selectedColor;
+  // Dimmed while Hati is still speaking/typing, so the chips visibly "light
+  // up" to full opacity once the player is actually allowed to tap one.
+  final bool enabled;
 
   const PIESChip({
     super.key,
@@ -220,40 +221,47 @@ class PIESChip extends StatelessWidget {
     required this.selected,
     required this.onTap,
     this.selectedColor,
+    this.enabled = true,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-        decoration: BoxDecoration(
-          color: selected
-              ? (selectedColor ?? HatiColors.mossGreen)
-              : HatiColors.surface,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(
+    return AnimatedOpacity(
+      duration: const Duration(milliseconds: 350),
+      opacity: enabled ? 1 : 0.4,
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+          decoration: BoxDecoration(
             color: selected
                 ? (selectedColor ?? HatiColors.mossGreen)
-                : HatiColors.divider,
-            width: 1.5,
+                : HatiColors.surface,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: selected
+                  ? (selectedColor ?? HatiColors.mossGreen)
+                  : HatiColors.divider,
+              width: 1.5,
+            ),
+            boxShadow: selected
+                ? [
+                    BoxShadow(
+                      color: (selectedColor ?? HatiColors.mossGreen).withValues(
+                        alpha: 0.25,
+                      ),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : [],
           ),
-          boxShadow: selected
-              ? [
-                  BoxShadow(
-                    color: (selectedColor ?? HatiColors.mossGreen).withValues(alpha: 0.25),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  )
-                ]
-              : [],
-        ),
-        child: Text(
-          label,
-          style: HatiTextStyles.buttonSmall.copyWith(
-            color: selected ? Colors.white : HatiColors.textMedium,
+          child: Text(
+            label,
+            style: HatiTextStyles.buttonSmall.copyWith(
+              color: selected ? Colors.white : HatiColors.textMedium,
+            ),
           ),
         ),
       ),
@@ -267,6 +275,9 @@ class ScriptOptionCard extends StatelessWidget {
   final String script;
   final bool selected;
   final VoidCallback onTap;
+  // Dimmed while Hati is still speaking/typing, so the cards visibly "light
+  // up" to full opacity once the player is actually allowed to tap one.
+  final bool enabled;
 
   const ScriptOptionCard({
     super.key,
@@ -274,59 +285,75 @@ class ScriptOptionCard extends StatelessWidget {
     required this.script,
     required this.selected,
     required this.onTap,
+    this.enabled = true,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: selected ? HatiColors.mossGreen.withValues(alpha: 0.08) : Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: selected ? HatiColors.mossGreen : HatiColors.divider,
-            width: selected ? 2 : 1,
+    return AnimatedOpacity(
+      duration: const Duration(milliseconds: 350),
+      opacity: enabled ? 1 : 0.4,
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: selected ? HatiColors.mossGreen : Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: selected ? HatiColors.mossGreen : HatiColors.divider,
+              width: selected ? 2 : 1,
+            ),
+            boxShadow: selected
+                ? [
+                    BoxShadow(
+                      color: HatiColors.mossGreen.withValues(alpha: 0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ]
+                : [],
           ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color: selected ? HatiColors.mossGreen : HatiColors.surface,
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: selected ? HatiColors.mossGreen : HatiColors.divider,
+          child: Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: selected ? Colors.white : HatiColors.surface,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: selected ? Colors.white : HatiColors.divider,
+                  ),
                 ),
-              ),
-              child: Center(
-                child: Text(
-                  label,
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: selected ? Colors.white : HatiColors.textMedium,
-                    fontSize: 13,
+                child: Center(
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: selected
+                          ? HatiColors.mossGreen
+                          : HatiColors.textMedium,
+                      fontSize: 13,
+                    ),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                script,
-                style: HatiTextStyles.bodyMedium.copyWith(
-                  color: selected ? HatiColors.textDark : HatiColors.textMedium,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  script,
+                  style: HatiTextStyles.bodyMedium.copyWith(
+                    color: selected ? Colors.white : HatiColors.textMedium,
+                  ),
                 ),
               ),
-            ),
-            if (selected)
-              const Icon(Icons.check_circle, color: HatiColors.mossGreen, size: 20),
-          ],
+              if (selected)
+                const Icon(Icons.check_circle, color: Colors.white, size: 20),
+            ],
+          ),
         ),
       ),
     );
@@ -357,7 +384,10 @@ class HatiButton extends StatelessWidget {
       mainAxisSize: fullWidth ? MainAxisSize.max : MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        if (icon != null) ...[Icon(icon, size: 20, color: Colors.white), const SizedBox(width: 8)],
+        if (icon != null) ...[
+          Icon(icon, size: 20, color: Colors.white),
+          const SizedBox(width: 8),
+        ],
         Flexible(
           child: Text(
             label,
@@ -383,7 +413,7 @@ class HatiButton extends StatelessWidget {
                     color: bg.withValues(alpha: 0.35),
                     blurRadius: 12,
                     offset: const Offset(0, 4),
-                  )
+                  ),
                 ]
               : [],
         ),
@@ -398,34 +428,43 @@ class HatiOutlineButton extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
   final Color? borderColor;
+  // Dimmed while Hati is still speaking/typing, so multi-option lists built
+  // from these (see scene4/5's choice cards) visibly "light up" once the
+  // player is actually allowed to tap one.
+  final bool enabled;
 
   const HatiOutlineButton({
     super.key,
     required this.label,
     required this.onTap,
     this.borderColor,
+    this.enabled = true,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          color: Colors.transparent,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: borderColor ?? HatiColors.mossGreen,
-            width: 1.5,
-          ),
-        ),
-        child: Center(
-          child: Text(
-            label,
-            style: HatiTextStyles.button.copyWith(
+    return AnimatedOpacity(
+      duration: const Duration(milliseconds: 350),
+      opacity: enabled ? 1 : 0.4,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          decoration: BoxDecoration(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
               color: borderColor ?? HatiColors.mossGreen,
+              width: 1.5,
+            ),
+          ),
+          child: Center(
+            child: Text(
+              label,
+              style: HatiTextStyles.button.copyWith(
+                color: borderColor ?? HatiColors.mossGreen,
+              ),
             ),
           ),
         ),
@@ -517,7 +556,9 @@ class _SliderQuestionState extends State<SliderQuestion> {
             ),
             child: Text(
               '${_value.toInt()} / 10',
-              style: HatiTextStyles.heading3.copyWith(color: HatiColors.mossGreen),
+              style: HatiTextStyles.heading3.copyWith(
+                color: HatiColors.mossGreen,
+              ),
             ),
           ),
         ),
@@ -565,6 +606,82 @@ class SceneProgressBar extends StatelessWidget {
   }
 }
 
+// ── Scene top header ────────────────────────────────────────────────────────
+/// Replaces a separate `Scaffold.appBar` (a stock white/light Material bar
+/// that clashed with the dark [HatiColors.deepForest] progress panel sitting
+/// right below it). Folds the back button into that same dark panel instead,
+/// so scenes get one themed header rather than two mismatched ones stacked
+/// on top of each other.
+class SceneTopHeader extends StatelessWidget {
+  final String sceneLabel;
+  final int currentStep;
+  final int totalSteps;
+
+  const SceneTopHeader({
+    super.key,
+    required this.sceneLabel,
+    required this.currentStep,
+    required this.totalSteps,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      color: HatiColors.deepForest,
+      padding: const EdgeInsets.fromLTRB(8, 0, 20, 12),
+      child: SafeArea(
+        bottom: false,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            IconButton(
+              onPressed: () => Navigator.maybePop(context),
+              icon: const Icon(Icons.arrow_back, color: HatiColors.warmCream),
+              visualDensity: VisualDensity.compact,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+            ),
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.only(left: 12),
+              child: SceneProgressBar(
+                currentStep: currentStep,
+                totalSteps: totalSteps,
+                sceneLabel: sceneLabel,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Scenario gradient background ────────────────────────────────────────────
+/// Same dark-green backdrop as the scenario's landing screen
+/// (Scene0PreSetup), reused so scenes that used to fall back to a plain
+/// white Scaffold background share that same look instead.
+class ScenarioGradientBackground extends StatelessWidget {
+  final Widget child;
+
+  const ScenarioGradientBackground({super.key, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [HatiColors.deepForest, Color(0xFF2A4A2A)],
+        ),
+      ),
+      child: child,
+    );
+  }
+}
+
 // ── PIES Section ──────────────────────────────────────────────────────────────
 class PIESSection extends StatelessWidget {
   final String label;
@@ -573,6 +690,7 @@ class PIESSection extends StatelessWidget {
   final String? selected;
   final Function(String) onSelect;
   final Color? selectedColor;
+  final bool enabled;
 
   const PIESSection({
     super.key,
@@ -582,6 +700,7 @@ class PIESSection extends StatelessWidget {
     required this.selected,
     required this.onSelect,
     this.selectedColor,
+    this.enabled = true,
   });
 
   @override
@@ -600,12 +719,17 @@ class PIESSection extends StatelessWidget {
         Wrap(
           spacing: 8,
           runSpacing: 8,
-          children: options.map((opt) => PIESChip(
-            label: opt,
-            selected: selected == opt,
-            selectedColor: selectedColor,
-            onTap: () => onSelect(opt),
-          )).toList(),
+          children: options
+              .map(
+                (opt) => PIESChip(
+                  label: opt,
+                  selected: selected == opt,
+                  selectedColor: selectedColor,
+                  enabled: enabled,
+                  onTap: () => onSelect(opt),
+                ),
+              )
+              .toList(),
         ),
       ],
     );
@@ -682,7 +806,9 @@ class _TextResponseCardState extends State<TextResponseCard> {
         HatiButton(
           label: widget.buttonLabel,
           icon: Icons.send_rounded,
-          onTap: canSubmit ? () => widget.onSubmit(_controller.text.trim()) : null,
+          onTap: canSubmit
+              ? () => widget.onSubmit(_controller.text.trim())
+              : null,
         ),
       ],
     );
@@ -748,9 +874,11 @@ class _HatiSpeechSequenceState extends State<HatiSpeechSequence> {
 ) {
   if (content.isEmpty) return (HatiLayout.bubbleBaseFontSize, true);
 
-  for (var size = HatiLayout.bubbleBaseFontSize;
-      size >= HatiLayout.bubbleMinFontSize;
-      size -= 0.5) {
+  for (
+    var size = HatiLayout.bubbleBaseFontSize;
+    size >= HatiLayout.bubbleMinFontSize;
+    size -= 0.5
+  ) {
     if (_measureBubbleTextHeight(content, size, innerMaxW) <= innerMaxH) {
       return (size, true);
     }
@@ -758,7 +886,11 @@ class _HatiSpeechSequenceState extends State<HatiSpeechSequence> {
   return (HatiLayout.bubbleMinFontSize, false);
 }
 
-double _measureBubbleTextHeight(String content, double fontSize, double innerMaxW) {
+double _measureBubbleTextHeight(
+  String content,
+  double fontSize,
+  double innerMaxW,
+) {
   final painter = TextPainter(
     text: TextSpan(
       text: content,
@@ -785,7 +917,11 @@ List<String> _paginateBubbleText(
   double innerMaxW,
   double innerMaxH,
 ) {
-  final words = text.trim().split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
+  final words = text
+      .trim()
+      .split(RegExp(r'\s+'))
+      .where((w) => w.isNotEmpty)
+      .toList();
   if (words.isEmpty) return const [];
 
   final pages = <String>[];
@@ -813,6 +949,7 @@ class _ScaledBubbleText extends StatelessWidget {
 
   /// Visible typewriter text.
   final String text;
+
   /// Full message used to pick a stable font size (avoids resize jumps while typing).
   final String layoutReference;
   final double maxWidth;
@@ -845,6 +982,107 @@ class _ScaledBubbleText extends StatelessWidget {
           height: _lineHeight,
         ),
       ),
+    );
+  }
+}
+
+// ── Speech speed control ────────────────────────────────────────────────────
+/// Global "2x" toggle for how fast Hati's typewriter dialogue plays across
+/// the whole scenario. A single switch rather than a per-widget setting,
+/// since every scene's coach speech (and the NPC/frog bubbles in scene3)
+/// all render through [_AnimatedHatiSpeechBubble] — flipping this one flag
+/// speeds all of them up together.
+class HatiSpeechSpeedController {
+  HatiSpeechSpeedController._();
+
+  static final ValueNotifier<bool> isFast = ValueNotifier<bool>(false);
+
+  static const Duration _baseCharInterval = Duration(milliseconds: 20);
+  static const Duration _baseSentenceHold = Duration(seconds: 2);
+
+  /// Read fresh on every tick (rather than cached once per sentence) so
+  /// toggling mid-sentence speeds up the very next character instead of
+  /// waiting for the next sentence to start.
+  static Duration get charInterval =>
+      isFast.value ? _baseCharInterval ~/ 2 : _baseCharInterval;
+
+  static Duration get sentenceHoldInterval =>
+      isFast.value ? _baseSentenceHold ~/ 2 : _baseSentenceHold;
+
+  static void toggle() => isFast.value = !isFast.value;
+}
+
+/// Small pill switch for [HatiSpeechSpeedController]. Meant to sit in a
+/// scene's top header, on the same side as the back button.
+class HatiSpeedToggle extends StatelessWidget {
+  const HatiSpeedToggle({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<bool>(
+      valueListenable: HatiSpeechSpeedController.isFast,
+      builder: (context, isFast, _) {
+        final fg = isFast ? HatiColors.deepForest : HatiColors.warmCream;
+        return GestureDetector(
+          onTap: HatiSpeechSpeedController.toggle,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: isFast
+                  ? HatiColors.softGold
+                  : Colors.white.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isFast
+                    ? HatiColors.softGold
+                    : Colors.white.withValues(alpha: 0.45),
+                width: 1.2,
+              ),
+              boxShadow: isFast
+                  ? [
+                      BoxShadow(
+                        color: HatiColors.softGold.withValues(alpha: 0.35),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ]
+                  : [],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.fast_forward_rounded, size: 15, color: fg),
+                const SizedBox(width: 4),
+                Text(
+                  '2x',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: fg,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Left-aligned strip for [HatiSpeedToggle], meant to sit directly below a
+/// scene's top header rather than crammed inside it — keeps the header a
+/// clean two-element bar (back button + progress) instead of stacking a
+/// third row into that dark panel.
+class SceneSpeedToggleRow extends StatelessWidget {
+  const SceneSpeedToggleRow({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.fromLTRB(20, 10, 20, 0),
+      child: Align(alignment: Alignment.centerLeft, child: HatiSpeedToggle()),
     );
   }
 }
@@ -888,14 +1126,12 @@ class _AnimatedHatiSpeechBubble extends StatefulWidget {
   });
 
   @override
-  State<_AnimatedHatiSpeechBubble> createState() => _AnimatedHatiSpeechBubbleState();
+  State<_AnimatedHatiSpeechBubble> createState() =>
+      _AnimatedHatiSpeechBubbleState();
 }
 
 class _AnimatedHatiSpeechBubbleState extends State<_AnimatedHatiSpeechBubble>
     with TickerProviderStateMixin {
-  static const _charInterval = Duration(milliseconds: 20);
-  static const _sentenceHold = Duration(seconds: 2);
-
   late final AnimationController _entranceController;
   late final AnimationController _dissolveController;
   late final Animation<double> _entranceScale;
@@ -925,13 +1161,19 @@ class _AnimatedHatiSpeechBubbleState extends State<_AnimatedHatiSpeechBubble>
         .clamp(0.0, widget.maxWidth);
     final innerMaxH = (widget.maxHeight - _ScaledBubbleText._padding.vertical)
         .clamp(0.0, widget.maxHeight);
-    final (fontSize, _) = _fitBubbleFontSize(_layoutReference, innerMaxW, innerMaxH);
+    final (fontSize, _) = _fitBubbleFontSize(
+      _layoutReference,
+      innerMaxW,
+      innerMaxH,
+    );
 
     // A sentence that alone still doesn't fit at that font size gets
     // paginated further, so it pages like separate dialogue lines instead
     // of overflowing the bubble.
     _sentences = rawSentences.expand((s) {
-      if (_measureBubbleTextHeight(s, fontSize, innerMaxW) <= innerMaxH) return [s];
+      if (_measureBubbleTextHeight(s, fontSize, innerMaxW) <= innerMaxH) {
+        return [s];
+      }
       return _paginateBubbleText(s, fontSize, innerMaxW, innerMaxH);
     }).toList();
 
@@ -977,18 +1219,22 @@ class _AnimatedHatiSpeechBubbleState extends State<_AnimatedHatiSpeechBubble>
       _holdThenAdvance();
       return;
     }
+    _scheduleNextChar(sentence);
+  }
 
-    _typewriterTimer = Timer.periodic(_charInterval, (timer) {
-      if (!mounted) {
-        timer.cancel();
-        return;
-      }
+  // A self-rescheduling one-shot timer (rather than Timer.periodic, which
+  // locks in its interval at start) so toggling HatiSpeechSpeedController
+  // mid-sentence speeds up the very next character instead of waiting for
+  // the current sentence to finish.
+  void _scheduleNextChar(String sentence) {
+    _typewriterTimer = Timer(HatiSpeechSpeedController.charInterval, () {
+      if (!mounted) return;
       if (_visibleChars >= sentence.length) {
-        timer.cancel();
         _holdThenAdvance();
         return;
       }
       setState(() => _visibleChars++);
+      _scheduleNextChar(sentence);
     });
   }
 
@@ -999,14 +1245,17 @@ class _AnimatedHatiSpeechBubbleState extends State<_AnimatedHatiSpeechBubble>
       return;
     }
 
-    _sentenceHoldTimer = Timer(_sentenceHold, () {
-      if (!mounted) return;
-      setState(() {
-        _sentenceIndex++;
-        _visibleChars = 0;
-      });
-      _typeCurrentSentence();
-    });
+    _sentenceHoldTimer = Timer(
+      HatiSpeechSpeedController.sentenceHoldInterval,
+      () {
+        if (!mounted) return;
+        setState(() {
+          _sentenceIndex++;
+          _visibleChars = 0;
+        });
+        _typeCurrentSentence();
+      },
+    );
   }
 
   void _scheduleDissolve() {
@@ -1062,7 +1311,8 @@ class _AnimatedHatiSpeechBubbleState extends State<_AnimatedHatiSpeechBubble>
           _entranceSlide,
         ]),
         builder: (context, child) {
-          final dissolving = _dissolveController.isAnimating ||
+          final dissolving =
+              _dissolveController.isAnimating ||
               _dissolveController.status == AnimationStatus.completed;
           final opacity = dissolving
               ? _dissolveOpacity.value
@@ -1076,10 +1326,7 @@ class _AnimatedHatiSpeechBubbleState extends State<_AnimatedHatiSpeechBubble>
             child: Transform.scale(
               scale: scale,
               alignment: Alignment.bottomCenter,
-              child: SlideTransition(
-                position: _entranceSlide,
-                child: child,
-              ),
+              child: SlideTransition(position: _entranceSlide, child: child),
             ),
           );
         },
@@ -1147,7 +1394,10 @@ class _HatiSpeechBubblePainter extends CustomPainter {
       ..color = Colors.white
       ..style = PaintingStyle.fill;
 
-    canvas.drawPath(Path.combine(PathOperation.union, bubblePath, tailPath), paint);
+    canvas.drawPath(
+      Path.combine(PathOperation.union, bubblePath, tailPath),
+      paint,
+    );
   }
 
   @override
@@ -1157,7 +1407,8 @@ class _HatiSpeechBubblePainter extends CustomPainter {
 // ── Hati Frog Character ───────────────────────────────────────────────────────
 
 const int hatiFrogFrameCount = 12;
-const String hatiFrogSpriteAsset = 'assets/professor_signature/frog_sprite_sheet.png';
+const String hatiFrogSpriteAsset =
+    'assets/professor_signature/frog_sprite_sheet.png';
 
 /// Shared layout metrics for Hati-guided scenes (matches Scene 1).
 class HatiLayout {
@@ -1167,6 +1418,7 @@ class HatiLayout {
   static const double bubbleMaxWidth = 328;
   static const double bubbleMaxHeight = 220;
   static const double bubbleBaseFontSize = 16;
+
   /// Smallest font used in speech bubbles; text never scales below this.
   static const double bubbleMinFontSize = 12;
   static const double coachZoneHeight = frogSize + bubbleMaxHeight + 28;
@@ -1421,10 +1673,7 @@ class HatiCoachZone extends StatelessWidget {
                 ),
               ),
             ),
-          HatiFrogAvatar(
-            size: HatiLayout.frogSize,
-            widthScale: frogWidthScale,
-          ),
+          HatiFrogAvatar(size: HatiLayout.frogSize, widthScale: frogWidthScale),
         ],
       ),
     );
@@ -1467,8 +1716,18 @@ class HatiSceneShell extends StatelessWidget {
   final VoidCallback? onSequenceComplete;
   final bool showBubble;
   final double frogWidthScale;
+  // Rendered once, above the scrollable [body] — stays in place while body's
+  // content scrolls underneath it. Used for a section title that shouldn't
+  // travel with a long list of choices (e.g. "Choose Your Script").
+  final Widget? fixedHeader;
   final Widget? body;
   final Widget? bottomBar;
+  // When set, paints solid behind [fixedHeader] + [body] together, filling
+  // the full width AND all remaining height below the coach zone — so a
+  // section like "Choose Your Script" reads as one full-bleed panel with
+  // no background color peeking through on the sides or underneath a short
+  // list, instead of a card that only wraps its own content size.
+  final Color? contentBackgroundColor;
 
   const HatiSceneShell({
     super.key,
@@ -1479,12 +1738,48 @@ class HatiSceneShell extends StatelessWidget {
     this.onSequenceComplete,
     this.showBubble = true,
     this.frogWidthScale = 1,
+    this.fixedHeader,
     this.body,
     this.bottomBar,
+    this.contentBackgroundColor,
   });
 
   @override
   Widget build(BuildContext context) {
+    Widget contentArea = Column(
+      children: [
+        if (fixedHeader != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              HatiLayout.horizontalPadding,
+              8,
+              HatiLayout.horizontalPadding,
+              0,
+            ),
+            child: SizedBox(width: double.infinity, child: fixedHeader),
+          ),
+        Expanded(
+          child: _ScrollHintArea(
+            padding: const EdgeInsets.fromLTRB(
+              HatiLayout.horizontalPadding,
+              8,
+              HatiLayout.horizontalPadding,
+              16,
+            ),
+            child: body ?? const SizedBox.shrink(),
+          ),
+        ),
+      ],
+    );
+
+    if (contentBackgroundColor != null) {
+      contentArea = Container(
+        width: double.infinity,
+        color: contentBackgroundColor,
+        child: contentArea,
+      );
+    }
+
     return Column(
       children: [
         Expanded(
@@ -1499,17 +1794,7 @@ class HatiSceneShell extends StatelessWidget {
                   showBubble: showBubble,
                   frogWidthScale: frogWidthScale,
                 ),
-              Expanded(
-                child: _ScrollHintArea(
-                  padding: const EdgeInsets.fromLTRB(
-                    HatiLayout.horizontalPadding,
-                    8,
-                    HatiLayout.horizontalPadding,
-                    16,
-                  ),
-                  child: body ?? const SizedBox.shrink(),
-                ),
-              ),
+              Expanded(child: contentArea),
             ],
           ),
         ),
@@ -1629,9 +1914,10 @@ class _BouncingChevronState extends State<_BouncingChevron>
       vsync: this,
       duration: const Duration(milliseconds: 700),
     )..repeat(reverse: true);
-    _offset = Tween<double>(begin: 0, end: 5).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _offset = Tween<double>(
+      begin: 0,
+      end: 5,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   @override
@@ -1644,10 +1930,8 @@ class _BouncingChevronState extends State<_BouncingChevron>
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _offset,
-      builder: (context, child) => Transform.translate(
-        offset: Offset(0, _offset.value),
-        child: child,
-      ),
+      builder: (context, child) =>
+          Transform.translate(offset: Offset(0, _offset.value), child: child),
       child: Icon(
         Icons.keyboard_arrow_down_rounded,
         color: HatiColors.mossGreen.withValues(alpha: 0.6),
@@ -1681,18 +1965,16 @@ class _HatiFrogAvatarState extends State<HatiFrogAvatar>
   @override
   Widget build(BuildContext context) {
     if (!widget.animate || _controller == null) {
-      return HatiFrogSprite(
-        size: widget.size,
-        widthScale: widget.widthScale,
-      );
+      return HatiFrogSprite(size: widget.size, widthScale: widget.widthScale);
     }
 
     return AnimatedBuilder(
       animation: _controller!,
       builder: (context, _) {
-        final frame = (_controller!.value * hatiFrogFrameCount)
-            .floor()
-            .clamp(0, hatiFrogFrameCount - 1);
+        final frame = (_controller!.value * hatiFrogFrameCount).floor().clamp(
+          0,
+          hatiFrogFrameCount - 1,
+        );
         return HatiFrogSprite(
           frameIndex: frame,
           size: widget.size,

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../widgets/dashboard_tour_overlay.dart';
-import '../widgets/help_center_sheet.dart';
+import '../widgets/draggable_help_button.dart';
 import 'home_screen.dart';
 import 'modules_screen.dart';
 import 'profile_screen.dart';
@@ -43,15 +43,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: _screens,
-      ),
-      floatingActionButton: FloatingActionButton(
-        heroTag: 'dashboardHelp',
-        backgroundColor: const Color(0xFF0B28D9),
-        onPressed: () => showHelpCenterSheet(context),
-        child: const Icon(Icons.question_mark_rounded, color: Colors.white),
+      body: Stack(
+        children: [
+          IndexedStack(
+            index: _selectedIndex,
+            children: _screens,
+          ),
+          const Positioned.fill(child: DraggableHelpButton()),
+        ],
       ),
       bottomNavigationBar: SafeArea(
         child: BottomNavigationBar(

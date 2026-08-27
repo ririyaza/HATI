@@ -19,6 +19,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../dashboard/widgets/draggable_help_button.dart';
 import 'app_theme.dart';
 import 'scenario_models.dart';
 import 'scenario_provider.dart';
@@ -47,22 +48,7 @@ class _ScenarioShellState extends State<ScenarioShell> {
     final chooseContinue = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Text("Resume scenario?"),
-        content: const Text(
-          "A previous scenario exists. Do you want to continue it or start over?",
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text("Start over"),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text("Continue"),
-          ),
-        ],
-      ),
+      builder: (context) => const _ResumeScenarioDialog(),
     );
 
     if (!mounted) return;
@@ -94,11 +80,16 @@ class _ScenarioShellState extends State<ScenarioShell> {
 
     final scene = provider.currentScene;
 
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 400),
-      switchInCurve: Curves.easeIn,
-      switchOutCurve: Curves.easeOut,
-      child: _buildScene(scene),
+    return Stack(
+      children: [
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 400),
+          switchInCurve: Curves.easeIn,
+          switchOutCurve: Curves.easeOut,
+          child: _buildScene(scene),
+        ),
+        const Positioned.fill(child: DraggableHelpButton()),
+      ],
     );
   }
 
@@ -121,6 +112,106 @@ class _ScenarioShellState extends State<ScenarioShell> {
       case SceneId.dashboard:
         return const _ScenarioDashboardScene(key: ValueKey('dashboard'));
     }
+  }
+}
+
+// ── Resume scenario dialog ───────────────────────────────────────────────────
+class _ResumeScenarioDialog extends StatelessWidget {
+  const _ResumeScenarioDialog();
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      child: Container(
+        decoration: BoxDecoration(
+          color: HatiColors.cardBg,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.2),
+              blurRadius: 24,
+              offset: const Offset(0, 12),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [HatiColors.deepForest, HatiColors.mossGreen],
+                ),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.history_rounded,
+                      color: HatiColors.softGold,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Text(
+                      'Resume Scenario?',
+                      style: HatiTextStyles.heading3.copyWith(
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
+              child: Text(
+                'A previous scenario is already in progress. Would you like '
+                'to pick up where you left off, or start over from the '
+                'beginning?',
+                style: HatiTextStyles.bodyMedium,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+              child: Column(
+                children: [
+                  SizedBox(
+                    width: double.infinity,
+                    child: HatiButton(
+                      label: 'Continue',
+                      icon: Icons.play_arrow_rounded,
+                      color: HatiColors.mossGreen,
+                      onTap: () => Navigator.pop(context, true),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  HatiOutlineButton(
+                    label: 'Start Over',
+                    borderColor: HatiColors.textLight,
+                    onTap: () => Navigator.pop(context, false),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

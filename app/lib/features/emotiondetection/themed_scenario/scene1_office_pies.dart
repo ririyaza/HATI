@@ -56,61 +56,55 @@ class _Scene1OfficePiesState extends State<Scene1OfficePies> {
 
     const labels = ['Physical', 'Emotional', 'Environmental'];
     const emojis = ['🫀', '🧠', '👁️'];
-    const subtitles = ['Physical · 1 of 3', 'Emotional · 2 of 3', 'Environmental · 3 of 3'];
-    const selectedColors = [HatiColors.anxious, HatiColors.scared, HatiColors.calm];
+    const subtitles = [
+      'Physical · 1 of 3',
+      'Emotional · 2 of 3',
+      'Environmental · 3 of 3',
+    ];
+    const selectedColors = [
+      HatiColors.anxious,
+      HatiColors.scared,
+      HatiColors.calm,
+    ];
 
     final hatiText = joinMessageText(provider.messages);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('The Office'),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: Center(
-              child: Text(
-                'Scene 1 / 7',
-                style: HatiTextStyles.caption.copyWith(color: HatiColors.mintFresh),
-              ),
-            ),
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          Container(
-            color: HatiColors.deepForest,
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-            child: const SceneProgressBar(
+      body: ScenarioGradientBackground(
+        child: Column(
+          children: [
+            const SceneTopHeader(
               currentStep: 1,
               totalSteps: 7,
               sceneLabel: 'The Office',
             ),
-          ),
-          Expanded(
-            child: HatiSceneShell(
-              showCoach: true,
-              persistentMessage: hatiText,
-              onSequenceComplete: () {
-                if (mounted && !_dialogueComplete) {
-                  setState(() => _dialogueComplete = true);
-                }
-              },
-              body: provider.ui.type == ScenarioUIType.buttons
-                  ? _PiesChipStep(
-                      key: ValueKey(step),
-                      label: labels[index],
-                      emoji: emojis[index],
-                      stepSubtitle: subtitles[index],
-                      selectedColor: selectedColors[index],
-                      options: provider.ui.options,
-                      isLoading: provider.isLoading || !_dialogueComplete,
-                      onSubmit: provider.submitText,
-                    )
-                  : null,
+            const SceneSpeedToggleRow(),
+            Expanded(
+              child: HatiSceneShell(
+                showCoach: true,
+                persistentMessage: hatiText,
+                onSequenceComplete: () {
+                  if (mounted && !_dialogueComplete) {
+                    setState(() => _dialogueComplete = true);
+                  }
+                },
+                body: provider.ui.type == ScenarioUIType.buttons
+                    ? _PiesChipStep(
+                        key: ValueKey(step),
+                        label: labels[index],
+                        emoji: emojis[index],
+                        stepSubtitle: subtitles[index],
+                        selectedColor: selectedColors[index],
+                        options: provider.ui.options,
+                        isLoading: provider.isLoading || !_dialogueComplete,
+                        onSubmit: provider.submitText,
+                      )
+                    : null,
+                contentBackgroundColor: Colors.white,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -145,27 +139,18 @@ class _PiesChipStepState extends State<_PiesChipStep> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
+    return Padding(
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: HatiColors.divider),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-          ),
-        ],
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5,
+                ),
                 decoration: BoxDecoration(
                   color: HatiColors.mossGreen,
                   borderRadius: BorderRadius.circular(8),
@@ -183,7 +168,9 @@ class _PiesChipStepState extends State<_PiesChipStep> {
               const Spacer(),
               Text(
                 widget.stepSubtitle,
-                style: HatiTextStyles.caption.copyWith(color: HatiColors.textMedium),
+                style: HatiTextStyles.caption.copyWith(
+                  color: HatiColors.textMedium,
+                ),
               ),
             ],
           ),
@@ -194,6 +181,7 @@ class _PiesChipStepState extends State<_PiesChipStep> {
             options: widget.options,
             selected: _selected,
             selectedColor: widget.selectedColor,
+            enabled: !widget.isLoading,
             onSelect: widget.isLoading
                 ? (_) {}
                 : (opt) {

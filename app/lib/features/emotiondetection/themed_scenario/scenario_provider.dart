@@ -47,8 +47,26 @@ class ScenarioProvider extends ChangeNotifier {
 
   String? _userId;
   String? _userName;
+  bool _disposed = false;
 
   SceneId get currentScene => sceneForStep(backendStep);
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
+
+  // In-flight requests (start/submitText/submitAudio) can still be pending
+  // when the owning ScenarioPlayPage is torn down — e.g. the player backs
+  // out mid-request. Guarding here (rather than at every call site) means
+  // that late response still updates the fields harmlessly, it just never
+  // tries to notify listeners that no longer exist.
+  @override
+  void notifyListeners() {
+    if (_disposed) return;
+    super.notifyListeners();
+  }
 
   Future<void> start({
     required String userId,

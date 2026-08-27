@@ -76,7 +76,12 @@ class DashboardTourOverlay extends StatefulWidget {
     entry = OverlayEntry(
       builder: (context) => DashboardTourOverlay(
         navBarKey: navBarKey,
-        onDismiss: () => entry.remove(),
+        // Both the "nav bar never laid out" bailout and a normal
+        // Next/Skip finish can each call onDismiss — guard against the
+        // second call hitting an already-removed entry.
+        onDismiss: () {
+          if (entry.mounted) entry.remove();
+        },
       ),
     );
     Overlay.of(context).insert(entry);
