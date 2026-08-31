@@ -1,7 +1,9 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../../postAssessment/data/post_assessment_repository.dart';
 import '../data/dashboard_user_data.dart';
+import '../widgets/profile_edit_sheets.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -67,7 +69,10 @@ class _ProfileContent extends StatelessWidget {
                     const SizedBox(height: 20),
                     Row(
                       children: [
-                        _ProfileAvatar(photoUrl: data.photoUrl),
+                        _EditableProfileAvatar(
+                          uid: data.uid,
+                          photoUrl: data.photoUrl,
+                        ),
                         const SizedBox(width: 16),
                         Expanded(
                           child: Column(
@@ -119,19 +124,33 @@ class _ProfileContent extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _StatsRow(data: data),
-                    if (data.goal.isNotEmpty) ...[
-                      const SizedBox(height: 24),
-                      const Text(
-                        'My Goal',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.black,
-                        ),
+                    const SizedBox(height: 24),
+                    const Text(
+                      '2-Week Check-in',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.black,
                       ),
-                      const SizedBox(height: 12),
-                      _InfoCard(body: data.goal),
-                    ],
+                    ),
+                    const SizedBox(height: 12),
+                    _CheckInStatusCard(uid: data.uid),
+                    const SizedBox(height: 24),
+                    _SectionTitle(
+                      title: 'My Goal',
+                      onEdit: () => showEditGoalSheet(
+                        context,
+                        uid: data.uid,
+                        currentGoal: data.goal,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    _InfoCard(
+                      body: data.goal.isNotEmpty
+                          ? data.goal
+                          : "You haven't set a goal yet. Tap the edit icon "
+                              'to add one.',
+                    ),
                     const SizedBox(height: 24),
                     const Text(
                       'Assessment Scores',
@@ -149,12 +168,12 @@ class _ProfileContent extends StatelessWidget {
                     else
                       _AssessmentScoresSection(entries: data.assessments),
                     const SizedBox(height: 24),
-                    const Text(
-                      'Coping Preferences',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.black,
+                    _SectionTitle(
+                      title: 'Coping Preferences',
+                      onEdit: () => showEditCopingSheet(
+                        context,
+                        uid: data.uid,
+                        currentText: data.copingPreferences,
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -224,6 +243,48 @@ class _ProfileContent extends StatelessWidget {
   }
 }
 
+class _EditableProfileAvatar extends StatelessWidget {
+  const _EditableProfileAvatar({required this.uid, required this.photoUrl});
+
+  final String uid;
+  final String photoUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => showAvatarPickerSheet(
+        context,
+        uid: uid,
+        currentAssetPath: photoUrl.startsWith('assets/') ? photoUrl : null,
+      ),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          _ProfileAvatar(photoUrl: photoUrl),
+          Positioned(
+            bottom: -2,
+            right: -2,
+            child: Container(
+              width: 26,
+              height: 26,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFF0B28D9),
+                border: Border.all(color: Colors.white, width: 2),
+              ),
+              child: const Icon(
+                Icons.edit_rounded,
+                size: 12,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _ProfileAvatar extends StatelessWidget {
   const _ProfileAvatar({required this.photoUrl});
 
@@ -281,6 +342,44 @@ class _HeaderChip extends StatelessWidget {
           fontWeight: FontWeight.w600,
         ),
       ),
+    );
+  }
+}
+
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle({required this.title, this.onEdit});
+
+  final String title;
+  final VoidCallback? onEdit;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: Colors.black,
+          ),
+        ),
+        if (onEdit != null) ...[
+          const Spacer(),
+          InkWell(
+            borderRadius: BorderRadius.circular(20),
+            onTap: onEdit,
+            child: const Padding(
+              padding: EdgeInsets.all(4),
+              child: Icon(
+                Icons.edit_outlined,
+                size: 18,
+                color: Color(0xFF0B28D9),
+              ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 }
@@ -604,6 +703,107 @@ class _ScoreColumn extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Shows where the user stands in the 14-day reassessment cycle — the
+/// same data the dashboard's [ReassessmentBanner] uses to decide whether
+/// to show itself, surfaced here so it's visible without waiting for the
+/// banner to appear (or checking Firestore directly).
+class _CheckInStatusCard extends StatelessWidget {
+  const _CheckInStatusCard({required this.uid});
+
+  final String uid;
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<ReassessmentStatus?>(
+      future: PostAssessmentRepository.getStatus(uid),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const SizedBox.shrink();
+        }
+        final status = snapshot.data;
+        if (status == null) return const SizedBox.shrink();
+
+        final String title;
+        final String subtitle;
+        final Color color;
+        if (status.isDue) {
+          title = 'Check-in available';
+          subtitle =
+              'It has been ${status.daysSinceLastAssessment} days since '
+              'your last check-in.';
+          color = const Color(0xFF0B28D9);
+        } else if (status.snoozedUntil != null) {
+          title = 'Check-in snoozed until ${_formatDate(status.snoozedUntil)}';
+          subtitle =
+              'Originally due ${_formatDate(status.dueDate)} — '
+              '${status.daysSinceLastAssessment} days since your last '
+              'check-in.';
+          color = const Color(0xFFFF9500);
+        } else {
+          title = 'Next check-in in ${status.daysUntilDue} '
+              '${status.daysUntilDue == 1 ? 'day' : 'days'}';
+          subtitle =
+              'Last check-in: ${_formatDate(status.lastAssessedAt)} '
+              '(${status.daysSinceLastAssessment} days ago).';
+          color = const Color(0xFF1DB954);
+        }
+
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFE0E0E0)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.event_available_rounded,
+                  color: color,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: color,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.black45,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
