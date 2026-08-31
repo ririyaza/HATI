@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../hatiChat/widgets/hati_chat_entry_bar.dart';
+import '../../postAssessment/widgets/reassessment_banner.dart';
 import '../widgets/hati_sprite_animation.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -25,11 +27,13 @@ class HomeScreen extends StatelessWidget {
                   letterSpacing: 1.2,
                 ),
               ),
+              const ReassessmentBanner(),
               const Spacer(),
               const Center(
                 child: HatiSpriteAnimation(),
               ),
               const Spacer(),
+              const HatiChatEntryBar(),
             ],
           ),
         ),

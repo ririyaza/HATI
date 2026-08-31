@@ -48,6 +48,8 @@ dependencies:
   flame: ^1.37.0
   google_sign_in: ^7.2.0
   flutter_facebook_auth: ^7.2.0
+  firebase_ai: ^4.0.0
+  firebase_app_check: ^0.4.7
 
 dev_dependencies:
   flutter_test:
