@@ -664,20 +664,52 @@ class SceneTopHeader extends StatelessWidget {
 /// white Scaffold background share that same look instead.
 class ScenarioGradientBackground extends StatelessWidget {
   final Widget child;
+  // When set, renders the scenario's own themed art (scenario_background/)
+  // behind a dark scrim instead of the flat gradient — so Preparation,
+  // Interaction, and Debrief all show the same per-scenario backdrop.
+  final String? backgroundAsset;
 
-  const ScenarioGradientBackground({super.key, required this.child});
+  const ScenarioGradientBackground({
+    super.key,
+    required this.child,
+    this.backgroundAsset,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [HatiColors.deepForest, Color(0xFF2A4A2A)],
+    final asset = backgroundAsset;
+    if (asset == null) {
+      return Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [HatiColors.deepForest, Color(0xFF2A4A2A)],
+          ),
         ),
-      ),
-      child: child,
+        child: child,
+      );
+    }
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Image.asset(asset, fit: BoxFit.cover),
+        // Same dark-green tone as the flat gradient it replaces, so header
+        // text/icons and the coach bubble stay readable over busy art.
+        Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                HatiColors.deepForest.withOpacity(0.72),
+                const Color(0xFF2A4A2A).withOpacity(0.72),
+              ],
+            ),
+          ),
+        ),
+        child,
+      ],
     );
   }
 }
@@ -1690,7 +1722,7 @@ class HatiFixedBottomBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+      padding: const EdgeInsets.fromLTRB(20, 6, 20, 6),
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border(top: BorderSide(color: HatiColors.divider)),

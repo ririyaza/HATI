@@ -32,8 +32,6 @@ class ModulesScreen extends StatelessWidget {
     return result;
   }
 
-
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -118,7 +116,8 @@ class ModulesScreen extends StatelessWidget {
                     FutureBuilder<Map<String, double>>(
                       future: _loadThemeAverages(),
                       builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
                           return const SizedBox(
                             height: 220,
                             child: Center(child: CircularProgressIndicator()),
@@ -175,10 +174,10 @@ Widget _recentActivityCard(BuildContext context) {
 
       final scenarioTitle =
           (raw['scenarioTitle'] as String? ?? 'Pick a scenario').toString();
-      final scenarioTheme =
-          (raw['scenarioTheme'] as String? ?? defaultTheme).toString();
-      final scenarioKey =
-          (raw['scenarioKey'] as String? ?? defaultKey).toString();
+      final scenarioTheme = (raw['scenarioTheme'] as String? ?? defaultTheme)
+          .toString();
+      final scenarioKey = (raw['scenarioKey'] as String? ?? defaultKey)
+          .toString();
 
       return Container(
         width: double.infinity,
@@ -269,11 +268,17 @@ Widget _recentActivityCard(BuildContext context) {
               ),
             ),
             const SizedBox(width: 8),
-            Image.asset(
-              'assets/bouncehati2.png',
-              width: 84,
-              height: 84,
-              fit: BoxFit.contain,
+            ClipRRect(
+              borderRadius: BorderRadius.circular(14),
+              child: Container(
+                width: 84,
+                height: 84,
+                color: const Color(0xFFF0F3FF),
+                child: Image.asset(
+                  _placeholderAssetForScenario(scenarioKey),
+                  fit: BoxFit.contain,
+                ),
+              ),
             ),
           ],
         ),
@@ -306,12 +311,6 @@ double _matchPercent(Map<String, double> themeAverages, String backendTheme) {
   }
 }
 
-const _whereToSitModule = _ScenarioTemplate(
-  theme: 'Fear of Authority',
-  scenarioKey: 'foa_classroom',
-  title: 'WHERE TO SIT?',
-);
-
 Future<Map<String, dynamic>?> _loadLastScenario() async {
   final user = FirebaseAuth.instance.currentUser;
   if (user == null) return null;
@@ -343,20 +342,20 @@ Future<void> _saveLastScenario({
       .doc(user.uid)
       .collection('spinAssessments')
       .doc('initial')
-      .set(
-    {
-      'lastScenario': {
-        'scenarioTitle': scenarioTitle,
-        'scenarioTheme': scenarioTheme,
-        'scenarioKey': scenarioKey,
-        'updatedAt': FieldValue.serverTimestamp(),
-      }
-    },
-    SetOptions(merge: true),
-  );
+      .set({
+        'lastScenario': {
+          'scenarioTitle': scenarioTitle,
+          'scenarioTheme': scenarioTheme,
+          'scenarioKey': scenarioKey,
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+      }, SetOptions(merge: true));
 }
 
 /// One module per SPIN theme; `scenarioKey` must match `THEME_SCENARIO_KEYS` in `scenario_engine.py`.
+/// `foa_classroom` ("WHERE TO SIT?") is intentionally omitted from this
+/// list — hidden from the Modules grid, though still fully functional
+/// server-side if ever navigated to directly.
 const List<_ScenarioTemplate> _kAllScenarioModules = [
   _ScenarioTemplate(
     theme: 'Fear of Authority',
@@ -385,27 +384,28 @@ const List<_ScenarioTemplate> _kAllScenarioModules = [
   ),
   _ScenarioTemplate(
     theme: 'Physiological Symptoms',
-    scenarioKey: 'phys_classroom',
+    scenarioKey: 'phys_jeepney',
     title: 'The Bus Stop: Hiding Visible Anxiety',
   ),
 ];
 
-List<_ScenarioTemplate> _buildScenarioTemplates(Map<String, double> themeAverages) {
-  final ranked = List<_ScenarioTemplate>.from(_kAllScenarioModules)
+List<_ScenarioTemplate> _buildScenarioTemplates(
+  Map<String, double> themeAverages,
+) {
+  return List<_ScenarioTemplate>.from(_kAllScenarioModules)
     ..sort(
-          (a, b) => _matchPercent(themeAverages, b.theme)
-          .compareTo(_matchPercent(themeAverages, a.theme)),
+      (a, b) => _matchPercent(
+        themeAverages,
+        b.theme,
+      ).compareTo(_matchPercent(themeAverages, a.theme)),
     );
-  return [...ranked, _whereToSitModule];
 }
 
-/// Same background art the scenario itself uses (see
-/// scenario_models.dart's kScenarioConfigs / assets/scenario_themes/) —
-/// delegated rather than duplicated so the grid thumbnail can never drift
-/// out of sync with the actual in-scenario background.
-String _backgroundAssetForScenario(String scenarioKey) {
-  return kScenarioConfigs[scenarioKey]?.backgroundAsset ??
-      kScenarioConfigs['foa_supervisor']!.backgroundAsset;
+/// The Modules grid's own thumbnail art — separate from the full-screen
+/// background used during scenario play (see assets/scenario_placeholder/).
+String _placeholderAssetForScenario(String scenarioKey) {
+  return kScenarioConfigs[scenarioKey]?.placeholderAsset ??
+      kScenarioConfigs['foa_supervisor']!.placeholderAsset;
 }
 
 Widget _scenarioGrid(BuildContext context, Map<String, double> themeAverages) {
@@ -456,11 +456,17 @@ Widget _scenarioGrid(BuildContext context, Map<String, double> themeAverages) {
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(14),
-                  child: Image.asset(
-                    _backgroundAssetForScenario(template.scenarioKey),
+                  child: Container(
                     width: 84,
                     height: 84,
-                    fit: BoxFit.cover,
+                    // Placeholder art isn't square (tall rectangular
+                    // illustrations) — contain + a neutral fill shows the
+                    // full picture, letterboxed, instead of cropping into it.
+                    color: const Color(0xFFF0F3FF),
+                    child: Image.asset(
+                      _placeholderAssetForScenario(template.scenarioKey),
+                      fit: BoxFit.contain,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 16),

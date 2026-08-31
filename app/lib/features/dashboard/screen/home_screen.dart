@@ -9,7 +9,12 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      color: const Color(0xFF0B28D9),
+      decoration: const BoxDecoration(
+        image: DecorationImage(
+          image: AssetImage('assets/homepage_background.png'),
+          fit: BoxFit.cover,
+        ),
+      ),
       child: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24.0),

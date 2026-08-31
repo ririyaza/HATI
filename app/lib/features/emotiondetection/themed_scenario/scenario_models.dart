@@ -72,6 +72,16 @@ class ScenarioConfig {
   final String title;
   final String backgroundAsset;
   final String? spriteAsset;
+  // Alternate NPC sprite/animation shown while ScenarioProvider.npcMood is
+  // "angry" (see scenario_provider.dart, driven by the backend's per-turn
+  // npc_mood field). Null for scenarios with no mood-specific art — they
+  // just keep showing [spriteAsset].
+  final String? spriteAssetAngry;
+  // Short filename prefix used across scenario_background/, scenario_npcs/,
+  // and scenario_placeholder/ — equal to scenarioKey for every theme with
+  // only one scenario, except `foa`, which has two (foa_supervisor,
+  // foa_classroom) and so keeps the full key to tell them apart.
+  final String assetPrefix;
 
   const ScenarioConfig({
     required this.scenarioKey,
@@ -79,19 +89,33 @@ class ScenarioConfig {
     required this.title,
     required this.backgroundAsset,
     this.spriteAsset,
+    this.spriteAssetAngry,
+    required this.assetPrefix,
   });
+
+  /// `assets/scenario_placeholder/{assetPrefix}_placeholder.png` — always
+  /// derivable (every scenario has one, unlike [spriteAsset]), so it's
+  /// computed rather than repeated per entry in [kScenarioConfigs]. PNG
+  /// (not SVG): this art is always a flattened raster export, and
+  /// flutter_svg doesn't reliably support the layered/masked SVG features
+  /// some design tools export, causing partial/silhouette rendering.
+  String get placeholderAsset =>
+      'assets/scenario_placeholder/${assetPrefix}_placeholder.png';
 }
 
 /// Default background used for any scenario key not present in
 /// [kScenarioConfigs] (shouldn't happen for the 7 known reachable
 /// scenarios, but keeps [scenarioConfigFor] total/safe).
 const String _kFallbackBackground =
-    'assets/scenario_themes/foa_supervisor/background.jpg';
+    'assets/scenario_background/foa_supervisor_background.png';
 
-/// Per-scenario asset folder: `assets/scenario_themes/{scenarioKey}/`. Drop
-/// a same-named background.jpg (and npc.png, where applicable) into the
-/// matching folder to swap the art — no code changes needed, just a
-/// hot-restart/rebuild so Flutter re-reads the bundled asset.
+/// Per-scenario art lives in three flat folders — `scenario_background/`,
+/// `scenario_placeholder/`, `scenario_npcs/` — one file per scenario, named
+/// `{assetPrefix}_background.{ext}` etc. Drop a same-named file in to swap
+/// the art — no code changes needed, just a hot-restart/rebuild so Flutter
+/// re-reads the bundled asset. [ScenarioConfig.assetPrefix] is the same as
+/// scenarioKey except for `foa`, which has two scenarios and so keeps its
+/// full key in filenames to avoid a collision.
 ///
 /// One row per reachable scenario, verified against modules_screen.dart's
 /// scenario grid and scenario_engine.py's THEME_SCENARIO_KEYS.
@@ -100,44 +124,52 @@ const Map<String, ScenarioConfig> kScenarioConfigs = {
     scenarioKey: 'foa_supervisor',
     theme: 'Fear of Authority',
     title: "The Professor's Signature",
-    backgroundAsset: 'assets/scenario_themes/foa_supervisor/background.jpg',
-    spriteAsset: 'assets/scenario_themes/foa_supervisor/npc.png',
+    backgroundAsset: 'assets/scenario_background/foa_supervisor_background.png',
+    spriteAsset: 'assets/scenario_npcs/foa_supervisor/bald_blink.riv',
+    spriteAssetAngry: 'assets/scenario_npcs/foa_supervisor/bald_annoyed.riv',
+    assetPrefix: 'foa_supervisor',
   ),
   'foa_classroom': ScenarioConfig(
     scenarioKey: 'foa_classroom',
     theme: 'Fear of Authority',
     title: 'WHERE TO SIT?',
-    backgroundAsset: 'assets/scenario_themes/foa_classroom/background.jpg',
+    backgroundAsset: 'assets/scenario_background/foa_classroom_background.png',
+    assetPrefix: 'foa_classroom',
   ),
   'fsn_seat': ScenarioConfig(
     scenarioKey: 'fsn_seat',
     theme: 'Fear of Strangers & New People',
     title: "The Food Hall's Seat",
-    backgroundAsset: 'assets/scenario_themes/fsn_seat/background.jpg',
+    backgroundAsset: 'assets/scenario_background/fsn_background.png',
+    assetPrefix: 'fsn',
   ),
   'fbop_spotlight': ScenarioConfig(
     scenarioKey: 'fbop_spotlight',
     theme: 'Fear of Being Observed & Performing',
     title: 'Project Defense: Defended or Offended',
-    backgroundAsset: 'assets/scenario_themes/fbop_spotlight/background.jpg',
+    backgroundAsset: 'assets/scenario_background/fbop_background.png',
+    assetPrefix: 'fbop',
   ),
   'fsg_party': ScenarioConfig(
     scenarioKey: 'fsg_party',
     theme: 'Fear of Social Gatherings',
     title: 'The House Party: To Approach or Not?',
-    backgroundAsset: 'assets/scenario_themes/fsg_party/background.jpg',
+    backgroundAsset: 'assets/scenario_background/fsg_background.png',
+    assetPrefix: 'fsg',
   ),
   'fne_stage': ScenarioConfig(
     scenarioKey: 'fne_stage',
     theme: 'Fear of Negative Evaluation & Embarrassment',
     title: 'The Group Project: Defending Your Work',
-    backgroundAsset: 'assets/scenario_themes/fne_stage/background.jpg',
+    backgroundAsset: 'assets/scenario_background/fne_background.png',
+    assetPrefix: 'fne',
   ),
-  'phys_classroom': ScenarioConfig(
-    scenarioKey: 'phys_classroom',
+  'phys_jeepney': ScenarioConfig(
+    scenarioKey: 'phys_jeepney',
     theme: 'Physiological Symptoms',
     title: 'The Bus Stop: Hiding Visible Anxiety',
-    backgroundAsset: 'assets/scenario_themes/phys_classroom/background.jpg',
+    backgroundAsset: 'assets/scenario_background/phys_background.png',
+    assetPrefix: 'phys',
   ),
 };
 
@@ -157,13 +189,14 @@ ScenarioConfig scenarioConfigFor(
     theme: theme,
     title: title,
     backgroundAsset: _kFallbackBackground,
+    assetPrefix: scenarioKey,
   );
 }
 
 /// Step-name -> SceneId lookup table, verified against
 /// `scenario_engine.py`'s `handle_step` across all 7 reachable scenarios
 /// (foa_supervisor, foa_classroom, fsn_seat, fbop_spotlight, fsg_party,
-/// fne_stage, phys_classroom).
+/// fne_stage, phys_jeepney).
 const Map<String, SceneId> kStepToScene = {
   // ── Shared across every scenario ──────────────────────────────────────
   'scene0_greet': SceneId.preScene,
@@ -273,7 +306,7 @@ const Map<String, SceneId> kStepToScene = {
   'fne_s3_carlo': SceneId.interaction,
   'fne_s3_outcome': SceneId.interaction,
 
-  // ── phys_classroom preparation/interaction ──────────────────────────────
+  // ── phys_jeepney preparation/interaction ──────────────────────────────
   'phys_s2_excuse': SceneId.preparation,
   'phys_s2_excuse_custom': SceneId.preparation,
   'phys_s2_ack': SceneId.preparation,

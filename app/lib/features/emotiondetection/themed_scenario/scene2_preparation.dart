@@ -34,6 +34,7 @@ class _Scene2PreparationState extends State<Scene2Preparation> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<ScenarioProvider>();
+    final config = provider.config;
     final step = provider.backendStep;
     final ui = provider.ui;
     final hatiText = joinMessageText(provider.messages);
@@ -77,7 +78,10 @@ class _Scene2PreparationState extends State<Scene2Preparation> {
         );
       }
     } else {
-      // foa_s2_script_custom / foa_s2_q_prep: free text.
+      // foa_s2_script_custom / foa_s2_q_prep: free text. Same white
+      // background as Debrief's text-input steps instead of the green
+      // scenario background.
+      contentBackgroundColor = Colors.white;
       body = TextResponseCard(
         key: ValueKey(step),
         hintText: ui.placeholder ?? 'Type your response...',
@@ -88,6 +92,7 @@ class _Scene2PreparationState extends State<Scene2Preparation> {
 
     return Scaffold(
       body: ScenarioGradientBackground(
+        backgroundAsset: config.backgroundAsset,
         child: Column(
           children: [
             const SceneTopHeader(
