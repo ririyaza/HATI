@@ -30,6 +30,7 @@ class _Scene1OfficePiesState extends State<Scene1OfficePies> {
   // question never gets shown before the step advances.
   String? _trackedStep;
   bool _dialogueComplete = false;
+  String? _selected;
 
   int _stepIndex(String? step) {
     switch (step) {
@@ -46,12 +47,14 @@ class _Scene1OfficePiesState extends State<Scene1OfficePies> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<ScenarioProvider>();
+    final config = provider.config;
     final step = provider.backendStep;
     final index = _stepIndex(step);
 
     if (step != _trackedStep) {
       _trackedStep = step;
       _dialogueComplete = false;
+      _selected = null;
     }
 
     const labels = ['Physical', 'Emotional', 'Environmental'];
@@ -68,9 +71,12 @@ class _Scene1OfficePiesState extends State<Scene1OfficePies> {
     ];
 
     final hatiText = joinMessageText(provider.messages);
+    final isPies = provider.ui.type == ScenarioUIType.buttons;
+    final isLoading = provider.isLoading || !_dialogueComplete;
 
     return Scaffold(
       body: ScenarioGradientBackground(
+        backgroundAsset: config.backgroundAsset,
         child: Column(
           children: [
             const SceneTopHeader(
@@ -88,16 +94,36 @@ class _Scene1OfficePiesState extends State<Scene1OfficePies> {
                     setState(() => _dialogueComplete = true);
                   }
                 },
-                body: provider.ui.type == ScenarioUIType.buttons
-                    ? _PiesChipStep(
-                        key: ValueKey(step),
+                fixedHeader: isPies
+                    ? _PiesHeader(
                         label: labels[index],
                         emoji: emojis[index],
                         stepSubtitle: subtitles[index],
-                        selectedColor: selectedColors[index],
-                        options: provider.ui.options,
-                        isLoading: provider.isLoading || !_dialogueComplete,
-                        onSubmit: provider.submitText,
+                      )
+                    : null,
+                body: isPies
+                    ? Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                        child: Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: provider.ui.options
+                              .map(
+                                (opt) => PIESChip(
+                                  label: opt,
+                                  selected: _selected == opt,
+                                  selectedColor: selectedColors[index],
+                                  enabled: !isLoading,
+                                  onTap: isLoading
+                                      ? () {}
+                                      : () {
+                                          setState(() => _selected = opt);
+                                          provider.submitText(opt);
+                                        },
+                                ),
+                              )
+                              .toList(),
+                        ),
                       )
                     : null,
                 contentBackgroundColor: Colors.white,
@@ -110,37 +136,25 @@ class _Scene1OfficePiesState extends State<Scene1OfficePies> {
   }
 }
 
-class _PiesChipStep extends StatefulWidget {
+// Fixed header — the "P.I.E.S. CHECK" badge/subtitle plus the current
+// section's emoji+label (e.g. "🫀 Physical"). Sits above the scrollable
+// chip list so scrolling a long option list never carries this away with
+// it.
+class _PiesHeader extends StatelessWidget {
   final String label;
   final String emoji;
   final String stepSubtitle;
-  final Color selectedColor;
-  final List<String> options;
-  final bool isLoading;
-  final ValueChanged<String> onSubmit;
 
-  const _PiesChipStep({
-    super.key,
+  const _PiesHeader({
     required this.label,
     required this.emoji,
     required this.stepSubtitle,
-    required this.selectedColor,
-    required this.options,
-    required this.isLoading,
-    required this.onSubmit,
   });
-
-  @override
-  State<_PiesChipStep> createState() => _PiesChipStepState();
-}
-
-class _PiesChipStepState extends State<_PiesChipStep> {
-  String? _selected;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -167,7 +181,7 @@ class _PiesChipStepState extends State<_PiesChipStep> {
               ),
               const Spacer(),
               Text(
-                widget.stepSubtitle,
+                stepSubtitle,
                 style: HatiTextStyles.caption.copyWith(
                   color: HatiColors.textMedium,
                 ),
@@ -175,20 +189,14 @@ class _PiesChipStepState extends State<_PiesChipStep> {
             ],
           ),
           const SizedBox(height: 20),
-          PIESSection(
-            label: widget.label,
-            emoji: widget.emoji,
-            options: widget.options,
-            selected: _selected,
-            selectedColor: widget.selectedColor,
-            enabled: !widget.isLoading,
-            onSelect: widget.isLoading
-                ? (_) {}
-                : (opt) {
-                    setState(() => _selected = opt);
-                    widget.onSubmit(opt);
-                  },
+          Row(
+            children: [
+              Text(emoji, style: const TextStyle(fontSize: 18)),
+              const SizedBox(width: 8),
+              Text(label, style: HatiTextStyles.heading3),
+            ],
           ),
+          const SizedBox(height: 10),
         ],
       ),
     );

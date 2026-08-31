@@ -48,6 +48,8 @@ dependencies:
   flame: ^1.37.0
   google_sign_in: ^7.2.0
   flutter_facebook_auth: ^7.2.0
+  flutter_svg: ^2.3.0
+  rive: ^0.14.11
 
 dev_dependencies:
   flutter_test:
@@ -73,6 +75,7 @@ flutter:
 
   # To add assets to your application, add an assets section, like this:
   assets:
+    - assets/homepage_background.png
     - assets/bouncehati2.png
     - assets/hati bouncing.gif
     - assets/scenario.jpg
@@ -82,16 +85,21 @@ flutter:
     - assets/professor_signature/frog_sprite_sheet.png
     - assets/professor_signature/classroom_bg.jpg
     - assets/professor_signature/prof.png
-    # Per-scenario background/NPC art (themed_scenario feature) — drop a
-    # same-named file into the matching folder to swap it out, no code
-    # changes needed.
-    - assets/scenario_themes/foa_supervisor/
-    - assets/scenario_themes/foa_classroom/
-    - assets/scenario_themes/fsn_seat/
-    - assets/scenario_themes/fbop_spotlight/
-    - assets/scenario_themes/fsg_party/
-    - assets/scenario_themes/fne_stage/
-    - assets/scenario_themes/phys_classroom/
+    # Per-scenario art (themed_scenario feature) — flat folders, one file
+    # per scenario key ({scenario_key}_background.jpg etc.). Drop a
+    # same-named file in to swap it out, no code changes needed.
+    - assets/scenario_background/
+    - assets/scenario_placeholder/
+    # scenario_npcs/ is one subfolder per scenario (not flat) so each can
+    # hold more than one NPC-related file later. Folder declarations in
+    # Flutter aren't recursive, so every subfolder needs its own line here.
+    - assets/scenario_npcs/foa_supervisor/
+    - assets/scenario_npcs/foa_classroom/
+    - assets/scenario_npcs/fsn/
+    - assets/scenario_npcs/fbop/
+    - assets/scenario_npcs/fsg/
+    - assets/scenario_npcs/fne/
+    - assets/scenario_npcs/phys/
 
 
   # An image asset can refer to one or more resolution-specific "variants", see

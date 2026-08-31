@@ -31,6 +31,7 @@ class _Scene4DebriefState extends State<Scene4Debrief> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<ScenarioProvider>();
+    final config = provider.config;
     final step = provider.backendStep;
     final ui = provider.ui;
     final hatiText = joinMessageText(provider.messages);
@@ -40,11 +41,24 @@ class _Scene4DebriefState extends State<Scene4Debrief> {
       _dialogueComplete = false;
     }
 
-    Widget body;
-    if (step == 'scene4_predicted' || step == 'scene4_actual') {
-      final question = step == 'scene4_predicted'
-          ? 'How anxious did you expect to feel? (0–10)'
-          : 'How anxious did you actually feel? (0–10)';
+    Widget? body;
+    Widget? bottomBar;
+    Color? contentBackgroundColor;
+    if (step == 'scene4_predicted' ||
+        step == 'scene4_actual' ||
+        step == 'scene4_fne_severity') {
+      final String question;
+      switch (step) {
+        case 'scene4_predicted':
+          question = 'How anxious did you expect to feel? (0–10)';
+          break;
+        case 'scene4_actual':
+          question = 'How anxious did you actually feel? (0–10)';
+          break;
+        default:
+          question = 'How bad was the actual outcome? (0–10)';
+      }
+      contentBackgroundColor = Colors.white;
       body = _AnxietySliderCard(
         key: ValueKey(step),
         question: question,
@@ -52,13 +66,30 @@ class _Scene4DebriefState extends State<Scene4Debrief> {
         onSubmit: (v) => provider.submitText(v.toString()),
       );
     } else if (ui.type == ScenarioUIType.buttons) {
-      body = _DebriefChoiceCard(
-        key: ValueKey(step),
-        options: ui.options,
-        isLoading: provider.isLoading || !_dialogueComplete,
-        onSubmit: provider.submitText,
-      );
+      if (ui.options.length == 1) {
+        // Single "Continue"-style option — pin it as a fixed bottom bar
+        // on the plain green background, same as Preparation &
+        // Intention's single-option case, with no white content panel
+        // (there's no body content, so a white panel would just be an
+        // empty gap above the button).
+        bottomBar = HatiButton(
+          label: ui.options.first,
+          icon: Icons.arrow_forward_rounded,
+          onTap: (provider.isLoading || !_dialogueComplete)
+              ? null
+              : () => provider.submitText(ui.options.first),
+        );
+      } else {
+        contentBackgroundColor = Colors.white;
+        body = _DebriefChoiceCard(
+          key: ValueKey(step),
+          options: ui.options,
+          isLoading: provider.isLoading || !_dialogueComplete,
+          onSubmit: provider.submitText,
+        );
+      }
     } else {
+      contentBackgroundColor = Colors.white;
       body = TextResponseCard(
         key: ValueKey(step),
         hintText: ui.placeholder ?? 'Type your response...',
@@ -69,6 +100,7 @@ class _Scene4DebriefState extends State<Scene4Debrief> {
 
     return Scaffold(
       body: ScenarioGradientBackground(
+        backgroundAsset: config.backgroundAsset,
         child: Column(
           children: [
             const SceneTopHeader(
@@ -88,7 +120,8 @@ class _Scene4DebriefState extends State<Scene4Debrief> {
                   }
                 },
                 body: body,
-                contentBackgroundColor: Colors.white,
+                bottomBar: bottomBar,
+                contentBackgroundColor: contentBackgroundColor,
               ),
             ),
           ],
@@ -120,7 +153,7 @@ class _AnxietySliderCardState extends State<_AnxietySliderCard> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -129,7 +162,7 @@ class _AnxietySliderCardState extends State<_AnxietySliderCard> {
             initial: _value,
             onChanged: (v) => _value = v,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           HatiButton(
             label: 'Next',
             icon: Icons.arrow_forward_rounded,
@@ -156,13 +189,6 @@ class _DebriefChoiceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (options.isEmpty) return const SizedBox.shrink();
-    if (options.length == 1) {
-      return HatiButton(
-        label: options.first,
-        icon: Icons.arrow_forward_rounded,
-        onTap: isLoading ? null : () => onSubmit(options.first),
-      );
-    }
     return Column(
       children: [
         for (final opt in options)

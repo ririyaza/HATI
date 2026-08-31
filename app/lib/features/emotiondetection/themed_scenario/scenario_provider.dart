@@ -35,6 +35,13 @@ class ScenarioProvider extends ChangeNotifier {
   ScenarioUI ui = ScenarioUI.empty;
   dynamic history;
 
+  /// Optional per-turn NPC mood hint from the backend (e.g. "angry"), driven
+  /// by the FSM's internal story_branch. Not present on most turns — resets
+  /// to null whenever a response doesn't include one, so a scene's NPC
+  /// sprite/animation falls back to its default outside the specific turns
+  /// that set it.
+  String? npcMood;
+
   /// Set when `/scenario/start` returns `resumed: true` and the caller did
   /// not force a new session. The shell should show a "Resume scenario?"
   /// dialog and then call [confirmResume] or [discardResume].
@@ -203,6 +210,7 @@ class ScenarioProvider extends ChangeNotifier {
     }
 
     ui = ScenarioUI.fromJson(data["ui"]);
+    npcMood = data["npc_mood"]?.toString();
     history = data["history"];
     isLoading = false;
     notifyListeners();

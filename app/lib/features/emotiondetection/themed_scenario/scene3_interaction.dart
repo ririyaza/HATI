@@ -28,6 +28,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:record/record.dart';
+import 'package:rive/rive.dart';
 import 'scenario_models.dart';
 import 'scenario_provider.dart';
 import 'shared_widgets.dart';
@@ -122,6 +123,13 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
     final step = provider.backendStep;
     final config = provider.config;
     final sceneHeight = MediaQuery.sizeOf(context).height;
+    // Mood-specific art (e.g. the professor's annoyed animation) only
+    // swaps in while the backend's latest npc_mood matches — otherwise
+    // falls back to the scenario's default sprite.
+    final activeSpriteAsset =
+        (provider.npcMood == 'angry' && config.spriteAssetAngry != null)
+            ? config.spriteAssetAngry
+            : config.spriteAsset;
 
     final parsed = provider.messages.map(parseSpeakerMessage).toList();
     final profLines = parsed
@@ -197,13 +205,25 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
                           children: [
                             if (profText.isNotEmpty)
                               _CharacterSpeechBubble(text: profText),
-                            if (config.spriteAsset != null) ...[
+                            if (activeSpriteAsset != null) ...[
                               const SizedBox(height: 8),
-                              Image.asset(
-                                config.spriteAsset!,
-                                height: sceneHeight * 0.34,
-                                fit: BoxFit.contain,
-                              ),
+                              // NPC art is either a static image or a Rive
+                              // animation (.riv) — Image.asset can't decode
+                              // Rive's binary format, so branch by extension.
+                              // Keyed by asset path so switching between
+                              // the default and angry sprite (different
+                              // widget subtrees/state) rebuilds cleanly.
+                              activeSpriteAsset.endsWith('.riv')
+                                  ? _NpcRiveSprite(
+                                      key: ValueKey(activeSpriteAsset),
+                                      assetPath: activeSpriteAsset,
+                                      height: sceneHeight * 0.34,
+                                    )
+                                  : Image.asset(
+                                      activeSpriteAsset,
+                                      height: sceneHeight * 0.34,
+                                      fit: BoxFit.contain,
+                                    ),
                             ],
                           ],
                         ),
@@ -422,6 +442,72 @@ class _ApproachTopBar extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ── NPC Rive sprite ────────────────────────────────────────────────────────
+
+/// Plays an NPC's .riv animation. Owns its own [FileLoader], created once in
+/// [initState] rather than inline in a parent build() — RiveWidgetBuilder
+/// reloads the file whenever it's handed a new (by-equality) FileLoader
+/// instance, and this scene's build() runs on every message/state change.
+class _NpcRiveSprite extends StatefulWidget {
+  final String assetPath;
+  final double height;
+
+  const _NpcRiveSprite({
+    super.key,
+    required this.assetPath,
+    required this.height,
+  });
+
+  @override
+  State<_NpcRiveSprite> createState() => _NpcRiveSpriteState();
+}
+
+class _NpcRiveSpriteState extends State<_NpcRiveSprite> {
+  late FileLoader _fileLoader;
+
+  @override
+  void initState() {
+    super.initState();
+    _fileLoader = FileLoader.fromAsset(
+      widget.assetPath,
+      riveFactory: Factory.rive,
+    );
+  }
+
+  @override
+  void didUpdateWidget(_NpcRiveSprite oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.assetPath != oldWidget.assetPath) {
+      _fileLoader = FileLoader.fromAsset(
+        widget.assetPath,
+        riveFactory: Factory.rive,
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      // Unlike Image.asset, RiveWidget has no self-sizing behavior — it
+      // expands to fill unbounded width (what a Column's non-stretch
+      // cross-axis gives it), so an explicit width is required or it
+      // overflows by "infinity pixels". Assumes a roughly square portrait
+      // bust; Fit.contain below letterboxes if the artboard isn't.
+      height: widget.height,
+      width: widget.height,
+      child: RiveWidgetBuilder(
+        fileLoader: _fileLoader,
+        builder: (context, state) => switch (state) {
+          RiveLoaded(:final controller) =>
+            RiveWidget(controller: controller, fit: Fit.contain),
+          RiveLoading() => const SizedBox.shrink(),
+          RiveFailed() => const SizedBox.shrink(),
+        },
       ),
     );
   }
