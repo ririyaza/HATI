@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../data/dashboard_user_data.dart';
+import 'scenario_progress_detail_screen.dart';
+import 'weekly_progress_detail_screen.dart';
 
 class ProgressScreen extends StatelessWidget {
   const ProgressScreen({super.key});
@@ -168,18 +170,43 @@ class _ProgressContent extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'This Week',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.black,
+                    InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const WeeklyProgressDetailScreen(),
+                          ),
+                        );
+                      },
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Text(
+                                'This Week',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.black,
+                                ),
+                              ),
+                              const Spacer(),
+                              const Icon(
+                                Icons.chevron_right_rounded,
+                                color: Colors.black26,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          _WeeklyStreak(
+                            streak: data.currentStreak,
+                            completedDays: data.weeklyActivity,
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    _WeeklyStreak(
-                      streak: data.currentStreak,
-                      completedDays: data.weeklyActivity,
                     ),
                     const SizedBox(height: 24),
                     const Text(
@@ -200,7 +227,19 @@ class _ProgressContent extends StatelessWidget {
                       ...data.modules.map(
                         (module) => Padding(
                           padding: const EdgeInsets.only(bottom: 10),
-                          child: _ModuleProgressCard(module: module),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(16),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      const ScenarioProgressDetailScreen(),
+                                ),
+                              );
+                            },
+                            child: _ModuleProgressCard(module: module),
+                          ),
                         ),
                       ),
                     const SizedBox(height: 14),

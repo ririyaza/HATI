@@ -50,6 +50,8 @@ dependencies:
   flutter_facebook_auth: ^7.2.0
   flutter_svg: ^2.3.0
   rive: ^0.14.11
+  firebase_ai: ^4.0.0
+  firebase_app_check: ^0.4.7
 
 dev_dependencies:
   flutter_test:

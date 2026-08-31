@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'features/onboarding/loading_screen.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 
@@ -7,6 +8,16 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
+  );
+  // Debug-provider App Check so Firebase AI Logic (Gemini) calls aren't
+  // completely unprotected during development. This is NOT production
+  // ready: before shipping, register a real provider (Play Integrity for
+  // Android, App Attest for iOS) in the Firebase console and switch the
+  // providers below, then turn on enforcement for the Gemini API in
+  // App Check settings.
+  await FirebaseAppCheck.instance.activate(
+    providerAndroid: const AndroidDebugProvider(),
+    providerApple: const AppleDebugProvider(),
   );
   runApp(const MyApp());
 }
