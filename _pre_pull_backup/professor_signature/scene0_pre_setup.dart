@@ -28,12 +28,6 @@ class _Scene0PreSetupState extends State<Scene0PreSetup>
   late Animation<double> _fade;
   late Animation<Offset> _slide;
 
-  // Hati's intro dialogue plays as a multi-step typewriter sequence
-  // (see HatiSpeakingBlock/onSequenceComplete). Don't let the player
-  // advance past this scene until every line has actually been shown,
-  // otherwise the later lines get torn down mid-animation.
-  bool _dialogueComplete = false;
-
   @override
   void initState() {
     super.initState();
@@ -57,7 +51,6 @@ class _Scene0PreSetupState extends State<Scene0PreSetup>
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<ScenarioProvider>();
-    final config = provider.config;
 
     final parsed = provider.messages
         .map(parseSpeakerMessage)
@@ -77,7 +70,6 @@ class _Scene0PreSetupState extends State<Scene0PreSetup>
     final canBegin =
         provider.ui.type == ScenarioUIType.buttons && provider.ui.options.isNotEmpty;
     final beginLabel = canBegin ? provider.ui.options.first : 'Begin Scenario';
-    final readyToBegin = canBegin && _dialogueComplete;
 
     return Scaffold(
       body: Stack(
@@ -150,9 +142,9 @@ class _Scene0PreSetupState extends State<Scene0PreSetup>
                                       color: HatiColors.leafGreen.withValues(alpha: 0.4),
                                     ),
                                   ),
-                                  child: Text(
-                                    config.theme.toUpperCase(),
-                                    style: const TextStyle(
+                                  child: const Text(
+                                    'THEME 1 · FEAR OF AUTHORITY',
+                                    style: TextStyle(
                                       color: HatiColors.mintFresh,
                                       fontSize: 11,
                                       fontWeight: FontWeight.bold,
@@ -160,17 +152,12 @@ class _Scene0PreSetupState extends State<Scene0PreSetup>
                                     ),
                                   ),
                                 ),
-                                const SizedBox(height: 10),
-                                const Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: HatiSpeedToggle(),
-                                ),
 
                                 const Spacer(),
 
                                 // Scenario title
                                 Text(
-                                  config.title,
+                                  'The Professor\'s Signature',
                                   textAlign: TextAlign.center,
                                   style: HatiTextStyles.heading1.copyWith(
                                     color: HatiColors.warmCream,
@@ -192,12 +179,6 @@ class _Scene0PreSetupState extends State<Scene0PreSetup>
                                     introMessage: introMessage,
                                     persistentMessage: persistentMessage,
                                     frogSize: 180,
-                                    mood: HatiMood.thinking,
-                                    onSequenceComplete: () {
-                                      if (mounted && !_dialogueComplete) {
-                                        setState(() => _dialogueComplete = true);
-                                      }
-                                    },
                                   ),
 
                                 const Spacer(),
@@ -206,7 +187,7 @@ class _Scene0PreSetupState extends State<Scene0PreSetup>
                                 HatiButton(
                                   label: beginLabel,
                                   icon: Icons.play_arrow_rounded,
-                                  onTap: (!readyToBegin || provider.isLoading)
+                                  onTap: (!canBegin || provider.isLoading)
                                       ? null
                                       : () => provider.submitText(beginLabel),
                                   color: HatiColors.leafGreen,

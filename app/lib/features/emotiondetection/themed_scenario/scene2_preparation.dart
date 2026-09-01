@@ -9,6 +9,14 @@
 // the custom-script path, which is just the literal last option
 // ("I'll type my own line") the backend already sends; tapping it submits
 // that same string and the backend itself routes to foa_s2_script_custom.
+//
+// `scene2_difficulty` also maps here (see scenario_models.kStepToScene) —
+// it's the shared Easy/Difficult mode selector every theme shows right
+// before Scene 3 begins. It's special-cased by step name below so its two
+// options ("Easy Mode" / "Difficult Mode") render as a plain choice list
+// instead of being swept into the generic multi-option branch, which is
+// built for lettered script/opening-line picks and would otherwise label
+// this step "Choose Your Script".
 // ─────────────────────────────────────────────
 
 import 'package:flutter/material.dart';
@@ -60,6 +68,31 @@ class _Scene2PreparationState extends State<Scene2Preparation> {
               ? null
               : () => provider.submitText(ui.options.first),
         );
+      } else if (step == 'scene2_difficulty') {
+        // Easy Mode / Difficult Mode — a plain choice list (reusing the
+        // same SectionHeader + HatiOutlineButton pattern Scene4Debrief uses
+        // for its own non-script multi-option steps), not the lettered
+        // script cards below.
+        contentBackgroundColor = Colors.white;
+        fixedHeader = const SectionHeader(
+          title: 'Choose Your Difficulty',
+          subtitle: 'Both are valid ways to practice',
+        );
+        final isLoading = provider.isLoading || !_dialogueComplete;
+        body = Column(
+          key: ValueKey(step),
+          children: [
+            for (final opt in ui.options)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: HatiOutlineButton(
+                  label: opt,
+                  enabled: !isLoading,
+                  onTap: isLoading ? () {} : () => provider.submitText(opt),
+                ),
+              ),
+          ],
+        );
       } else {
         // foa_s2_script -> canned scripts + "write your own" option. Solid
         // white behind the whole section (not just a card) so none of the
@@ -105,6 +138,7 @@ class _Scene2PreparationState extends State<Scene2Preparation> {
               child: HatiSceneShell(
                 showCoach: true,
                 persistentMessage: hatiText,
+                mood: HatiMood.thinking,
                 onSequenceComplete: () {
                   if (mounted && !_dialogueComplete) {
                     setState(() => _dialogueComplete = true);

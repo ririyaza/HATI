@@ -19,32 +19,18 @@ import 'scenario_models.dart';
 import 'scenario_provider.dart';
 import 'shared_widgets.dart';
 
-class Scene5Coping extends StatefulWidget {
+class Scene5Coping extends StatelessWidget {
   const Scene5Coping({super.key});
-
-  @override
-  State<Scene5Coping> createState() => _Scene5CopingState();
-}
-
-class _Scene5CopingState extends State<Scene5Coping> {
-  String? _trackedStep;
-  bool _dialogueComplete = false;
 
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<ScenarioProvider>();
-    final config = provider.config;
     final step = provider.backendStep;
     final parsedTexts = provider.messages
         .map(parseSpeakerMessage)
         .map((m) => m.text)
         .where((t) => t.trim().isNotEmpty)
         .toList();
-
-    if (step != _trackedStep) {
-      _trackedStep = step;
-      _dialogueComplete = false;
-    }
 
     Widget body;
     Widget? bottomBar;
@@ -54,11 +40,9 @@ class _Scene5CopingState extends State<Scene5Coping> {
       persistentMessage = parsedTexts.join('\n\n');
       body = _PracticeWalkthrough(
         key: const ValueKey('practice'),
-        isLoading: provider.isLoading || !_dialogueComplete,
+        isLoading: provider.isLoading,
         onFinished: () => provider.submitText(
-          provider.ui.options.isNotEmpty
-              ? provider.ui.options.first
-              : "I'm done",
+          provider.ui.options.isNotEmpty ? provider.ui.options.first : "I'm done",
         ),
       );
     } else {
@@ -68,30 +52,24 @@ class _Scene5CopingState extends State<Scene5Coping> {
       final toolText = parsedTexts.length >= 2
           ? parsedTexts[1]
           : (parsedTexts.isNotEmpty ? parsedTexts.last : '');
-      persistentMessage = [
-        introText,
-        questionText,
-      ].where((s) => s.isNotEmpty).join('\n\n');
+      persistentMessage =
+          [introText, questionText].where((s) => s.isNotEmpty).join('\n\n');
       body = _CopingStrategyCard(key: ValueKey(step), strategy: toolText);
       bottomBar = Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           for (final opt in provider.ui.options)
             Padding(
-              padding: const EdgeInsets.only(bottom: 4),
+              padding: const EdgeInsets.only(bottom: 8),
               child: opt.toLowerCase() == 'yes'
                   ? HatiButton(
                       label: opt,
                       icon: Icons.play_circle_rounded,
-                      onTap: (provider.isLoading || !_dialogueComplete)
-                          ? null
-                          : () => provider.submitText(opt),
+                      onTap: provider.isLoading ? null : () => provider.submitText(opt),
                     )
                   : HatiOutlineButton(
                       label: opt,
-                      onTap: (provider.isLoading || !_dialogueComplete)
-                          ? () {}
-                          : () => provider.submitText(opt),
+                      onTap: provider.isLoading ? () {} : () => provider.submitText(opt),
                     ),
             ),
         ],
@@ -99,33 +77,27 @@ class _Scene5CopingState extends State<Scene5Coping> {
     }
 
     return Scaffold(
-      body: ScenarioGradientBackground(
-        backgroundAsset: config.backgroundAsset,
-        child: Column(
-          children: [
-            const SceneTopHeader(
+      appBar: AppBar(title: const Text('Coping Strategy')),
+      body: Column(
+        children: [
+          Container(
+            color: HatiColors.deepForest,
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+            child: const SceneProgressBar(
               currentStep: 5,
               totalSteps: 7,
               sceneLabel: 'Coping Strategy Integration',
             ),
-            const SceneSpeedToggleRow(),
-            Expanded(
-              child: HatiSceneShell(
-                showCoach: true,
-                persistentMessage: persistentMessage,
-                mood: HatiMood.thinking,
-                onSequenceComplete: () {
-                  if (mounted && !_dialogueComplete) {
-                    setState(() => _dialogueComplete = true);
-                  }
-                },
-                body: body,
-                bottomBar: bottomBar,
-                contentBackgroundColor: Colors.white,
-              ),
+          ),
+          Expanded(
+            child: HatiSceneShell(
+              showCoach: true,
+              persistentMessage: persistentMessage,
+              body: body,
+              bottomBar: bottomBar,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -138,8 +110,24 @@ class _CopingStrategyCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(14),
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: HatiColors.divider),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8),
+        ],
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            HatiColors.mossGreen.withValues(alpha: 0.08),
+            HatiColors.mintFresh.withValues(alpha: 0.08),
+          ],
+        ),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -147,18 +135,13 @@ class _CopingStrategyCard extends StatelessWidget {
             children: [
               const Text('🛡️', style: TextStyle(fontSize: 24)),
               const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'Your Coping Strategy',
-                  style: HatiTextStyles.heading3.copyWith(
-                    color: HatiColors.mossGreen,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
+              Text(
+                'Your Coping Strategy',
+                style: HatiTextStyles.heading3.copyWith(color: HatiColors.mossGreen),
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 14),
           Text(strategy, style: HatiTextStyles.bodyLarge),
         ],
       ),
@@ -195,8 +178,16 @@ class _PracticeWalkthroughState extends State<_PracticeWalkthrough> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(14),
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: HatiColors.divider),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -205,16 +196,9 @@ class _PracticeWalkthroughState extends State<_PracticeWalkthrough> {
             children: [
               const Text(
                 '🧘 Practice Mode',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                  color: HatiColors.mossGreen,
-                ),
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: HatiColors.mossGreen),
               ),
-              Text(
-                '${_step + 1} / ${_steps.length}',
-                style: HatiTextStyles.caption,
-              ),
+              Text('${_step + 1} / ${_steps.length}', style: HatiTextStyles.caption),
             ],
           ),
           const SizedBox(height: 4),
@@ -223,13 +207,13 @@ class _PracticeWalkthroughState extends State<_PracticeWalkthrough> {
             color: HatiColors.mossGreen,
             backgroundColor: HatiColors.divider,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 20),
           AnimatedSwitcher(
             duration: const Duration(milliseconds: 400),
             child: Container(
               key: ValueKey(_step),
               width: double.infinity,
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: HatiColors.mossGreen.withValues(alpha: 0.06),
                 borderRadius: BorderRadius.circular(12),
@@ -237,11 +221,9 @@ class _PracticeWalkthroughState extends State<_PracticeWalkthrough> {
               child: Text(_steps[_step], style: HatiTextStyles.bodyLarge),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           HatiButton(
-            label: _step < _steps.length - 1
-                ? 'Done, next step'
-                : 'Finish Practice',
+            label: _step < _steps.length - 1 ? 'Done, next step' : 'Finish Practice',
             icon: _step < _steps.length - 1
                 ? Icons.arrow_forward_rounded
                 : Icons.check_circle_rounded,
@@ -266,15 +248,8 @@ class _PracticeWalkthroughState extends State<_PracticeWalkthrough> {
 // screens/scene6_closing.dart
 // ─────────────────────────────────────────────
 
-class Scene6Closing extends StatefulWidget {
+class Scene6Closing extends StatelessWidget {
   const Scene6Closing({super.key});
-
-  @override
-  State<Scene6Closing> createState() => _Scene6ClosingState();
-}
-
-class _Scene6ClosingState extends State<Scene6Closing> {
-  bool _dialogueComplete = false;
 
   @override
   Widget build(BuildContext context) {
@@ -285,15 +260,10 @@ class _Scene6ClosingState extends State<Scene6Closing> {
         .where((t) => t.trim().isNotEmpty)
         .toList();
     // messages = ["Here's what I want you to remember:", insight, closing line]
-    final insight = parsed.length >= 2
-        ? parsed[1]
-        : (parsed.isNotEmpty ? parsed.first : '');
-    final closingLine = parsed.isNotEmpty
-        ? parsed.last
-        : "You showed up today. That's a win.";
-    final finishLabel = provider.ui.options.isNotEmpty
-        ? provider.ui.options.first
-        : 'Finish';
+    final insight = parsed.length >= 2 ? parsed[1] : (parsed.isNotEmpty ? parsed.first : '');
+    final closingLine =
+        parsed.isNotEmpty ? parsed.last : "You showed up today. That's a win.";
+    final finishLabel = provider.ui.options.isNotEmpty ? provider.ui.options.first : 'Finish';
 
     return Scaffold(
       body: Stack(
@@ -329,109 +299,84 @@ class _Scene6ClosingState extends State<Scene6Closing> {
                     totalSteps: 7,
                     sceneLabel: 'Closing',
                   ),
-                  Expanded(
-                    child: SingleChildScrollView(
-                      child: Column(
-                        children: [
-                          const SizedBox(height: 20),
-                          Container(
-                            width: 90,
-                            height: 90,
-                            decoration: BoxDecoration(
-                              color: HatiColors.softGold.withValues(alpha: 0.2),
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: HatiColors.softGold.withValues(
-                                  alpha: 0.5,
-                                ),
-                                width: 2,
-                              ),
-                            ),
-                            child: const Center(
-                              child: Text('🏆', style: TextStyle(fontSize: 40)),
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: HatiColors.softGold.withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: HatiColors.softGold.withValues(
-                                  alpha: 0.4,
-                                ),
-                              ),
-                            ),
-                            child: const Text(
-                              'SCENARIO COMPLETE!',
-                              style: TextStyle(
-                                color: HatiColors.softGold,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
-                                letterSpacing: 1.5,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-                          Container(
-                            padding: const EdgeInsets.all(20),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.08),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.12),
-                              ),
-                            ),
-                            child: Column(
-                              children: [
-                                const Text(
-                                  '💡 What to remember:',
-                                  style: TextStyle(
-                                    color: HatiColors.mintFresh,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 12,
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
-                                const SizedBox(height: 10),
-                                Text(
-                                  insight,
-                                  textAlign: TextAlign.center,
-                                  style: HatiTextStyles.bodyLarge.copyWith(
-                                    color: HatiColors.warmCream,
-                                    height: 1.7,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          HatiSpeakingBlock(
-                            persistentMessage: closingLine,
-                            frogSize: 150,
-                            mood: HatiMood.happy,
-                            onSequenceComplete: () {
-                              if (mounted && !_dialogueComplete) {
-                                setState(() => _dialogueComplete = true);
-                              }
-                            },
-                          ),
-                          const SizedBox(height: 20),
-                        ],
+                  const Spacer(),
+                  Container(
+                    width: 90,
+                    height: 90,
+                    decoration: BoxDecoration(
+                      color: HatiColors.softGold.withValues(alpha: 0.2),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: HatiColors.softGold.withValues(alpha: 0.5),
+                        width: 2,
+                      ),
+                    ),
+                    child: const Center(
+                      child: Text('🏆', style: TextStyle(fontSize: 40)),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: HatiColors.softGold.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: HatiColors.softGold.withValues(alpha: 0.4),
+                      ),
+                    ),
+                    child: const Text(
+                      'SCENARIO COMPLETE!',
+                      style: TextStyle(
+                        color: HatiColors.softGold,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                        letterSpacing: 1.5,
                       ),
                     ),
                   ),
+                  const SizedBox(height: 20),
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+                    ),
+                    child: Column(
+                      children: [
+                        const Text(
+                          '💡 What to remember:',
+                          style: TextStyle(
+                            color: HatiColors.mintFresh,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          insight,
+                          textAlign: TextAlign.center,
+                          style: HatiTextStyles.bodyLarge.copyWith(
+                            color: HatiColors.warmCream,
+                            height: 1.7,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  HatiSpeakingBlock(
+                    persistentMessage: closingLine,
+                    frogSize: 150,
+                  ),
+                  const Spacer(),
                   HatiButton(
                     label: finishLabel,
                     icon: Icons.check_rounded,
                     color: HatiColors.leafGreen,
-                    onTap: (provider.isLoading || !_dialogueComplete)
-                        ? null
-                        : () => provider.submitText(finishLabel),
+                    onTap: provider.isLoading ? null : () => provider.submitText(finishLabel),
                   ),
                   const SizedBox(height: 8),
                 ],
