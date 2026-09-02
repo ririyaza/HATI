@@ -3,10 +3,11 @@ import 'package:flutter/material.dart';
 import '../../dashboard/screen/dashboard_screen.dart';
 import '../../dashboard/screen/support_resources_screen.dart';
 
-/// Shown when the reassessment comparison is `noChange` or `worsened`:
-/// supportive, non-alarming copy plus a path to the same resource list used
-/// elsewhere in the app (`SupportResourcesScreen`), reused as-is here rather
-/// than duplicating the hotline/guidance-center list.
+/// Shown when the reassessment comparison is `noChange` (reached directly)
+/// or `worsened` (reached after `WorsenedUpdateScreen` acknowledges the
+/// result): supportive, non-alarming copy plus a path to the same resource
+/// list used elsewhere in the app (`SupportResourcesScreen`), reused as-is
+/// here rather than duplicating the hotline/guidance-center list.
 class ReferralScreen extends StatelessWidget {
   const ReferralScreen({super.key});
 

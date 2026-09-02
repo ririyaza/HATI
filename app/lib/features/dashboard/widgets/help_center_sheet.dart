@@ -5,20 +5,26 @@ import '../screen/support_resources_screen.dart';
 
 /// Bottom sheet quick-access point: lets the user reach either the app
 /// developer or mental-health support resources from anywhere on the
-/// dashboard.
-Future<void> showHelpCenterSheet(BuildContext context) {
+/// dashboard. When [onReplayTour] is provided, also offers a way to
+/// restart the dashboard walkthrough.
+Future<void> showHelpCenterSheet(
+  BuildContext context, {
+  VoidCallback? onReplayTour,
+}) {
   return showModalBottomSheet(
     context: context,
     backgroundColor: Colors.white,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
     ),
-    builder: (context) => const _HelpCenterSheet(),
+    builder: (context) => _HelpCenterSheet(onReplayTour: onReplayTour),
   );
 }
 
 class _HelpCenterSheet extends StatelessWidget {
-  const _HelpCenterSheet();
+  const _HelpCenterSheet({this.onReplayTour});
+
+  final VoidCallback? onReplayTour;
 
   @override
   Widget build(BuildContext context) {
@@ -84,6 +90,19 @@ class _HelpCenterSheet extends StatelessWidget {
                 );
               },
             ),
+            if (onReplayTour != null) ...[
+              const SizedBox(height: 12),
+              _HelpOption(
+                icon: Icons.replay_circle_filled_rounded,
+                iconColor: const Color(0xFF0B28D9),
+                title: 'Replay Tutorial',
+                subtitle: 'Walk through the app tour again.',
+                onTap: () {
+                  Navigator.of(context).pop();
+                  onReplayTour!();
+                },
+              ),
+            ],
           ],
         ),
       ),

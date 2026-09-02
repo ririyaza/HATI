@@ -19,7 +19,7 @@ class LikertAssessmentFlow extends StatefulWidget {
     super.key,
     required this.questions,
     required this.options,
-    required this.promptEyebrow,
+    required this.promptSentence,
     required this.instructionLine,
     required this.startIndex,
     required this.totalInFlow,
@@ -31,8 +31,10 @@ class LikertAssessmentFlow extends StatefulWidget {
   final List<SpinQuestion> questions;
   final List<String> options;
 
-  /// Small label above the question text, e.g. "PAST WEEK".
-  final String promptEyebrow;
+  /// Sentence above the question text framing the time period and what to
+  /// rate, e.g. "Over the past week, how much did the following describe
+  /// you?".
+  final String promptSentence;
 
   /// Label above the option list, e.g. "HOW MUCH DOES THIS DESCRIBE YOU?".
   final String instructionLine;
@@ -155,12 +157,12 @@ class _LikertAssessmentFlowState extends State<LikertAssessmentFlow> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    widget.promptEyebrow,
+                    widget.promptSentence,
                     style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.black38,
-                      letterSpacing: 1.2,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.black54,
+                      height: 1.4,
                     ),
                   ),
                   const SizedBox(height: 8),

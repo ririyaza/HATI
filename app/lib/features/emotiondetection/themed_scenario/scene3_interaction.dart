@@ -157,7 +157,8 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
 
     return Scaffold(
       backgroundColor: _kApproachBlue,
-      body: SafeArea(
+      body: HatiTapToAdvance(
+        child: SafeArea(
         bottom: false,
         child: Column(
           children: [
@@ -289,6 +290,7 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
                 ),
               ),
           ],
+        ),
         ),
       ),
     );

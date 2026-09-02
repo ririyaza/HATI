@@ -5,7 +5,10 @@ import '../../postAssessment/widgets/reassessment_banner.dart';
 import '../widgets/hati_sprite_animation.dart';
 
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({super.key, this.chatKey});
+
+  /// Spotlight target for the dashboard tour's "Ask Hati" step.
+  final Key? chatKey;
 
   @override
   Widget build(BuildContext context) {
@@ -38,7 +41,7 @@ class HomeScreen extends StatelessWidget {
                 child: HatiSpriteAnimation(),
               ),
               const Spacer(),
-              const HatiChatEntryBar(),
+              HatiChatEntryBar(key: chatKey),
             ],
           ),
         ),

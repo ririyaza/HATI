@@ -32,12 +32,18 @@ void main() {
       ),
     );
 
-    // Pump forward in chunks well past the intro's typing + 5s hold + 400ms
-    // fade, then the persistent bubble's own typing + 2s-per-sentence holds.
+    // Dialogue no longer auto-advances on a timer — the player taps
+    // anywhere on screen to move it along (see HatiDialogueTapController).
+    // Pump forward in chunks, tapping once per chunk: a tap either
+    // fast-forwards a still-typing sentence or advances to the next one,
+    // so this converges regardless of exactly where typing is mid-chunk.
     var elapsedSeconds = 0;
     for (var i = 0; i < 60; i++) {
       await tester.pump(const Duration(seconds: 1));
       elapsedSeconds++;
+      if (completed) break;
+      HatiDialogueTapController.tap();
+      await tester.pump(const Duration(milliseconds: 50));
       if (completed) break;
     }
 

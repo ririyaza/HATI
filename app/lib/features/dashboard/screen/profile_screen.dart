@@ -1,9 +1,13 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../../auth/screen/login_screen.dart';
+import '../../auth/session_persistence.dart';
 import '../../postAssessment/data/post_assessment_repository.dart';
 import '../data/dashboard_user_data.dart';
+import '../widgets/help_center_sheet.dart';
 import '../widgets/profile_edit_sheets.dart';
+import 'privacy_policy_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -34,6 +38,39 @@ class ProfileScreen extends StatelessWidget {
       },
     );
   }
+}
+
+Future<void> _handleLogout(BuildContext context) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Log Out'),
+      content: const Text('Are you sure you want to log out of HATI?'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context, true),
+          child: const Text(
+            'Log Out',
+            style: TextStyle(color: Color(0xFFD9250B)),
+          ),
+        ),
+      ],
+    ),
+  );
+  if (confirmed != true) return;
+
+  await clearLoginTimestamp();
+  await FirebaseAuth.instance.signOut();
+  if (!context.mounted) return;
+
+  Navigator.of(context).pushAndRemoveUntil(
+    MaterialPageRoute(builder: (_) => const LoginScreen()),
+    (route) => false,
+  );
 }
 
 class _ProfileContent extends StatelessWidget {
@@ -78,15 +115,39 @@ class _ProfileContent extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                data.displayName,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.w700,
-                                ),
+                              Row(
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      data.displayName,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  InkWell(
+                                    borderRadius: BorderRadius.circular(20),
+                                    onTap: () => showEditNameAndPronounsSheet(
+                                      context,
+                                      uid: data.uid,
+                                      currentName: data.displayName,
+                                      currentPronouns: data.pronouns,
+                                    ),
+                                    child: const Padding(
+                                      padding: EdgeInsets.all(4),
+                                      child: Icon(
+                                        Icons.edit_outlined,
+                                        size: 16,
+                                        color: Colors.white70,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                               const SizedBox(height: 6),
                               Wrap(
@@ -203,16 +264,20 @@ class _ProfileContent extends StatelessWidget {
                     _SettingsTile(
                       icon: Icons.lock_outline,
                       label: 'Privacy',
-                      onTap: () {},
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const PrivacyPolicyScreen(),
+                        ),
+                      ),
                     ),
                     _SettingsTile(
                       icon: Icons.help_outline,
                       label: 'Help & Support',
-                      onTap: () {},
+                      onTap: () => showHelpCenterSheet(context),
                     ),
                     const SizedBox(height: 12),
                     GestureDetector(
-                      onTap: () => FirebaseAuth.instance.signOut(),
+                      onTap: () => _handleLogout(context),
                       child: Container(
                         width: double.infinity,
                         padding: const EdgeInsets.symmetric(vertical: 14),

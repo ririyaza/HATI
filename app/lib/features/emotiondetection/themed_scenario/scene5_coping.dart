@@ -295,7 +295,8 @@ class _Scene6ClosingState extends State<Scene6Closing> {
         : 'Finish';
 
     return Scaffold(
-      body: Stack(
+      body: HatiTapToAdvance(
+        child: Stack(
         children: [
           Container(
             decoration: const BoxDecoration(
@@ -437,6 +438,7 @@ class _Scene6ClosingState extends State<Scene6Closing> {
             ),
           ),
         ],
+        ),
       ),
     );
   }
