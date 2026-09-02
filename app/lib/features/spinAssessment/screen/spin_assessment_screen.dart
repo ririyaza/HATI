@@ -390,12 +390,13 @@ class _SpinAssessmentScreenState extends State<SpinAssessmentScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'PAST WEEK',
+                    'Over the past week, how much did the following '
+                    'describe you?',
                     style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.black38,
-                      letterSpacing: 1.2,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.black54,
+                      height: 1.4,
                     ),
                   ),
                   const SizedBox(height: 8),

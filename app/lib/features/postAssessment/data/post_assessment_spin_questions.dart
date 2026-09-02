@@ -21,4 +21,4 @@ const spinOptions = [
   'Extremely',
 ];
 
-const spinPromptEyebrow = 'PAST WEEK';
+const spinPrompt = 'Over the past week, how much did the following describe you?';

@@ -1030,7 +1030,6 @@ class HatiSpeechSpeedController {
   static final ValueNotifier<bool> isFast = ValueNotifier<bool>(false);
 
   static const Duration _baseCharInterval = Duration(milliseconds: 20);
-  static const Duration _baseSentenceHold = Duration(seconds: 2);
 
   /// Read fresh on every tick (rather than cached once per sentence) so
   /// toggling mid-sentence speeds up the very next character instead of
@@ -1038,10 +1037,47 @@ class HatiSpeechSpeedController {
   static Duration get charInterval =>
       isFast.value ? _baseCharInterval ~/ 2 : _baseCharInterval;
 
-  static Duration get sentenceHoldInterval =>
-      isFast.value ? _baseSentenceHold ~/ 2 : _baseSentenceHold;
-
   static void toggle() => isFast.value = !isFast.value;
+}
+
+// ── Tap-anywhere-to-advance dialogue control ────────────────────────────────
+/// Global "advance Hati's dialogue" signal. Every mounted dialogue bubble
+/// (see [_AnimatedHatiSpeechBubbleState]) listens for ticks and reacts:
+/// fast-forwards a still-typing line, or advances to the next line /
+/// dismisses once a line has fully typed out. A single global signal (rather
+/// than threading a callback through every layout wrapper) lets any scene
+/// opt in just by wrapping its body in [HatiTapToAdvance].
+class HatiDialogueTapController {
+  HatiDialogueTapController._();
+
+  static final ValueNotifier<int> _ticks = ValueNotifier<int>(0);
+
+  static void tap() => _ticks.value++;
+
+  static void addListener(VoidCallback listener) =>
+      _ticks.addListener(listener);
+
+  static void removeListener(VoidCallback listener) =>
+      _ticks.removeListener(listener);
+}
+
+/// Wraps a scene's body so a tap anywhere on screen advances whichever Hati
+/// dialogue bubble is active. Translucent hit-test behavior means buttons,
+/// chips, and text fields underneath still receive their own taps normally
+/// — this only adds the dialogue-advance signal alongside them.
+class HatiTapToAdvance extends StatelessWidget {
+  final Widget child;
+
+  const HatiTapToAdvance({super.key, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onTap: HatiDialogueTapController.tap,
+      child: child,
+    );
+  }
 }
 
 /// Small pill switch for [HatiSpeechSpeedController]. Meant to sit in a
@@ -1175,11 +1211,10 @@ class _AnimatedHatiSpeechBubbleState extends State<_AnimatedHatiSpeechBubble>
   late final String _layoutReference;
 
   Timer? _typewriterTimer;
-  Timer? _sentenceHoldTimer;
-  Timer? _dissolveDelayTimer;
   int _sentenceIndex = 0;
   int _visibleChars = 0;
   bool _dissolved = false;
+  bool _dissolving = false;
 
   @override
   void initState() {
@@ -1235,20 +1270,40 @@ class _AnimatedHatiSpeechBubbleState extends State<_AnimatedHatiSpeechBubble>
     _entranceController.forward().then((_) {
       if (mounted) _startTypewriter();
     });
+
+    HatiDialogueTapController.addListener(_handleTap);
   }
 
   void _startTypewriter() {
     if (_sentences.isEmpty) {
-      _scheduleDissolve();
+      _finishWithNoText();
+      return;
+    }
+    // An early tap during the entrance animation may have already
+    // fast-forwarded the first sentence — don't restart it from scratch.
+    if (_visibleChars >= _sentences[_sentenceIndex].length) {
+      _onSentenceFullyShown();
       return;
     }
     _typeCurrentSentence();
   }
 
+  void _finishWithNoText() {
+    if (!widget.dissolves) {
+      widget.onTypingComplete?.call();
+      return;
+    }
+    if (widget.onDismissed != null) {
+      widget.onDismissed!();
+    } else if (mounted) {
+      setState(() => _dissolved = true);
+    }
+  }
+
   void _typeCurrentSentence() {
     final sentence = _sentences[_sentenceIndex];
     if (sentence.isEmpty) {
-      _holdThenAdvance();
+      _onSentenceFullyShown();
       return;
     }
     _scheduleNextChar(sentence);
@@ -1262,7 +1317,7 @@ class _AnimatedHatiSpeechBubbleState extends State<_AnimatedHatiSpeechBubble>
     _typewriterTimer = Timer(HatiSpeechSpeedController.charInterval, () {
       if (!mounted) return;
       if (_visibleChars >= sentence.length) {
-        _holdThenAdvance();
+        _onSentenceFullyShown();
         return;
       }
       setState(() => _visibleChars++);
@@ -1270,50 +1325,61 @@ class _AnimatedHatiSpeechBubbleState extends State<_AnimatedHatiSpeechBubble>
     });
   }
 
-  void _holdThenAdvance() {
+  // Called once the current sentence's text is fully revealed. Dialogue no
+  // longer auto-advances on a timer — the player taps anywhere on screen
+  // (see [HatiDialogueTapController]) to move to the next line, so this
+  // only fires the "done" callback for a non-dissolving final line (which
+  // unblocks the scene's own Continue/options button) and otherwise just
+  // waits for [_handleTap].
+  void _onSentenceFullyShown() {
     final isLast = _sentenceIndex >= _sentences.length - 1;
-    if (isLast) {
-      _scheduleDissolve();
-      return;
+    if (isLast && !widget.dissolves) {
+      widget.onTypingComplete?.call();
     }
-
-    _sentenceHoldTimer = Timer(
-      HatiSpeechSpeedController.sentenceHoldInterval,
-      () {
-        if (!mounted) return;
-        setState(() {
-          _sentenceIndex++;
-          _visibleChars = 0;
-        });
-        _typeCurrentSentence();
-      },
-    );
   }
 
-  void _scheduleDissolve() {
-    if (!widget.dissolves) {
-      widget.onTypingComplete?.call();
+  void _advance() {
+    if (_sentences.isEmpty) return;
+    final isLast = _sentenceIndex >= _sentences.length - 1;
+    if (!isLast) {
+      setState(() {
+        _sentenceIndex++;
+        _visibleChars = 0;
+      });
+      _typeCurrentSentence();
       return;
     }
-
-    _dissolveDelayTimer = Timer(widget.holdAfterTyping, () {
+    if (!widget.dissolves || _dissolving) return;
+    _dissolving = true;
+    _dissolveController.forward().then((_) {
       if (!mounted) return;
-      _dissolveController.forward().then((_) {
-        if (!mounted) return;
-        if (widget.onDismissed != null) {
-          widget.onDismissed!();
-        } else {
-          setState(() => _dissolved = true);
-        }
-      });
+      if (widget.onDismissed != null) {
+        widget.onDismissed!();
+      } else {
+        setState(() => _dissolved = true);
+      }
     });
+  }
+
+  /// Handles a [HatiDialogueTapController] tick: fast-forwards the current
+  /// sentence if it's still typing, otherwise advances to the next sentence
+  /// (or dismisses, on the last one, when [_AnimatedHatiSpeechBubble.dissolves]).
+  void _handleTap() {
+    if (!mounted || _dissolved || _sentences.isEmpty) return;
+    final sentence = _sentences[_sentenceIndex.clamp(0, _sentences.length - 1)];
+    if (_visibleChars < sentence.length) {
+      _typewriterTimer?.cancel();
+      setState(() => _visibleChars = sentence.length);
+      _onSentenceFullyShown();
+      return;
+    }
+    _advance();
   }
 
   @override
   void dispose() {
+    HatiDialogueTapController.removeListener(_handleTap);
     _typewriterTimer?.cancel();
-    _sentenceHoldTimer?.cancel();
-    _dissolveDelayTimer?.cancel();
     _entranceController.dispose();
     _dissolveController.dispose();
     super.dispose();
@@ -1812,26 +1878,28 @@ class HatiSceneShell extends StatelessWidget {
       );
     }
 
-    return Column(
-      children: [
-        Expanded(
-          child: Column(
-            children: [
-              if (showCoach)
-                HatiCoachZone(
-                  introMessage: introMessage,
-                  persistentMessage: persistentMessage,
-                  replacementMessage: replacementMessage,
-                  onSequenceComplete: onSequenceComplete,
-                  showBubble: showBubble,
-                  frogWidthScale: frogWidthScale,
-                ),
-              Expanded(child: contentArea),
-            ],
+    return HatiTapToAdvance(
+      child: Column(
+        children: [
+          Expanded(
+            child: Column(
+              children: [
+                if (showCoach)
+                  HatiCoachZone(
+                    introMessage: introMessage,
+                    persistentMessage: persistentMessage,
+                    replacementMessage: replacementMessage,
+                    onSequenceComplete: onSequenceComplete,
+                    showBubble: showBubble,
+                    frogWidthScale: frogWidthScale,
+                  ),
+                Expanded(child: contentArea),
+              ],
+            ),
           ),
-        ),
-        if (bottomBar != null) HatiFixedBottomBar(child: bottomBar!),
-      ],
+          if (bottomBar != null) HatiFixedBottomBar(child: bottomBar!),
+        ],
+      ),
     );
   }
 }

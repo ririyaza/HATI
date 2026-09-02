@@ -6,6 +6,7 @@ import '../data/post_assessment_repository.dart';
 import '../data/post_assessment_scoring.dart';
 import 'progress_update_screen.dart';
 import 'referral_screen.dart';
+import 'worsened_update_screen.dart';
 
 class PostAssessmentResultsScreen extends StatefulWidget {
   const PostAssessmentResultsScreen({
@@ -389,7 +390,12 @@ class _ResultCard extends StatelessWidget {
 /// code so it can be unit-tested directly without needing to pump a full
 /// widget tree or mock Firebase.
 Widget nextScreenForComparison(AssessmentComparisonResult comparison) {
-  return comparison.isReferral
-      ? const ReferralScreen()
-      : const ProgressUpdateScreen();
+  switch (comparison.overall) {
+    case InstrumentComparisonResult.improved:
+      return const ProgressUpdateScreen();
+    case InstrumentComparisonResult.noChange:
+      return const ReferralScreen();
+    case InstrumentComparisonResult.worsened:
+      return const WorsenedUpdateScreen();
+  }
 }

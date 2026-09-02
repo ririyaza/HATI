@@ -10,10 +10,15 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'app_theme.dart';
 import 'scenario_models.dart';
 import 'scenario_provider.dart';
 import 'shared_widgets.dart';
+
+/// Set once the first time a player reaches any scenario's Scene 0, so the
+/// walkthrough dialog only ever shows once per device.
+const _kScenarioTutorialSeenKey = 'hati_scenario_tutorial_seen';
 
 class Scene0PreSetup extends StatefulWidget {
   const Scene0PreSetup({super.key});
@@ -34,6 +39,12 @@ class _Scene0PreSetupState extends State<Scene0PreSetup>
   // otherwise the later lines get torn down mid-animation.
   bool _dialogueComplete = false;
 
+  // Null while the one-time device check is still loading; false shows the
+  // walkthrough dialog and holds Hati's dialogue back until it's dismissed;
+  // true means it was already seen (or was just dismissed) and Hati is
+  // free to start talking.
+  bool? _tutorialSeen;
+
   @override
   void initState() {
     super.initState();
@@ -46,6 +57,31 @@ class _Scene0PreSetupState extends State<Scene0PreSetup>
       begin: const Offset(0, 0.1),
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+    _maybeShowTutorial();
+  }
+
+  Future<void> _maybeShowTutorial() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    if (prefs.getBool(_kScenarioTutorialSeenKey) ?? false) {
+      setState(() => _tutorialSeen = true);
+      return;
+    }
+    setState(() => _tutorialSeen = false);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _showTutorial(prefs));
+  }
+
+  Future<void> _showTutorial(SharedPreferences prefs) async {
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => _ScenarioTutorialDialog(
+        onGotIt: () => Navigator.pop(context),
+      ),
+    );
+    await prefs.setBool(_kScenarioTutorialSeenKey, true);
+    if (mounted) setState(() => _tutorialSeen = true);
   }
 
   @override
@@ -80,7 +116,8 @@ class _Scene0PreSetupState extends State<Scene0PreSetup>
     final readyToBegin = canBegin && _dialogueComplete;
 
     return Scaffold(
-      body: Stack(
+      body: HatiTapToAdvance(
+        child: Stack(
         children: [
           // Background gradient
           Container(
@@ -180,13 +217,17 @@ class _Scene0PreSetupState extends State<Scene0PreSetup>
 
                                 const SizedBox(height: 16),
 
-                                if (parsed.isEmpty)
+                                if (parsed.isEmpty || _tutorialSeen == null)
                                   const Padding(
                                     padding: EdgeInsets.symmetric(vertical: 24),
                                     child: CircularProgressIndicator(
                                       color: HatiColors.mintFresh,
                                     ),
                                   )
+                                else if (_tutorialSeen == false)
+                                  // Hati waits quietly until the walkthrough
+                                  // dialog above is dismissed.
+                                  const HatiFrogAvatar(size: 180)
                                 else
                                   HatiSpeakingBlock(
                                     introMessage: introMessage,
@@ -233,7 +274,172 @@ class _Scene0PreSetupState extends State<Scene0PreSetup>
             ),
           ),
         ],
+        ),
       ),
+    );
+  }
+}
+
+// ── First-time scenario walkthrough ─────────────────────────────────────────
+/// Shown once ever (see [_kScenarioTutorialSeenKey]) before Hati's greeting
+/// starts, so the player knows the scenario unfolds across multiple scenes
+/// and that tapping anywhere on screen is what advances Hati's dialogue.
+class _ScenarioTutorialDialog extends StatelessWidget {
+  final VoidCallback onGotIt;
+
+  const _ScenarioTutorialDialog({required this.onGotIt});
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      child: Container(
+        decoration: BoxDecoration(
+          color: HatiColors.cardBg,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.2),
+              blurRadius: 24,
+              offset: const Offset(0, 12),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(
+                vertical: 18,
+                horizontal: 20,
+              ),
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [HatiColors.deepForest, HatiColors.mossGreen],
+                ),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.auto_stories_rounded,
+                      color: HatiColors.softGold,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Text(
+                      'How This Scenario Works',
+                      style: HatiTextStyles.heading3.copyWith(
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _TutorialStepRow(
+                    icon: Icons.view_carousel_rounded,
+                    title: 'Multiple scenes',
+                    description:
+                        'This scenario plays out across several scenes, one '
+                        'after another — each builds on what happened '
+                        'before.',
+                  ),
+                  const SizedBox(height: 16),
+                  _TutorialStepRow(
+                    icon: Icons.touch_app_rounded,
+                    title: 'Tap to continue',
+                    description:
+                        "Whenever Hati is talking, tap anywhere on the "
+                        "screen to hear the next line — or tap again to "
+                        "skip ahead while it's still typing.",
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+              child: SizedBox(
+                width: double.infinity,
+                child: HatiButton(
+                  label: 'Got it',
+                  icon: Icons.check_rounded,
+                  color: HatiColors.mossGreen,
+                  onTap: onGotIt,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TutorialStepRow extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String description;
+
+  const _TutorialStepRow({
+    required this.icon,
+    required this.title,
+    required this.description,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 34,
+          height: 34,
+          decoration: BoxDecoration(
+            color: HatiColors.mossGreen.withValues(alpha: 0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, size: 18, color: HatiColors.mossGreen),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: HatiTextStyles.bodyLarge.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: HatiColors.textDark,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                description,
+                style: HatiTextStyles.bodyMedium.copyWith(height: 1.4),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

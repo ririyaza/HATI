@@ -21,7 +21,7 @@ class PostSpinAssessmentScreen extends StatelessWidget {
     return LikertAssessmentFlow(
       questions: questions,
       options: spinOptions,
-      promptEyebrow: spinPromptEyebrow,
+      promptSentence: spinPrompt,
       instructionLine: 'HOW MUCH DOES THIS DESCRIBE YOU?',
       startIndex: 0,
       totalInFlow: _totalInFlow,

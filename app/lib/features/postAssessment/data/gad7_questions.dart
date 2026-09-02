@@ -36,7 +36,6 @@ const gad7Options = [
   'Nearly every day',
 ];
 
-const gad7PromptEyebrow = 'PAST 2 WEEKS';
 const gad7Prompt =
     'Over the last two weeks, how often have you been bothered by the '
     'following problems?';

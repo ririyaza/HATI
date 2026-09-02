@@ -1,9 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
-/// Bottom sheets for editing the three profile fields that can be left
-/// unset (or changed) after onboarding: profile picture, goal, and coping
-/// preferences. Each writes straight to the `users/{uid}` doc that
+/// Bottom sheets for editing profile fields that can be left unset (or
+/// changed) after onboarding: name & pronouns, profile picture, goal, and
+/// coping preferences. Each writes straight to the `users/{uid}` doc that
 /// `DashboardUserData`'s stream already listens to, so the Profile screen
 /// updates itself — no local state to thread back.
 const _blue = Color(0xFF0B28D9);
@@ -111,6 +111,261 @@ class _AvatarPickerSheet extends StatelessWidget {
               },
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Name & pronouns editor ────────────────────────────────────────────────
+
+/// Same pronoun options offered during onboarding
+/// (`onboarding/profile_setup_screen.dart`), duplicated here for the same
+/// reason as the avatar list above.
+const _pronounOptions = [
+  ('She/Her', Icons.female_rounded),
+  ('He/Him', Icons.male_rounded),
+  ('They/Them', Icons.people_alt_outlined),
+  ('Prefer not to say', Icons.remove_rounded),
+];
+
+Future<void> showEditNameAndPronounsSheet(
+  BuildContext context, {
+  required String uid,
+  required String currentName,
+  required String currentPronouns,
+}) {
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.white,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    ),
+    builder: (context) => _EditNamePronounsSheet(
+      uid: uid,
+      currentName: currentName,
+      currentPronouns: currentPronouns,
+    ),
+  );
+}
+
+class _EditNamePronounsSheet extends StatefulWidget {
+  const _EditNamePronounsSheet({
+    required this.uid,
+    required this.currentName,
+    required this.currentPronouns,
+  });
+
+  final String uid;
+  final String currentName;
+  final String currentPronouns;
+
+  @override
+  State<_EditNamePronounsSheet> createState() =>
+      _EditNamePronounsSheetState();
+}
+
+class _EditNamePronounsSheetState extends State<_EditNamePronounsSheet> {
+  late final _nameController = TextEditingController(text: widget.currentName);
+  late String? _selectedPronouns = widget.currentPronouns.isEmpty
+      ? null
+      : widget.currentPronouns;
+  bool _saving = false;
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final name = _nameController.text.trim();
+    if (name.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a name.')),
+      );
+      return;
+    }
+
+    setState(() => _saving = true);
+    try {
+      await FirebaseFirestore.instance.collection('users').doc(widget.uid).set(
+        {
+          'displayName': name,
+          'nickname': name,
+          'pronouns': _selectedPronouns,
+        },
+        SetOptions(merge: true),
+      );
+      if (mounted) Navigator.pop(context);
+    } catch (_) {
+      if (mounted) {
+        setState(() => _saving = false);
+        _showSaveError(context);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const _SheetHandle(),
+              const SizedBox(height: 18),
+              const Text(
+                'Name & Pronouns',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF1A1A2E),
+                ),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Update how HATI addresses you.',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.black45,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _nameController,
+                autofocus: true,
+                style: const TextStyle(
+                  fontSize: 15,
+                  color: Color(0xFF1A1A2E),
+                  fontWeight: FontWeight.w500,
+                ),
+                decoration: InputDecoration(
+                  hintText: 'Your name',
+                  hintStyle: const TextStyle(
+                    color: Colors.black38,
+                    fontSize: 14.5,
+                  ),
+                  filled: true,
+                  fillColor: const Color(0xFFF8F9FF),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: Color(0xFFE2E6FF)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: Color(0xFFE2E6FF)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: _blue, width: 1.8),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Pronouns',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF1A1A2E),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: _pronounOptions.map((opt) {
+                  final (label, icon) = opt;
+                  final selected = _selectedPronouns == label;
+                  return GestureDetector(
+                    onTap: () => setState(() => _selectedPronouns = label),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 9,
+                      ),
+                      decoration: BoxDecoration(
+                        color: selected ? _blue : const Color(0xFFF8F9FF),
+                        borderRadius: BorderRadius.circular(30),
+                        border: Border.all(
+                          color: selected ? _blue : const Color(0xFFE2E6FF),
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            icon,
+                            size: 15,
+                            color: selected
+                                ? Colors.white
+                                : const Color(0xFF94A3B8),
+                          ),
+                          const SizedBox(width: 7),
+                          Text(
+                            label,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: selected
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
+                              color: selected
+                                  ? Colors.white
+                                  : const Color(0xFF475569),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                height: 50,
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: _blue,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(25),
+                    ),
+                  ),
+                  onPressed: _saving ? null : _save,
+                  child: _saving
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text(
+                          'Save Changes',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

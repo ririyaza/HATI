@@ -4,8 +4,25 @@ import 'package:flutter/material.dart';
 import '../../emotiondetection/themed_scenario/scenario_models.dart';
 import '../../emotiondetection/themed_scenario/scenario_play_page.dart';
 
-class ModulesScreen extends StatelessWidget {
-  const ModulesScreen({super.key});
+class ModulesScreen extends StatefulWidget {
+  const ModulesScreen({super.key, this.gridKey});
+
+  /// Spotlight target for the dashboard tour's "Ranked For You" step.
+  final Key? gridKey;
+
+  @override
+  State<ModulesScreen> createState() => _ModulesScreenState();
+}
+
+class _ModulesScreenState extends State<ModulesScreen> {
+  final _searchController = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   Future<Map<String, double>> _loadThemeAverages() async {
     final user = FirebaseAuth.instance.currentUser;
@@ -73,15 +90,58 @@ class ModulesScreen extends StatelessWidget {
                         color: Colors.white.withAlpha(64),
                         borderRadius: BorderRadius.circular(22),
                       ),
-                      alignment: Alignment.centerLeft,
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: const Text(
-                        'Search',
-                        style: TextStyle(
+                      child: TextField(
+                        controller: _searchController,
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
                         ),
+                        cursorColor: Colors.white,
+                        textAlignVertical: TextAlignVertical.center,
+                        decoration: InputDecoration(
+                          isDense: true,
+                          hintText: 'Search',
+                          hintStyle: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          prefixIcon: const Icon(
+                            Icons.search_rounded,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                          prefixIconConstraints: const BoxConstraints(
+                            minWidth: 44,
+                            minHeight: 0,
+                          ),
+                          suffixIcon: _query.isEmpty
+                              ? null
+                              : IconButton(
+                                  icon: const Icon(
+                                    Icons.close_rounded,
+                                    color: Colors.white70,
+                                    size: 18,
+                                  ),
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    setState(() => _query = '');
+                                  },
+                                ),
+                          suffixIconConstraints: const BoxConstraints(
+                            minWidth: 36,
+                            minHeight: 0,
+                          ),
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: 12,
+                          ),
+                        ),
+                        onChanged: (value) =>
+                            setState(() => _query = value.trim()),
                       ),
                     ),
                   ],
@@ -124,7 +184,12 @@ class ModulesScreen extends StatelessWidget {
                           );
                         }
                         final themeAverages = snapshot.data ?? {};
-                        return _scenarioGrid(context, themeAverages);
+                        return _scenarioGrid(
+                          context,
+                          themeAverages,
+                          query: _query,
+                          firstCardKey: widget.gridKey,
+                        );
                       },
                     ),
                   ],
@@ -408,14 +473,43 @@ String _placeholderAssetForScenario(String scenarioKey) {
       kScenarioConfigs['foa_supervisor']!.placeholderAsset;
 }
 
-Widget _scenarioGrid(BuildContext context, Map<String, double> themeAverages) {
-  final templates = _buildScenarioTemplates(themeAverages);
+bool _matchesQuery(_ScenarioTemplate template, String query) {
+  if (query.isEmpty) return true;
+  final needle = query.toLowerCase();
+  return template.title.toLowerCase().contains(needle) ||
+      template.theme.toLowerCase().contains(needle);
+}
+
+Widget _scenarioGrid(
+  BuildContext context,
+  Map<String, double> themeAverages, {
+  String query = '',
+  Key? firstCardKey,
+}) {
+  final templates = _buildScenarioTemplates(
+    themeAverages,
+  ).where((template) => _matchesQuery(template, query)).toList();
+
+  if (templates.isEmpty) {
+    return Padding(
+      key: firstCardKey,
+      padding: const EdgeInsets.symmetric(vertical: 32),
+      child: Center(
+        child: Text(
+          'No modules match "$query".',
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: Colors.black45, fontSize: 13.5),
+        ),
+      ),
+    );
+  }
 
   return Column(
     children: List.generate(templates.length, (index) {
       final template = templates[index];
       final score = _matchPercent(themeAverages, template.theme);
       return Padding(
+        key: index == 0 ? firstCardKey : null,
         padding: EdgeInsets.only(
           bottom: index == templates.length - 1 ? 0 : 14,
         ),

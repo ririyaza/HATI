@@ -1,11 +1,30 @@
 import 'package:flutter/material.dart';
 
+import '../../emotiondetection/themed_scenario/scenario_models.dart';
 import '../data/dashboard_user_data.dart';
 import 'scenario_progress_detail_screen.dart';
 import 'weekly_progress_detail_screen.dart';
 
+/// Legacy module-progress doc IDs that predate the current scenario-key
+/// naming in [kScenarioConfigs] — mapped onto their modern equivalent so
+/// the thumbnail still resolves. Every other ID is used as-is (it already
+/// matches a `kScenarioConfigs` key, e.g. `foa_supervisor`).
+const _kLegacyModuleIdAliases = {'where_to_sit': 'foa_classroom'};
+
+/// Same placeholder art the Modules tab uses for each scenario — reused
+/// here so a module's progress card and its entry in the Modules grid
+/// show the same thumbnail.
+String _placeholderAssetForModuleId(String id) {
+  final scenarioKey = _kLegacyModuleIdAliases[id] ?? id;
+  return kScenarioConfigs[scenarioKey]?.placeholderAsset ??
+      kScenarioConfigs['foa_supervisor']!.placeholderAsset;
+}
+
 class ProgressScreen extends StatelessWidget {
-  const ProgressScreen({super.key});
+  const ProgressScreen({super.key, this.weeklyKey});
+
+  /// Spotlight target for the dashboard tour's "This Week" step.
+  final Key? weeklyKey;
 
   @override
   Widget build(BuildContext context) {
@@ -27,7 +46,7 @@ class ProgressScreen extends StatelessWidget {
             if (!snapshot.hasData) {
               return const _StateScaffold.loading();
             }
-            return _ProgressContent(data: snapshot.data!);
+            return _ProgressContent(data: snapshot.data!, weeklyKey: weeklyKey);
           },
         );
       },
@@ -36,13 +55,17 @@ class ProgressScreen extends StatelessWidget {
 }
 
 class _ProgressContent extends StatelessWidget {
-  const _ProgressContent({required this.data});
+  const _ProgressContent({required this.data, this.weeklyKey});
 
   final DashboardUserData data;
+  final Key? weeklyKey;
 
   @override
   Widget build(BuildContext context) {
     final percent = (data.overallProgress * 100).round();
+    final startedModules = data.modules
+        .where((module) => module.completedScenarios > 0)
+        .toList();
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -171,6 +194,7 @@ class _ProgressContent extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     InkWell(
+                      key: weeklyKey,
                       borderRadius: BorderRadius.circular(16),
                       onTap: () {
                         Navigator.push(
@@ -208,23 +232,18 @@ class _ProgressContent extends StatelessWidget {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 24),
-                    const Text(
-                      'Scenario Modules',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.black,
+                    if (startedModules.isNotEmpty) ...[
+                      const SizedBox(height: 24),
+                      const Text(
+                        'Scenario Modules',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.black,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    if (data.modules.isEmpty)
-                      const _EmptyCard(
-                        title: 'No module progress yet',
-                        body: 'Complete a scenario to start tracking progress.',
-                      )
-                    else
-                      ...data.modules.map(
+                      const SizedBox(height: 12),
+                      ...startedModules.map(
                         (module) => Padding(
                           padding: const EdgeInsets.only(bottom: 10),
                           child: InkWell(
@@ -242,6 +261,7 @@ class _ProgressContent extends StatelessWidget {
                           ),
                         ),
                       ),
+                    ],
                     const SizedBox(height: 14),
                     const Text(
                       'Badges Earned',
@@ -369,20 +389,15 @@ class _ModuleProgressCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: const Color(0xFF0B28D9).withOpacity(0.08),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              module.icon,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-                color: Color(0xFF0B28D9),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              width: 48,
+              height: 48,
+              color: const Color(0xFFF0F3FF),
+              child: Image.asset(
+                _placeholderAssetForModuleId(module.id),
+                fit: BoxFit.contain,
               ),
             ),
           ),
@@ -521,43 +536,6 @@ class _BadgeTile extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _EmptyCard extends StatelessWidget {
-  const _EmptyCard({required this.title, required this.body});
-
-  final String title;
-  final String body;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FF),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E6FF)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF1A1A2E),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            body,
-            style: const TextStyle(color: Colors.black45, height: 1.4),
-          ),
-        ],
       ),
     );
   }
