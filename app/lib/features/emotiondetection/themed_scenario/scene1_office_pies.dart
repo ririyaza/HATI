@@ -89,6 +89,7 @@ class _Scene1OfficePiesState extends State<Scene1OfficePies> {
               child: HatiSceneShell(
                 showCoach: true,
                 persistentMessage: hatiText,
+                mood: HatiMood.thinking,
                 onSequenceComplete: () {
                   if (mounted && !_dialogueComplete) {
                     setState(() => _dialogueComplete = true);

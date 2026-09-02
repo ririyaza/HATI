@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -136,18 +138,65 @@ class DashboardDataService {
 
   static Stream<User?> authStateChanges() => _auth.authStateChanges();
 
+  // Combines three independent live listeners (the user doc plus its
+  // moduleProgress/spinAssessments subcollections) into one stream, and
+  // re-emits whenever ANY of them changes. A single `userRef.snapshots()`
+  // listener that only `.get()`s the subcollections once per parent-doc
+  // event (the previous approach) misses updates entirely when the backend
+  // writes straight to `moduleProgress/{scenarioKey}` without also touching
+  // the parent `users/{uid}` doc — e.g. finishing a scenario would silently
+  // fail to refresh the Progress screen until the app was restarted.
   static Stream<DashboardUserData> watchForUser(User user) {
     final userRef = _firestore.collection('users').doc(user.uid);
-    return userRef.snapshots().asyncMap((userDoc) async {
-      final moduleDocs = await userRef.collection('moduleProgress').get();
-      final assessmentDocs = await userRef.collection('spinAssessments').get();
-      return DashboardUserDataParser.parse(
-        user: user,
-        userDoc: userDoc,
-        moduleDocs: moduleDocs.docs,
-        assessmentDocs: assessmentDocs.docs,
+    late final StreamController<DashboardUserData> controller;
+
+    DocumentSnapshot<Map<String, dynamic>>? latestUserDoc;
+    List<QueryDocumentSnapshot<Map<String, dynamic>>>? latestModuleDocs;
+    List<QueryDocumentSnapshot<Map<String, dynamic>>>? latestAssessmentDocs;
+
+    void emitIfReady() {
+      final userDoc = latestUserDoc;
+      final moduleDocs = latestModuleDocs;
+      final assessmentDocs = latestAssessmentDocs;
+      if (userDoc == null || moduleDocs == null || assessmentDocs == null) {
+        return;
+      }
+      controller.add(
+        DashboardUserDataParser.parse(
+          user: user,
+          userDoc: userDoc,
+          moduleDocs: moduleDocs,
+          assessmentDocs: assessmentDocs,
+        ),
       );
-    });
+    }
+
+    late final List<StreamSubscription> subs;
+    controller = StreamController<DashboardUserData>(
+      onListen: () {
+        subs = [
+          userRef.snapshots().listen((doc) {
+            latestUserDoc = doc;
+            emitIfReady();
+          }, onError: controller.addError),
+          userRef.collection('moduleProgress').snapshots().listen((snap) {
+            latestModuleDocs = snap.docs;
+            emitIfReady();
+          }, onError: controller.addError),
+          userRef.collection('spinAssessments').snapshots().listen((snap) {
+            latestAssessmentDocs = snap.docs;
+            emitIfReady();
+          }, onError: controller.addError),
+        ];
+      },
+      onCancel: () async {
+        for (final sub in subs) {
+          await sub.cancel();
+        }
+      },
+    );
+
+    return controller.stream;
   }
 }
 

@@ -35,7 +35,7 @@ import 'shared_widgets.dart';
 
 const _kApproachBlue = Color(0xFF4A8FD4);
 const _kApproachCyan = Color(0xFF00D4FF);
-const _kFrogSize = 100.0;
+const _kFrogSize = 120.0;
 
 class Scene3Interaction extends StatefulWidget {
   const Scene3Interaction({super.key});
@@ -106,7 +106,9 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
 
   double _progressForStep(String? step, ScenarioUIType uiType) {
     if (step == 'foa_s3_npc') return 0.15;
-    if (step == 'foa_s3_reaction' && uiType == ScenarioUIType.textInput) return 0.55;
+    if (step == 'foa_s3_reaction' && uiType == ScenarioUIType.textInput) {
+      return 0.55;
+    }
     return 0.9;
   }
 
@@ -128,22 +130,47 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
     // falls back to the scenario's default sprite.
     final activeSpriteAsset =
         (provider.npcMood == 'angry' && config.spriteAssetAngry != null)
-            ? config.spriteAssetAngry
-            : config.spriteAsset;
+        ? config.spriteAssetAngry
+        : config.spriteAsset;
 
     final parsed = provider.messages.map(parseSpeakerMessage).toList();
-    final profLines = parsed
-        .where((p) => (p.speaker ?? '').toLowerCase() != 'hati')
-        .map((p) => p.text)
-        .where((t) => t.trim().isNotEmpty)
-        .toList();
+    // isHatiSpeaker does a startsWith match (not equality) so variants like
+    // "Hati (sidebar)" — seen in fbop_spotlight's Easy-mode script — still
+    // land in Hati's own lane instead of being mistaken for an NPC line.
     final hatiLines = parsed
-        .where((p) => (p.speaker ?? '').toLowerCase() == 'hati')
+        .where((p) => isHatiSpeaker(p.speaker))
         .map((p) => p.text)
         .where((t) => t.trim().isNotEmpty)
         .toList();
+    final npcParsed = parsed.where((p) => !isHatiSpeaker(p.speaker)).toList();
 
-    final profText = profLines.join('\n\n');
+    // config.npcCharacters is only populated for the 5 multi/single-NPC
+    // scenarios (fbop_spotlight, fne_stage, fsg_party, fsn_seat,
+    // phys_jeepney) — see scenario_models.dart. Every other scenario
+    // (foa_supervisor, foa_classroom) keeps the original single-bubble +
+    // single-big-sprite rendering further below, untouched.
+    final useMultiSpeakerLayout = config.npcCharacters.isNotEmpty;
+    final speakerBlocks = useMultiSpeakerLayout
+        ? _buildSpeakerBlocks(config, npcParsed, provider.npcMood == 'angry')
+        : const <_SpeakerBlock>[];
+    // A single-NPC scenario (fsn_seat's Stranger, phys_jeepney's Classmate)
+    // otherwise vanishes entirely on any turn where she's only mentioned in
+    // narration ("The stranger continues typing and does not respond.")
+    // rather than actually speaking, since sprites are only attached to
+    // this turn's speaker blocks. Fall back to her idle sprite so she stays
+    // visibly present even on a silent turn.
+    final singleNpcCharacter = config.npcCharacters.length == 1
+        ? config.npcCharacters.first
+        : null;
+    final needsSingleNpcFallback =
+        singleNpcCharacter != null &&
+        !speakerBlocks.any((b) => b.spriteAsset != null);
+    final profText = useMultiSpeakerLayout
+        ? ''
+        : npcParsed
+              .map((p) => p.text)
+              .where((t) => t.trim().isNotEmpty)
+              .join('\n\n');
     final hatiText = hatiLines.join('\n\n');
     final isTextInput = provider.ui.type == ScenarioUIType.textInput;
 
@@ -165,6 +192,12 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
             _ApproachTopBar(progress: _progressForStep(step, provider.ui.type)),
             const SceneSpeedToggleRow(),
             Expanded(
+              // Explicit flex (rather than the implicit 1 this used to
+              // rely on) now that the multi-option choice panel below is
+              // also Expanded when it's showing — they split the
+              // remaining space by ratio instead of the panel being free
+              // to size itself to however many options there are.
+              flex: 3,
               child: Stack(
                 fit: StackFit.expand,
                 clipBehavior: Clip.none,
@@ -175,77 +208,139 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
                     width: double.infinity,
                     height: double.infinity,
                   ),
-                  Positioned(
-                    left: 16,
-                    right: 4,
-                    top: 12,
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // User's own last message lives in its own lane so a
-                        // long reply can never grow into the NPC bubble's
-                        // space — each is capped to its own share of the
-                        // width instead of both being free to reach 55% of
-                        // the full screen and colliding in the middle.
-                        Expanded(
-                          child: (_lastSentText != null &&
-                                  _lastSentText!.isNotEmpty)
-                              ? Align(
-                                  alignment: Alignment.topLeft,
-                                  child: _CharacterSpeechBubble(
-                                    text: _lastSentText!,
-                                    alignEnd: false,
+                  // A real flex layout, not two independently-floating
+                  // Positioned regions each guessing how tall the other is:
+                  // the scrollable dialogue area gets whatever space is left
+                  // over after the Hati lane below it takes what it
+                  // actually needs (which varies with message length). That
+                  // guarantees they can never visually collide — no fixed
+                  // pixel reserve to get wrong for a longer message. Only
+                  // the scrollable area is inset — the Hati lane keeps its
+                  // own edge-to-edge gradient background, same as before.
+                  Column(
+                    children: [
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.only(
+                            left: 16,
+                            right: 4,
+                            top: 12,
+                          ),
+                          child: SingleChildScrollView(
+                            // Anchored to the TOP, not the bottom — the
+                            // NPC's own line renders first in this column,
+                            // the player's echoed last message after it.
+                            // With reverse:true (the old setting) a long
+                            // turn auto-scrolled to keep the echo in view
+                            // and pushed the NPC's actual line off the top
+                            // instead — backwards, since the echo is just
+                            // what the player already knows they typed,
+                            // while the NPC's line is the whole point.
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                // NPC content comes first (top); the user's
+                                // own last message renders below it, in its
+                                // own left-aligned row, instead of the two
+                                // sitting side-by-side — keeps a long NPC
+                                // turn from squeezing the user's bubble down
+                                // to a sliver, and reads top-to-bottom like
+                                // a normal chat log.
+                                ...useMultiSpeakerLayout
+                                    ? [
+                                        // One visually distinct block per
+                                        // speaker run this turn: name label
+                                        // + bubble, plus that character's
+                                        // small mood sprite (see
+                                        // _SpeakerBlockWidget below) — so in
+                                        // e.g. the 5-professor panel it's
+                                        // always clear who said which line.
+                                        for (final block in speakerBlocks) ...[
+                                          _SpeakerBlockWidget(block: block),
+                                          const SizedBox(height: 10),
+                                        ],
+                                        if (needsSingleNpcFallback)
+                                          Align(
+                                            alignment: Alignment.centerRight,
+                                            child:
+                                                singleNpcCharacter.sprites.blink
+                                                    .endsWith('.riv')
+                                                ? NpcRiveSprite(
+                                                    assetPath:
+                                                        singleNpcCharacter
+                                                            .sprites
+                                                            .blink,
+                                                    height: 84,
+                                                  )
+                                                : Image.asset(
+                                                    singleNpcCharacter
+                                                        .sprites
+                                                        .blink,
+                                                    height: 84,
+                                                    fit: BoxFit.contain,
+                                                  ),
+                                          ),
+                                      ]
+                                    : [
+                                        if (profText.isNotEmpty)
+                                          _CharacterSpeechBubble(
+                                            text: profText,
+                                          ),
+                                        if (activeSpriteAsset != null) ...[
+                                          const SizedBox(height: 8),
+                                          // NPC art is either a static image
+                                          // or a Rive animation (.riv) —
+                                          // Image.asset can't decode Rive's
+                                          // binary format, so branch by
+                                          // extension. Keyed by asset path
+                                          // so switching between the
+                                          // default and angry sprite
+                                          // (different widget subtrees/
+                                          // state) rebuilds cleanly.
+                                          activeSpriteAsset.endsWith('.riv')
+                                              ? NpcRiveSprite(
+                                                  key: ValueKey(
+                                                    activeSpriteAsset,
+                                                  ),
+                                                  assetPath: activeSpriteAsset,
+                                                  height: sceneHeight * 0.34,
+                                                )
+                                              : Image.asset(
+                                                  activeSpriteAsset,
+                                                  height: sceneHeight * 0.34,
+                                                  fit: BoxFit.contain,
+                                                ),
+                                        ],
+                                      ],
+                                if (_lastSentText != null &&
+                                    _lastSentText!.isNotEmpty) ...[
+                                  const SizedBox(height: 12),
+                                  Row(
+                                    children: [
+                                      _CharacterSpeechBubble(
+                                        text: _lastSentText!,
+                                        alignEnd: false,
+                                      ),
+                                    ],
                                   ),
-                                )
-                              : const SizedBox.shrink(),
+                                ],
+                              ],
+                            ),
+                          ),
                         ),
-                        const SizedBox(width: 12),
-                        Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            if (profText.isNotEmpty)
-                              _CharacterSpeechBubble(text: profText),
-                            if (activeSpriteAsset != null) ...[
-                              const SizedBox(height: 8),
-                              // NPC art is either a static image or a Rive
-                              // animation (.riv) — Image.asset can't decode
-                              // Rive's binary format, so branch by extension.
-                              // Keyed by asset path so switching between
-                              // the default and angry sprite (different
-                              // widget subtrees/state) rebuilds cleanly.
-                              activeSpriteAsset.endsWith('.riv')
-                                  ? _NpcRiveSprite(
-                                      key: ValueKey(activeSpriteAsset),
-                                      assetPath: activeSpriteAsset,
-                                      height: sceneHeight * 0.34,
-                                    )
-                                  : Image.asset(
-                                      activeSpriteAsset,
-                                      height: sceneHeight * 0.34,
-                                      fit: BoxFit.contain,
-                                    ),
-                            ],
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    child: _ApproachHatiLane(
-                      showBubble: hatiText.isNotEmpty,
-                      message: hatiText,
-                      bubbleKey: bubbleKey,
-                      frogSize: _kFrogSize,
-                      onSequenceComplete: () {
-                        if (mounted && !_dialogueComplete) {
-                          setState(() => _dialogueComplete = true);
-                        }
-                      },
-                    ),
+                      ),
+                      _ApproachHatiLane(
+                        showBubble: hatiText.isNotEmpty,
+                        message: hatiText,
+                        bubbleKey: bubbleKey,
+                        frogSize: _kFrogSize,
+                        onSequenceComplete: () {
+                          if (mounted && !_dialogueComplete) {
+                            setState(() => _dialogueComplete = true);
+                          }
+                        },
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -253,7 +348,8 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
             if (isTextInput)
               _ApproachInputBar(
                 controller: _controller,
-                enabled: !provider.isLoading &&
+                enabled:
+                    !provider.isLoading &&
                     !_isRecording &&
                     !_isTranscribing &&
                     dialogueReady,
@@ -262,11 +358,72 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
                 hintText: _isRecording
                     ? 'Listening…'
                     : (_isTranscribing
-                        ? 'Converting your voice…'
-                        : 'Type your response...'),
+                          ? 'Converting your voice…'
+                          : 'Type your response...'),
                 onSend: () => _sendText(provider),
                 onMicTap: () =>
                     _isRecording ? _stopRecording(provider) : _startRecording(),
+              )
+            else if (provider.ui.options.length > 1)
+              // Difficult Mode's branch points (e.g. "Sorry, I just wanted
+              // to..." / "Never mind." / continue angrily / custom) send
+              // several real choices, not one default "Continue" — show
+              // every option instead of silently only offering the first.
+              // Matches Preparation's "Choose Your Script" panel exactly,
+              // not just visually: Expanded (shares remaining space with
+              // the scene above by flex ratio, same as HatiSceneShell's
+              // coach-zone/content split) with the fixed header pinned
+              // above a ScrollHintArea — the same scrollable-with-a-hint
+              // list, not a container forced to reserve a big chunk of
+              // screen regardless of how many options there are.
+              Expanded(
+                flex: 2,
+                child: Container(
+                  width: double.infinity,
+                  color: Colors.white,
+                  child: SafeArea(
+                    top: false,
+                    child: Column(
+                      children: [
+                        const Padding(
+                          padding: EdgeInsets.fromLTRB(16, 16, 16, 0),
+                          child: SectionHeader(
+                            title: 'Choose Your Response',
+                            subtitle: 'Select one or write your own',
+                          ),
+                        ),
+                        Expanded(
+                          child: ScrollHintArea(
+                            padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                for (
+                                  var i = 0;
+                                  i < provider.ui.options.length;
+                                  i++
+                                )
+                                  ScriptOptionCard(
+                                    label: String.fromCharCode(65 + i),
+                                    script: provider.ui.options[i],
+                                    selected: false,
+                                    enabled:
+                                        !(provider.isLoading || !dialogueReady),
+                                    onTap:
+                                        (provider.isLoading || !dialogueReady)
+                                        ? () {}
+                                        : () => provider.submitText(
+                                            provider.ui.options[i],
+                                          ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               )
             else
               Container(
@@ -282,10 +439,10 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
                     onTap: (provider.isLoading || !dialogueReady)
                         ? null
                         : () => provider.submitText(
-                              provider.ui.options.isNotEmpty
-                                  ? provider.ui.options.first
-                                  : 'Continue',
-                            ),
+                            provider.ui.options.isNotEmpty
+                                ? provider.ui.options.first
+                                : 'Continue',
+                          ),
                   ),
                 ),
               ),
@@ -341,8 +498,9 @@ class _ApproachHatiLane extends StatelessWidget {
             // SizedBox) also means it can't overflow on a screen narrower
             // than bubbleMaxWidth — it just uses whatever's available.
             child: ConstrainedBox(
-              constraints:
-                  const BoxConstraints(maxWidth: HatiLayout.bubbleMaxWidth),
+              constraints: const BoxConstraints(
+                maxWidth: HatiLayout.bubbleMaxWidth,
+              ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.center,
@@ -352,10 +510,16 @@ class _ApproachHatiLane extends StatelessWidget {
                       key: ValueKey(bubbleKey),
                       persistentMessage: message,
                       frogSize: frogSize,
+                      mood: HatiMood.encourage,
+                      // Fades the bubble out a couple seconds after it
+                      // finishes typing, leaving just the frog — it used to
+                      // stay put indefinitely, which could crowd out the
+                      // NPC's own bubble above it in the scrollable area.
+                      dissolveBubble: true,
                       onSequenceComplete: onSequenceComplete,
                     )
                   else
-                    HatiFrogAvatar(size: frogSize),
+                    HatiFrogAvatar(size: frogSize, mood: HatiMood.encourage),
                 ],
               ),
             ),
@@ -455,62 +619,213 @@ class _ApproachTopBar extends StatelessWidget {
 /// [initState] rather than inline in a parent build() — RiveWidgetBuilder
 /// reloads the file whenever it's handed a new (by-equality) FileLoader
 /// instance, and this scene's build() runs on every message/state change.
-class _NpcRiveSprite extends StatefulWidget {
-  final String assetPath;
-  final double height;
+// NpcRiveSprite now lives in shared_widgets.dart (shared with
+// Scene1OfficePies's setting-introduction overlay).
 
-  const _NpcRiveSprite({
-    super.key,
-    required this.assetPath,
-    required this.height,
-  });
+// ── Multi-speaker turn grouping ─────────────────────────────────────────────
 
-  @override
-  State<_NpcRiveSprite> createState() => _NpcRiveSpriteState();
+/// One consecutive run of lines from the same speaker within a turn (e.g.
+/// two lines in a row from "Dr. Cruz" become one block; a Narrator line in
+/// between two of Julia's lines splits them into three blocks). Built by
+/// [_buildSpeakerBlocks] and rendered by [_SpeakerBlockWidget].
+class _SpeakerBlock {
+  final String key;
+  final String displayName;
+  final bool isNarrator;
+  final String? spriteAsset;
+  final List<String> lines;
+  // Known characters named within a Narrator line's own text (narration has
+  // no speaker prefix to match against, so this is matched against the
+  // line content instead) — e.g. "Sir Reyes nods. Ma'am Lopez listens."
+  // names two professors. Shown as a small avatar row above the narration
+  // instead of leaving a reaction beat with nobody pictured.
+  final List<String> narratorSprites;
+
+  _SpeakerBlock({
+    required this.key,
+    required this.displayName,
+    required this.isNarrator,
+    required this.spriteAsset,
+    required this.lines,
+    List<String>? narratorSprites,
+  }) : narratorSprites = narratorSprites ?? [];
 }
 
-class _NpcRiveSpriteState extends State<_NpcRiveSprite> {
-  late FileLoader _fileLoader;
+/// "User (impulse):" / "User:" lines (a couple of fsg_party/fne_stage
+/// branches echo back the player's own scripted line this way) and any
+/// other speaker that isn't a known NpcCharacter and isn't Narrator still
+/// get their own labeled block — just without a sprite. This strips a
+/// trailing parenthetical descriptor for that label, e.g. "User (impulse)"
+/// -> "User".
+String _fallbackSpeakerName(String? raw) {
+  if (raw == null || raw.trim().isEmpty) return '';
+  final parenIndex = raw.indexOf('(');
+  final base = (parenIndex >= 0 ? raw.substring(0, parenIndex) : raw).trim();
+  return base;
+}
 
-  @override
-  void initState() {
-    super.initState();
-    _fileLoader = FileLoader.fromAsset(
-      widget.assetPath,
-      riveFactory: Factory.rive,
-    );
-  }
+/// Groups this turn's non-Hati lines into per-speaker [_SpeakerBlock]s and
+/// picks each block's NPC mood via the heuristic from the task brief:
+/// a character's first line this turn -> greet; a later line ending in
+/// "?" -> tilt; the backend's angry-turn signal (same npc_mood flag that
+/// already drives foa_supervisor's mood swap) -> frown; otherwise -> blink.
+/// Mood is computed from a block's first line and applies to its one
+/// avatar. [npcMoodAngryThisTurn] is `provider.npcMood == 'angry'`.
+List<_SpeakerBlock> _buildSpeakerBlocks(
+  ScenarioConfig config,
+  List<ParsedMessage> npcParsed,
+  bool npcMoodAngryThisTurn,
+) {
+  final blocks = <_SpeakerBlock>[];
+  final seenCharacterIds = <String>{};
+  String? currentKey;
+  _SpeakerBlock? current;
 
-  @override
-  void didUpdateWidget(_NpcRiveSprite oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.assetPath != oldWidget.assetPath) {
-      _fileLoader = FileLoader.fromAsset(
-        widget.assetPath,
-        riveFactory: Factory.rive,
+  for (final p in npcParsed) {
+    final text = p.text.trim();
+    if (text.isEmpty) continue;
+
+    final rawSpeaker = p.speaker;
+    final isNarrator = isNarratorSpeaker(rawSpeaker);
+    final character = isNarrator
+        ? null
+        : resolveNpcCharacter(config, rawSpeaker ?? '');
+    final displayName = isNarrator
+        ? 'Narrator'
+        : (character?.displayName ?? _fallbackSpeakerName(rawSpeaker));
+    final key = isNarrator ? 'narrator' : (character?.id ?? 'unk:$displayName');
+
+    String? spriteAsset;
+    if (character != null) {
+      final NpcMood mood;
+      if (!seenCharacterIds.contains(character.id)) {
+        mood = NpcMood.greet;
+      } else if (text.endsWith('?')) {
+        mood = NpcMood.tilt;
+      } else if (npcMoodAngryThisTurn) {
+        mood = NpcMood.frown;
+      } else {
+        mood = NpcMood.blink;
+      }
+      seenCharacterIds.add(character.id);
+      spriteAsset = character.sprites.forMood(mood);
+    }
+
+    List<String> mentionedSprites = const [];
+    if (isNarrator) {
+      final seenIds = <String>{};
+      mentionedSprites = [
+        for (final ch in config.npcCharacters)
+          if (ch.matches(text) && seenIds.add(ch.id)) ch.sprites.blink,
+      ];
+    }
+
+    if (key == currentKey && current != null) {
+      current.lines.add(text);
+      for (final sprite in mentionedSprites) {
+        if (!current.narratorSprites.contains(sprite)) {
+          current.narratorSprites.add(sprite);
+        }
+      }
+    } else {
+      current = _SpeakerBlock(
+        key: key,
+        displayName: displayName,
+        isNarrator: isNarrator,
+        spriteAsset: spriteAsset,
+        lines: [text],
+        narratorSprites: mentionedSprites,
       );
+      blocks.add(current);
+      currentKey = key;
     }
   }
+  return blocks;
+}
+
+/// Renders one [_SpeakerBlock]: a Narrator line naming known characters
+/// (e.g. "Sir Reyes nods. Ma'am Lopez listens.") shows a small avatar row
+/// for each of them above the italic narration, rather than no one on
+/// screen; a Narrator line naming nobody stays plain narration. Every other
+/// speaker gets a name-labeled bubble with their small mood sprite beside
+/// it, mirroring how Hati's own avatar always accompanies Hati's bubble
+/// elsewhere in this scene, just at a smaller size so several speakers can
+/// stack in one turn without dominating the screen.
+class _SpeakerBlockWidget extends StatelessWidget {
+  final _SpeakerBlock block;
+
+  const _SpeakerBlockWidget({required this.block});
+
+  static const double _avatarSize = 130;
+  static const double _narratorAvatarSize = 56;
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      // Unlike Image.asset, RiveWidget has no self-sizing behavior — it
-      // expands to fill unbounded width (what a Column's non-stretch
-      // cross-axis gives it), so an explicit width is required or it
-      // overflows by "infinity pixels". Assumes a roughly square portrait
-      // bust; Fit.contain below letterboxes if the artboard isn't.
-      height: widget.height,
-      width: widget.height,
-      child: RiveWidgetBuilder(
-        fileLoader: _fileLoader,
-        builder: (context, state) => switch (state) {
-          RiveLoaded(:final controller) =>
-            RiveWidget(controller: controller, fit: Fit.contain),
-          RiveLoading() => const SizedBox.shrink(),
-          RiveFailed() => const SizedBox.shrink(),
-        },
-      ),
+    final text = block.lines.join('\n');
+    if (block.isNarrator) {
+      // Only for a narration line naming SEVERAL characters at once (e.g.
+      // "Sir Reyes nods. Sir Santos smiles. Sir Cruz remains stern...") —
+      // that's flavor text with no dedicated speaking line of its own per
+      // person, so showing them here is the only place they'd appear. A
+      // single-name mention (e.g. "The stranger removes one earbud.") is
+      // usually right next to that same character's own speaker block,
+      // which already shows their avatar — an avatar here too would just
+      // be a confusing duplicate of the same character right below it.
+      if (block.narratorSprites.length <= 1) {
+        return _CharacterSpeechBubble(text: text, italic: true);
+      }
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final sprite in block.narratorSprites) ...[
+                sprite.endsWith('.riv')
+                    ? NpcRiveSprite(
+                        assetPath: sprite,
+                        height: _narratorAvatarSize,
+                      )
+                    : Image.asset(
+                        sprite,
+                        height: _narratorAvatarSize,
+                        fit: BoxFit.contain,
+                      ),
+                const SizedBox(width: 6),
+              ],
+            ],
+          ),
+          const SizedBox(height: 6),
+          _CharacterSpeechBubble(text: text, italic: true),
+        ],
+      );
+    }
+    final spriteAsset = block.spriteAsset;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Flexible(
+          child: _CharacterSpeechBubble(
+            text: text,
+            nameLabel: block.displayName.isNotEmpty ? block.displayName : null,
+          ),
+        ),
+        if (spriteAsset != null) ...[
+          const SizedBox(width: 8),
+          spriteAsset.endsWith('.riv')
+              ? NpcRiveSprite(
+                  key: ValueKey('${block.key}:$spriteAsset'),
+                  assetPath: spriteAsset,
+                  height: _avatarSize,
+                )
+              : Image.asset(
+                  spriteAsset,
+                  height: _avatarSize,
+                  fit: BoxFit.contain,
+                ),
+        ],
+      ],
     );
   }
 }
@@ -520,10 +835,14 @@ class _NpcRiveSpriteState extends State<_NpcRiveSprite> {
 class _CharacterSpeechBubble extends StatelessWidget {
   final String text;
   final bool alignEnd;
+  final String? nameLabel;
+  final bool italic;
 
   const _CharacterSpeechBubble({
     required this.text,
     this.alignEnd = true,
+    this.nameLabel,
+    this.italic = false,
   });
 
   @override
@@ -545,15 +864,37 @@ class _CharacterSpeechBubble extends StatelessWidget {
             ),
           ],
         ),
-        child: Text(
-          text,
-          textAlign: alignEnd ? TextAlign.right : TextAlign.left,
-          style: const TextStyle(
-            color: Colors.black,
-            fontSize: 15,
-            fontWeight: FontWeight.bold,
-            height: 1.35,
-          ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: alignEnd
+              ? CrossAxisAlignment.end
+              : CrossAxisAlignment.start,
+          children: [
+            if (nameLabel != null && nameLabel!.isNotEmpty) ...[
+              Text(
+                nameLabel!,
+                textAlign: alignEnd ? TextAlign.right : TextAlign.left,
+                style: const TextStyle(
+                  color: _kApproachBlue,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.2,
+                ),
+              ),
+              const SizedBox(height: 4),
+            ],
+            Text(
+              text,
+              textAlign: alignEnd ? TextAlign.right : TextAlign.left,
+              style: TextStyle(
+                color: Colors.black,
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+                fontStyle: italic ? FontStyle.italic : FontStyle.normal,
+                height: 1.35,
+              ),
+            ),
+          ],
         ),
       ),
     );
