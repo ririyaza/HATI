@@ -284,7 +284,7 @@ class _ScenarioDashboardScene extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const HatiFrogAvatar(size: 160),
+                  const HatiFrogAvatar(size: 160, mood: HatiMood.happy),
                   const SizedBox(height: 20),
                   Text(
                     'Nice work!',
@@ -316,8 +316,17 @@ class _ScenarioDashboardScene extends StatelessWidget {
                             : HatiColors.softGold,
                         onTap: () async {
                           if (opt == 'Close') {
-                            // Pop immediately, client-side, without waiting on a
-                            // network round trip — mirrors EmotionPage's exit.
+                            // Tell the backend this scenario actually
+                            // finished — without this, it never leaves
+                            // step "scene7_dashboard" and stays in
+                            // get_unfinished_scenarios() forever, so the
+                            // "Resume Scenario?" dialog kept reappearing
+                            // even for scenarios the user already
+                            // completed. Fire-and-forget (not awaited) so
+                            // the pop still happens immediately, client-
+                            // side, without waiting on a network round
+                            // trip — mirrors EmotionPage's exit.
+                            provider.submitText(opt);
                             Navigator.pop(context);
                             return;
                           }

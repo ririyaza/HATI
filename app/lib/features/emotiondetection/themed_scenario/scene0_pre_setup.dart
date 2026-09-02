@@ -61,14 +61,23 @@ class _Scene0PreSetupState extends State<Scene0PreSetup>
   }
 
   Future<void> _maybeShowTutorial() async {
-    final prefs = await SharedPreferences.getInstance();
+    SharedPreferences? prefs;
+    try {
+      prefs = await SharedPreferences.getInstance();
+    } catch (_) {
+      // If local prefs are unavailable for any reason, fail open rather
+      // than leaving Hati's dialogue permanently gated behind a tutorial
+      // that can never be dismissed.
+      if (mounted) setState(() => _tutorialSeen = true);
+      return;
+    }
     if (!mounted) return;
     if (prefs.getBool(_kScenarioTutorialSeenKey) ?? false) {
       setState(() => _tutorialSeen = true);
       return;
     }
     setState(() => _tutorialSeen = false);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _showTutorial(prefs));
+    WidgetsBinding.instance.addPostFrameCallback((_) => _showTutorial(prefs!));
   }
 
   Future<void> _showTutorial(SharedPreferences prefs) async {
@@ -80,7 +89,11 @@ class _Scene0PreSetupState extends State<Scene0PreSetup>
         onGotIt: () => Navigator.pop(context),
       ),
     );
-    await prefs.setBool(_kScenarioTutorialSeenKey, true);
+    try {
+      await prefs.setBool(_kScenarioTutorialSeenKey, true);
+    } catch (_) {
+      // Non-fatal — worst case the tutorial shows again next time.
+    }
     if (mounted) setState(() => _tutorialSeen = true);
   }
 
@@ -233,6 +246,7 @@ class _Scene0PreSetupState extends State<Scene0PreSetup>
                                     introMessage: introMessage,
                                     persistentMessage: persistentMessage,
                                     frogSize: 180,
+                                    mood: HatiMood.thinking,
                                     onSequenceComplete: () {
                                       if (mounted && !_dialogueComplete) {
                                         setState(() => _dialogueComplete = true);

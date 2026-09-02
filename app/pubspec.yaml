@@ -103,6 +103,18 @@ flutter:
     - assets/scenario_npcs/fsg/
     - assets/scenario_npcs/fne/
     - assets/scenario_npcs/phys/
+    # Real per-character NPC Rive art (mood-swap: blink/frown/greet/tilt),
+    # nested one folder deeper per character — still not recursive, so each
+    # of these needs its own line too.
+    - assets/scenario_npcs/fbop/girl prof/
+    - assets/scenario_npcs/fbop/male prof/
+    - assets/scenario_npcs/fbop/strict prof/
+    - assets/scenario_npcs/fne/girl student/
+    - assets/scenario_npcs/fne/male student/
+    - assets/scenario_npcs/fsg/boy/
+    - assets/scenario_npcs/fsg/girl/
+    - assets/scenario_npcs/fsn/girl/
+    - assets/scenario_npcs/phys/girl/
 
 
   # An image asset can refer to one or more resolution-specific "variants", see

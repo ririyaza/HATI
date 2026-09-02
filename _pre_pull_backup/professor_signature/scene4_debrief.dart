@@ -13,120 +13,70 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'app_theme.dart';
 import 'scenario_models.dart';
 import 'scenario_provider.dart';
 import 'shared_widgets.dart';
 
-class Scene4Debrief extends StatefulWidget {
+class Scene4Debrief extends StatelessWidget {
   const Scene4Debrief({super.key});
-
-  @override
-  State<Scene4Debrief> createState() => _Scene4DebriefState();
-}
-
-class _Scene4DebriefState extends State<Scene4Debrief> {
-  String? _trackedStep;
-  bool _dialogueComplete = false;
 
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<ScenarioProvider>();
-    final config = provider.config;
     final step = provider.backendStep;
     final ui = provider.ui;
     final hatiText = joinMessageText(provider.messages);
 
-    if (step != _trackedStep) {
-      _trackedStep = step;
-      _dialogueComplete = false;
-    }
-
-    Widget? body;
-    Widget? bottomBar;
-    Color? contentBackgroundColor;
-    if (step == 'scene4_predicted' ||
-        step == 'scene4_actual' ||
-        step == 'scene4_fne_severity') {
-      final String question;
-      switch (step) {
-        case 'scene4_predicted':
-          question = 'How anxious did you expect to feel? (0–10)';
-          break;
-        case 'scene4_actual':
-          question = 'How anxious did you actually feel? (0–10)';
-          break;
-        default:
-          question = 'How bad was the actual outcome? (0–10)';
-      }
-      contentBackgroundColor = Colors.white;
+    Widget body;
+    if (step == 'scene4_predicted' || step == 'scene4_actual') {
+      final question = step == 'scene4_predicted'
+          ? 'How anxious did you expect to feel? (0–10)'
+          : 'How anxious did you actually feel? (0–10)';
       body = _AnxietySliderCard(
         key: ValueKey(step),
         question: question,
-        isLoading: provider.isLoading || !_dialogueComplete,
+        isLoading: provider.isLoading,
         onSubmit: (v) => provider.submitText(v.toString()),
       );
     } else if (ui.type == ScenarioUIType.buttons) {
-      if (ui.options.length == 1) {
-        // Single "Continue"-style option — pin it as a fixed bottom bar
-        // on the plain green background, same as Preparation &
-        // Intention's single-option case, with no white content panel
-        // (there's no body content, so a white panel would just be an
-        // empty gap above the button).
-        bottomBar = HatiButton(
-          label: ui.options.first,
-          icon: Icons.arrow_forward_rounded,
-          onTap: (provider.isLoading || !_dialogueComplete)
-              ? null
-              : () => provider.submitText(ui.options.first),
-        );
-      } else {
-        contentBackgroundColor = Colors.white;
-        body = _DebriefChoiceCard(
-          key: ValueKey(step),
-          options: ui.options,
-          isLoading: provider.isLoading || !_dialogueComplete,
-          onSubmit: provider.submitText,
-        );
-      }
+      body = _DebriefChoiceCard(
+        key: ValueKey(step),
+        options: ui.options,
+        isLoading: provider.isLoading,
+        onSubmit: provider.submitText,
+      );
     } else {
-      contentBackgroundColor = Colors.white;
       body = TextResponseCard(
         key: ValueKey(step),
         hintText: ui.placeholder ?? 'Type your response...',
-        isLoading: provider.isLoading || !_dialogueComplete,
+        isLoading: provider.isLoading,
         onSubmit: provider.submitText,
       );
     }
 
     return Scaffold(
-      body: ScenarioGradientBackground(
-        backgroundAsset: config.backgroundAsset,
-        child: Column(
-          children: [
-            const SceneTopHeader(
+      appBar: AppBar(title: const Text('Debrief')),
+      body: Column(
+        children: [
+          Container(
+            color: HatiColors.deepForest,
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+            child: const SceneProgressBar(
               currentStep: 4,
               totalSteps: 7,
               sceneLabel: 'Post-Interaction Reflection',
             ),
-            const SceneSpeedToggleRow(),
-            Expanded(
-              child: HatiSceneShell(
-                showCoach: true,
-                persistentMessage: hatiText,
-                frogWidthScale: 1.08,
-                mood: HatiMood.encourage,
-                onSequenceComplete: () {
-                  if (mounted && !_dialogueComplete) {
-                    setState(() => _dialogueComplete = true);
-                  }
-                },
-                body: body,
-                bottomBar: bottomBar,
-                contentBackgroundColor: contentBackgroundColor,
-              ),
+          ),
+          Expanded(
+            child: HatiSceneShell(
+              showCoach: true,
+              persistentMessage: hatiText,
+              frogWidthScale: 1.08,
+              body: body,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -153,8 +103,16 @@ class _AnxietySliderCardState extends State<_AnxietySliderCard> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(14),
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: HatiColors.divider),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -163,7 +121,7 @@ class _AnxietySliderCardState extends State<_AnxietySliderCard> {
             initial: _value,
             onChanged: (v) => _value = v,
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           HatiButton(
             label: 'Next',
             icon: Icons.arrow_forward_rounded,
@@ -190,6 +148,13 @@ class _DebriefChoiceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (options.isEmpty) return const SizedBox.shrink();
+    if (options.length == 1) {
+      return HatiButton(
+        label: options.first,
+        icon: Icons.arrow_forward_rounded,
+        onTap: isLoading ? null : () => onSubmit(options.first),
+      );
+    }
     return Column(
       children: [
         for (final opt in options)
@@ -197,7 +162,6 @@ class _DebriefChoiceCard extends StatelessWidget {
             padding: const EdgeInsets.only(bottom: 10),
             child: HatiOutlineButton(
               label: opt,
-              enabled: !isLoading,
               onTap: isLoading ? () {} : () => onSubmit(opt),
             ),
           ),
