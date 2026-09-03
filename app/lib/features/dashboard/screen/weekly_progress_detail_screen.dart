@@ -2,19 +2,18 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import 'weekly_progress_data.dart';
+
 /// Detail view opened from "This Week" on the Progress screen: a 3-page
-/// swipeable breakdown (Summary / Trigger Patterns / Emotion Trends).
+/// swipeable breakdown (Summary / Trigger Patterns / Emotion Trends), backed
+/// by the signed-in user's real `emotionLogs` data from Firestore (see
+/// weekly_progress_data.dart for the fetch/aggregation logic).
 ///
-/// UI-only for now, per product decision: the calendar highlights and the
-/// trend/trigger/emotion numbers below are placeholder demo data, clearly
-/// not derived from the signed-in user's real activity. The app doesn't
-/// currently track a confidence/anxiety score or a trigger category per
-/// scenario anywhere in Firestore, so there's nothing real yet to plot for
-/// the Summary trend cards or Trigger Patterns. Emotion Trends could
-/// eventually be backed by the real per-scenario `emotionLogs` subcollection
-/// used in `emotiondetection/scenario_game.dart`, but is left as demo data
-/// here too so the three pages stay internally consistent until that
-/// aggregation is built.
+/// Confidence/Anxiety (Summary page) are scoped to the current week, matching
+/// this screen's own name and its "This Week" entry point on the Progress
+/// screen. Trigger Patterns and Emotion Trends are all-time, since they're
+/// about overall patterns across every scenario play, not a single week's
+/// snapshot.
 class WeeklyProgressDetailScreen extends StatefulWidget {
   const WeeklyProgressDetailScreen({super.key});
 
@@ -29,11 +28,78 @@ class _WeeklyProgressDetailScreenState
 
   final _pageController = PageController();
   int _page = 0;
+  DateTime _displayedMonth =
+      DateTime(DateTime.now().year, DateTime.now().month);
+  late Future<List<EmotionLogEntry>> _logsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _logsFuture = fetchAllEmotionLogs();
+  }
 
   @override
   void dispose() {
     _pageController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickMonth() async {
+    var picked = _displayedMonth;
+    final result = await showDialog<DateTime>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: _blue,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          content: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                onPressed: () => setDialogState(
+                  () => picked = DateTime(picked.year, picked.month - 1),
+                ),
+                icon: const Icon(Icons.chevron_left_rounded, color: Colors.white),
+              ),
+              Expanded(
+                child: Text(
+                  _formatMonth(picked),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              IconButton(
+                onPressed: () => setDialogState(
+                  () => picked = DateTime(picked.year, picked.month + 1),
+                ),
+                icon: const Icon(Icons.chevron_right_rounded, color: Colors.white),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, picked),
+              child: const Text('Go', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (result != null) {
+      setState(() => _displayedMonth = DateTime(result.year, result.month));
+    }
+  }
+
+  static String _formatMonth(DateTime date) {
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December',
+    ];
+    return '${months[date.month - 1]}, ${date.year}';
   }
 
   @override
@@ -89,14 +155,48 @@ class _WeeklyProgressDetailScreenState
             ),
             const SizedBox(height: 12),
             Expanded(
-              child: PageView(
-                controller: _pageController,
-                onPageChanged: (i) => setState(() => _page = i),
-                children: const [
-                  _SummaryPage(),
-                  _TriggerPatternsPage(),
-                  _EmotionTrendsPage(),
-                ],
+              child: FutureBuilder<List<EmotionLogEntry>>(
+                future: _logsFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState != ConnectionState.done) {
+                    return const Center(
+                      child: CircularProgressIndicator(color: Colors.white),
+                    );
+                  }
+                  if (snapshot.hasError) {
+                    return const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(24),
+                        child: Text(
+                          "Couldn't load your progress data. Pull to refresh or try again later.",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Colors.white70),
+                        ),
+                      ),
+                    );
+                  }
+                  final logs = snapshot.data ?? const [];
+                  final confidenceAnxiety =
+                      computeConfidenceAnxiety(logs, DateTime.now());
+                  final activeDays = activeDaysInMonth(logs, _displayedMonth);
+                  final triggers = computeTriggerPatterns(logs);
+                  final emotions = computeEmotionTrends(logs);
+
+                  return PageView(
+                    controller: _pageController,
+                    onPageChanged: (i) => setState(() => _page = i),
+                    children: [
+                      _SummaryPage(
+                        month: _displayedMonth,
+                        activeDays: activeDays,
+                        summary: confidenceAnxiety,
+                        onTapMonth: _pickMonth,
+                      ),
+                      _TriggerPatternsPage(triggers: triggers),
+                      _EmotionTrendsPage(emotions: emotions),
+                    ],
+                  );
+                },
               ),
             ),
           ],
@@ -107,13 +207,21 @@ class _WeeklyProgressDetailScreenState
 }
 
 class _SummaryPage extends StatelessWidget {
-  const _SummaryPage();
+  const _SummaryPage({
+    required this.month,
+    required this.activeDays,
+    required this.summary,
+    required this.onTapMonth,
+  });
 
-  static const _activeCells = {0, 1, 2, 4};
+  final DateTime month;
+  final Set<int> activeDays;
+  final ConfidenceAnxietySummary summary;
+  final VoidCallback onTapMonth;
 
   @override
   Widget build(BuildContext context) {
-    final monthLabel = _formatMonth(DateTime.now());
+    final monthLabel = _formatMonth(month);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
@@ -129,49 +237,57 @@ class _SummaryPage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          Align(
-            alignment: Alignment.centerRight,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  monthLabel,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    decoration: TextDecoration.underline,
+          InkWell(
+            onTap: onTapMonth,
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    monthLabel,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      decoration: TextDecoration.underline,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 4),
-                const Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  color: Colors.white,
-                  size: 18,
-                ),
-              ],
+                  const SizedBox(width: 4),
+                  const Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    color: Colors.white,
+                    size: 18,
+                  ),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 10),
-          const _CalendarCard(activeCells: _activeCells),
+          _CalendarCard(month: month, activeDays: activeDays),
           const SizedBox(height: 20),
-          const _TrendCard(
+          _TrendCard(
             label: 'Confidence',
-            changeLabel: '10%',
-            improving: true,
-            color: Color(0xFF1DB954),
-            values: [0.35, 0.5, 0.42, 0.55, 0.5, 0.62, 0.8],
+            changeLabel: '${(summary.confidenceChangePct.abs() * 100).toStringAsFixed(0)}%',
+            improving: summary.confidenceChangePct >= 0,
+            color: const Color(0xFF1DB954),
+            values: summary.confidenceSparkline,
           ),
           const SizedBox(height: 14),
-          const _TrendCard(
+          _TrendCard(
             label: 'Anxiety',
-            changeLabel: '15%',
-            improving: false,
-            color: Color(0xFFE5484D),
-            values: [0.75, 0.6, 0.68, 0.5, 0.55, 0.4, 0.32],
+            changeLabel: '${(summary.anxietyChangePct.abs() * 100).toStringAsFixed(0)}%',
+            // "improving" here just means the raw value went up (matches
+            // the arrow's literal direction, not a good/bad judgment) — the
+            // original demo data showed a *decreasing* anxiety trend with a
+            // *downward* arrow, so a decrease must map to improving:false,
+            // same as an increase maps to improving:true for Confidence.
+            improving: summary.anxietyChangePct >= 0,
+            color: const Color(0xFFE5484D),
+            values: summary.anxietySparkline,
           ),
           const SizedBox(height: 20),
-          const _FeedbackCard(),
+          _FeedbackCard(message: computeFeedbackMessage(summary)),
         ],
       ),
     );
@@ -187,14 +303,24 @@ class _SummaryPage extends StatelessWidget {
 }
 
 class _CalendarCard extends StatelessWidget {
-  const _CalendarCard({required this.activeCells});
+  const _CalendarCard({required this.month, required this.activeDays});
 
-  final Set<int> activeCells;
+  final DateTime month;
+  final Set<int> activeDays;
 
   static const _dayLabels = ['S', 'M', 'T', 'W', 'TH', 'F', 'S'];
 
   @override
   Widget build(BuildContext context) {
+    final daysInMonth = DateTime(month.year, month.month + 1, 0).day;
+    // DateTime.weekday: Mon=1..Sun=7. The day labels above are Sunday-first,
+    // so the leading blank-cell count is however many days after Sunday the
+    // 1st falls on (0 if the 1st is itself a Sunday).
+    final firstWeekday = DateTime(month.year, month.month, 1).weekday;
+    final leadingBlanks = firstWeekday % 7;
+    final totalCells = leadingBlanks + daysInMonth;
+    final rows = (totalCells / 7).ceil();
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -223,12 +349,13 @@ class _CalendarCard extends StatelessWidget {
                 .toList(),
           ),
           const SizedBox(height: 10),
-          for (var row = 0; row < 5; row++)
+          for (var row = 0; row < rows; row++)
             Row(
               children: List.generate(7, (col) {
-                final index = row * 7 + col;
-                final visible = index < 30;
-                final active = activeCells.contains(index);
+                final cellIndex = row * 7 + col;
+                final day = cellIndex - leadingBlanks + 1;
+                final visible = day >= 1 && day <= daysInMonth;
+                final active = visible && activeDays.contains(day);
                 return Expanded(
                   child: Padding(
                     padding: const EdgeInsets.all(4),
@@ -371,7 +498,9 @@ class _SparklinePainter extends CustomPainter {
 }
 
 class _FeedbackCard extends StatelessWidget {
-  const _FeedbackCard();
+  const _FeedbackCard({required this.message});
+
+  final String message;
 
   @override
   Widget build(BuildContext context) {
@@ -382,9 +511,9 @@ class _FeedbackCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
       ),
-      child: const Column(
+      child: Column(
         children: [
-          Text(
+          const Text(
             'Feedback',
             style: TextStyle(
               color: Color(0xFF0B28D9),
@@ -392,13 +521,11 @@ class _FeedbackCard extends StatelessWidget {
               fontWeight: FontWeight.w800,
             ),
           ),
-          SizedBox(height: 8),
+          const SizedBox(height: 8),
           Text(
-            'Your recent results show lower anxiety and higher confidence. '
-            'Finishing multiple scenarios is a good sign of progress. Stay '
-            'consistent and continue challenging yourself.',
+            message,
             textAlign: TextAlign.center,
-            style: TextStyle(
+            style: const TextStyle(
               color: Colors.black54,
               fontSize: 13,
               height: 1.5,
@@ -410,21 +537,10 @@ class _FeedbackCard extends StatelessWidget {
   }
 }
 
-class _TriggerDatum {
-  const _TriggerDatum(this.label, this.value);
-  final String label;
-  final double value;
-}
-
 class _TriggerPatternsPage extends StatelessWidget {
-  const _TriggerPatternsPage();
+  const _TriggerPatternsPage({required this.triggers});
 
-  static const _triggers = [
-    _TriggerDatum('Speaking in class', 25.25),
-    _TriggerDatum('Talking to stranger', 34.86),
-    _TriggerDatum('Authority figure', 29.86),
-    _TriggerDatum('Social gathering', 63.75),
-  ];
+  final List<TriggerDatum> triggers;
 
   @override
   Widget build(BuildContext context) {
@@ -462,12 +578,22 @@ class _TriggerPatternsPage extends StatelessWidget {
                 const SizedBox(height: 20),
                 const _TriggerAxis(),
                 const SizedBox(height: 12),
-                ..._triggers.map(
-                  (t) => Padding(
-                    padding: const EdgeInsets.only(bottom: 18),
-                    child: _TriggerBarRow(datum: t),
+                if (triggers.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    child: Text(
+                      'Finish a few scenarios to see your trigger patterns here.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.black45, fontSize: 12.5),
+                    ),
+                  )
+                else
+                  ...triggers.map(
+                    (t) => Padding(
+                      padding: const EdgeInsets.only(bottom: 18),
+                      child: _TriggerBarRow(datum: t),
+                    ),
                   ),
-                ),
               ],
             ),
           ),
@@ -508,7 +634,7 @@ class _TriggerAxis extends StatelessWidget {
 class _TriggerBarRow extends StatelessWidget {
   const _TriggerBarRow({required this.datum});
 
-  final _TriggerDatum datum;
+  final TriggerDatum datum;
 
   @override
   Widget build(BuildContext context) {
@@ -570,25 +696,10 @@ class _TriggerBarRow extends StatelessWidget {
   }
 }
 
-class _EmotionDatum {
-  const _EmotionDatum(this.label, this.value, this.color);
-  final String label;
-  final double value;
-  final Color color;
-}
-
 class _EmotionTrendsPage extends StatelessWidget {
-  const _EmotionTrendsPage();
+  const _EmotionTrendsPage({required this.emotions});
 
-  static const _emotions = [
-    _EmotionDatum('Happy', 45, Color(0xFFB7A6F2)),
-    _EmotionDatum('Sad', 26, Color(0xFFFF8C82)),
-    _EmotionDatum('Anxious', 38, Color(0xFF3FD3E0)),
-    _EmotionDatum('Surprise', 23, Color(0xFFFFC24B)),
-    _EmotionDatum('Disgust', 11, Color(0xFF5FE0C7)),
-    _EmotionDatum('Neutral', 34, Color(0xFF6FE38B)),
-    _EmotionDatum('Angry', 31, Color(0xFF8B5CF6)),
-  ];
+  final List<EmotionDatum> emotions;
 
   @override
   Widget build(BuildContext context) {
@@ -624,7 +735,7 @@ class _EmotionTrendsPage extends StatelessWidget {
                     ),
                     SizedBox(width: 6),
                     Text(
-                      'Weeks',
+                      'All time',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 13,
@@ -637,16 +748,24 @@ class _EmotionTrendsPage extends StatelessWidget {
                 const SizedBox(height: 12),
                 SizedBox(
                   height: 260,
-                  child: CustomPaint(
-                    painter: _EmotionRosePainter(emotions: _emotions),
-                    size: Size.infinite,
-                  ),
+                  child: emotions.every((e) => e.value <= 0)
+                      ? const Center(
+                          child: Text(
+                            'Finish a few scenarios to see your emotion trends here.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: Colors.white70, fontSize: 12.5),
+                          ),
+                        )
+                      : CustomPaint(
+                          painter: _EmotionRosePainter(emotions: emotions),
+                          size: Size.infinite,
+                        ),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 20),
-          const _EmotionLegend(emotions: _emotions),
+          _EmotionLegend(emotions: emotions),
         ],
       ),
     );
@@ -656,13 +775,14 @@ class _EmotionTrendsPage extends StatelessWidget {
 class _EmotionRosePainter extends CustomPainter {
   _EmotionRosePainter({required this.emotions});
 
-  final List<_EmotionDatum> emotions;
+  final List<EmotionDatum> emotions;
 
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
     final maxRadius = math.min(size.width, size.height) / 2 - 24;
     final maxValue = emotions.map((e) => e.value).reduce(math.max);
+    if (maxValue <= 0) return; // no data yet — nothing to draw, avoids a div-by-zero
     final sweep = (2 * math.pi) / emotions.length;
     var start = -math.pi / 2;
 
@@ -732,13 +852,14 @@ class _EmotionRosePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _EmotionRosePainter oldDelegate) => false;
+  bool shouldRepaint(covariant _EmotionRosePainter oldDelegate) =>
+      oldDelegate.emotions != emotions;
 }
 
 class _EmotionLegend extends StatelessWidget {
   const _EmotionLegend({required this.emotions});
 
-  final List<_EmotionDatum> emotions;
+  final List<EmotionDatum> emotions;
 
   @override
   Widget build(BuildContext context) {
@@ -758,7 +879,7 @@ class _EmotionLegend extends StatelessWidget {
 class _EmotionLegendColumn extends StatelessWidget {
   const _EmotionLegendColumn({required this.emotions});
 
-  final List<_EmotionDatum> emotions;
+  final List<EmotionDatum> emotions;
 
   @override
   Widget build(BuildContext context) {
