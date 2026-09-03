@@ -515,13 +515,11 @@ class _BadgeTile extends StatelessWidget {
         ),
         child: Column(
           children: [
-            Text(
-              badge.icon,
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w800,
-                color: Color(0xFF0B28D9),
-              ),
+            Image.asset(
+              badge.image,
+              width: 40,
+              height: 40,
+              fit: BoxFit.contain,
             ),
             const SizedBox(height: 6),
             Text(

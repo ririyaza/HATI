@@ -48,27 +48,27 @@ class DashboardUserData {
 
   List<BadgeData> get badges => [
     BadgeData(
-      icon: '*',
+      image: 'assets/badges/first_step.png',
       label: 'First Step',
       earned: scenariosCompleted > 0,
     ),
     BadgeData(
-      icon: 'F',
+      image: 'assets/badges/streak.png',
       label: '5-Day\nStreak',
       earned: currentStreak >= 5,
     ),
     BadgeData(
-      icon: 'T',
+      image: 'assets/badges/half_way.png',
       label: 'Half Way!',
       earned: overallProgress >= 0.5,
     ),
     BadgeData(
-      icon: '!',
+      image: 'assets/badges/quick_thinker.png',
       label: 'Quick\nThinker',
       earned: scenariosCompleted >= 3,
     ),
     BadgeData(
-      icon: 'A',
+      image: 'assets/badges/sharpshooter.png',
       label: 'Sharpshooter',
       earned: overallProgress >= 1,
     ),
@@ -122,12 +122,12 @@ class AssessmentScoreData {
 
 class BadgeData {
   const BadgeData({
-    required this.icon,
+    required this.image,
     required this.label,
     required this.earned,
   });
 
-  final String icon;
+  final String image;
   final String label;
   final bool earned;
 }

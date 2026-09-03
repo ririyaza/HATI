@@ -88,6 +88,7 @@ flutter:
     - assets/professor_signature/frog_sprite_sheet.png
     - assets/professor_signature/classroom_bg.jpg
     - assets/professor_signature/prof.png
+    - assets/badges/
     # Per-scenario art (themed_scenario feature) — flat folders, one file
     # per scenario key ({scenario_key}_background.jpg etc.). Drop a
     # same-named file in to swap it out, no code changes needed.
