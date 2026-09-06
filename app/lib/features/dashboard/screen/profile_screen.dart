@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../auth/screen/login_screen.dart';
 import '../../auth/session_persistence.dart';
 import '../../postAssessment/data/post_assessment_repository.dart';
+import '../../postAssessment/screen/post_assessment_intro_screen.dart';
 import '../data/dashboard_user_data.dart';
 import '../widgets/help_center_sheet.dart';
 import '../widgets/profile_edit_sheets.dart';
@@ -776,6 +777,13 @@ class _ScoreColumn extends StatelessWidget {
 /// same data the dashboard's [ReassessmentBanner] uses to decide whether
 /// to show itself, surfaced here so it's visible without waiting for the
 /// banner to appear (or checking Firestore directly).
+///
+/// Tappable whenever the underlying 14-day due date has already passed —
+/// whether it's actively due (`isDue`) or currently hidden behind a
+/// "Remind me tomorrow" snooze (`snoozedUntil != null`) — so a user who
+/// snoozes the dashboard prompt but changes their mind can still start the
+/// check-in from here instead of waiting out the snooze. Not tappable while
+/// still mid-cooldown, so this can't be used to take it early.
 class _CheckInStatusCard extends StatelessWidget {
   const _CheckInStatusCard({required this.uid});
 
@@ -799,14 +807,13 @@ class _CheckInStatusCard extends StatelessWidget {
           title = 'Check-in available';
           subtitle =
               'It has been ${status.daysSinceLastAssessment} days since '
-              'your last check-in.';
+              'your last check-in. Tap to start.';
           color = const Color(0xFF0B28D9);
         } else if (status.snoozedUntil != null) {
           title = 'Check-in snoozed until ${_formatDate(status.snoozedUntil)}';
           subtitle =
               'Originally due ${_formatDate(status.dueDate)} — '
-              '${status.daysSinceLastAssessment} days since your last '
-              'check-in.';
+              'changed your mind? Tap to start it now.';
           color = const Color(0xFFFF9500);
         } else {
           title = 'Next check-in in ${status.daysUntilDue} '
@@ -817,55 +824,72 @@ class _CheckInStatusCard extends StatelessWidget {
           color = const Color(0xFF1DB954);
         }
 
-        return Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFE0E0E0)),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(
-                  Icons.event_available_rounded,
-                  color: color,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: color,
-                      ),
+        final canStartNow = status.isDue || status.snoozedUntil != null;
+
+        return GestureDetector(
+          onTap: canStartNow
+              ? () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const PostAssessmentIntroScreen(),
                     ),
-                    const SizedBox(height: 3),
-                    Text(
-                      subtitle,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.black45,
-                        height: 1.35,
-                      ),
-                    ),
-                  ],
+                  )
+              : null,
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFE0E0E0)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    Icons.event_available_rounded,
+                    color: color,
+                    size: 20,
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: color,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        subtitle,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.black45,
+                          height: 1.35,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (canStartNow)
+                  const Icon(
+                    Icons.chevron_right,
+                    color: Colors.black26,
+                    size: 22,
+                  ),
+              ],
+            ),
           ),
         );
       },

@@ -25,8 +25,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _tourActive = false;
   final _tourKeys = DashboardTourKeys();
 
+  // Hati stays quiet on the Home tab until we know whether this is a
+  // first-time user still mid-tutorial (dashboard coach-mark tour): if so,
+  // it waits for that tour to finish before greeting them; otherwise
+  // (returning user, tour already completed before this session) it's
+  // cleared to start right away.
+  bool _hatiReady = false;
+  bool _hatiShowWelcome = false;
+
   List<Widget> get _screens => [
-    HomeScreen(chatKey: _tourKeys.homeChatKey),
+    HomeScreen(
+      chatKey: _tourKeys.homeChatKey,
+      hatiReady: _hatiReady,
+      hatiShowWelcome: _hatiShowWelcome,
+    ),
     ModulesScreen(gridKey: _tourKeys.modulesGridKey),
     ProgressScreen(weeklyKey: _tourKeys.progressWeeklyKey),
     const ProfileScreen(),
@@ -42,10 +54,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
         keys: _tourKeys,
         onNavigate: _onItemTapped,
         onDismiss: () {
-          if (mounted) setState(() => _tourActive = false);
+          if (!mounted) return;
+          // Only reachable if the tour actually ran, so this was a
+          // first-time user finishing it just now — welcome them.
+          setState(() {
+            _tourActive = false;
+            _hatiReady = true;
+            _hatiShowWelcome = true;
+          });
         },
       );
-      if (started && mounted) setState(() => _tourActive = true);
+      if (!mounted) return;
+      if (started) {
+        setState(() => _tourActive = true);
+      } else {
+        // Tour was already completed before this session — safe for Hati
+        // to start talking right away.
+        setState(() => _hatiReady = true);
+      }
     });
   }
 

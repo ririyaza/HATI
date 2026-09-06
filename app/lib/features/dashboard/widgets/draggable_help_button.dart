@@ -22,7 +22,7 @@ class DraggableHelpButton extends StatefulWidget {
 }
 
 class _DraggableHelpButtonState extends State<DraggableHelpButton> {
-  static const double _size = 56;
+  static const double _size = 50;
   static const double _margin = 16;
 
   Offset? _topLeft;
@@ -32,14 +32,17 @@ class _DraggableHelpButtonState extends State<DraggableHelpButton> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final maxX = (constraints.maxWidth - _size).clamp(0.0, double.infinity);
-        final maxY = (constraints.maxHeight - _size).clamp(0.0, double.infinity);
+        final maxY = (constraints.maxHeight - _size).clamp(
+          0.0,
+          double.infinity,
+        );
         final topInset = MediaQuery.paddingOf(context).top;
 
         // Default starting spot: top-right, clear of the status bar/notch.
         _topLeft ??= Offset(maxX - _margin, topInset + _margin);
         final clamped = Offset(
           _topLeft!.dx.clamp(0.0, maxX),
-          _topLeft!.dy.clamp(0.0, maxY),
+          _topLeft!.dy.clamp(1.0, maxY),
         );
 
         return Stack(

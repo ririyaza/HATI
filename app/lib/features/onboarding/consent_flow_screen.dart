@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../auth/screen/login_screen.dart';
 import 'consent_content.dart';
 import 'profile_setup_screen.dart';
 
@@ -102,8 +103,13 @@ class _ConsentFlowScreenState extends State<ConsentFlowScreen>
   }
 
   Future<void> _handleDisagree() async {
+    await FirebaseAuth.instance.signOut();
     if (!mounted) return;
-    Navigator.of(context).popUntil((route) => route.isFirst);
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      (route) => false,
+    );
   }
 
   Future<void> _handleAgreeAndContinue() async {
@@ -233,7 +239,7 @@ class _ConsentFlowScreenState extends State<ConsentFlowScreen>
                         style: const TextStyle(
                           color: Color(0xFF1A1A2E),
                           fontSize: 14.5,
-                          height: 1.65,
+                          height: 1.8,
                         ),
                         children: contentGroups[_stepIndex],
                       ),

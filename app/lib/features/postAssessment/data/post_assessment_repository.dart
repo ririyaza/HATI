@@ -64,12 +64,29 @@ class PostAssessmentRepository {
     String uid,
   ) => _userRef(uid).collection('reassessments');
 
+  // The reassessment this process itself just saved via [saveResult], kept
+  // in memory for the rest of the app session. [saveResult] writes
+  // `administeredAt` with a concrete client timestamp (not
+  // `FieldValue.serverTimestamp()`) specifically so there's no window where
+  // a `.get()` right after the write can read that field back as
+  // unresolved/null — but this cache is a second line of defense against
+  // exactly that class of read-after-write staleness (including the
+  // dashboard's full navigation reset back to a fresh `DashboardScreen`
+  // after finishing a reassessment, which re-mounts the banner and re-runs
+  // this same query from scratch within the same session).
+  static String? _sessionBaselineUid;
+  static PriorAssessment? _sessionBaseline;
+
   /// The most recent prior assessment to compare against: the latest
   /// `reassessments` entry if one exists, otherwise the onboarding
   /// `spinAssessments/initial` baseline. Returns null only if neither
   /// exists (shouldn't happen in practice — onboarding is required before
   /// a user can reach this flow).
   static Future<PriorAssessment?> getBaseline(String uid) async {
+    if (_sessionBaselineUid == uid && _sessionBaseline != null) {
+      return _sessionBaseline;
+    }
+
     final latest = await _reassessments(
       uid,
     ).orderBy('administeredAt', descending: true).limit(1).get();
@@ -136,11 +153,15 @@ class PostAssessmentRepository {
     required InstrumentSnapshot gad7,
     required AssessmentComparisonResult comparison,
   }) async {
-    final now = FieldValue.serverTimestamp();
+    // A concrete client timestamp rather than `FieldValue.serverTimestamp()`
+    // — this same value is read right back (by `getBaseline`, to compute
+    // the next due date) moments after this write, and a server-resolved
+    // sentinel isn't guaranteed to have resolved yet at that point.
+    final administeredAt = DateTime.now();
 
     await _reassessments(uid).add({
       'type': 'reassessment',
-      'administeredAt': now,
+      'administeredAt': Timestamp.fromDate(administeredAt),
       'spin': {'total': spin.total, 'severity': spin.severity},
       'gad7': {'total': gad7.total, 'severity': gad7.severity},
       'comparison': {
@@ -156,8 +177,15 @@ class PostAssessmentRepository {
     await _userRef(uid).collection('spinAssessments').doc('post').set({
       'score': spin.total,
       'severity': spin.severity,
-      'completedAt': now,
+      'completedAt': Timestamp.fromDate(administeredAt),
     }, SetOptions(merge: true));
+
+    _sessionBaselineUid = uid;
+    _sessionBaseline = PriorAssessment(
+      administeredAt: administeredAt,
+      spin: spin,
+      gad7: gad7,
+    );
 
     // A completed reassessment clears any snooze, so the *next* cooldown
     // window starts clean.

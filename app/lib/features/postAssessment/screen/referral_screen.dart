@@ -2,12 +2,13 @@ import 'package:flutter/material.dart';
 
 import '../../dashboard/screen/dashboard_screen.dart';
 import '../../dashboard/screen/support_resources_screen.dart';
+import '../../dashboard/widgets/hati_sprite_animation.dart';
 
-/// Shown when the reassessment comparison is `noChange` (reached directly)
-/// or `worsened` (reached after `WorsenedUpdateScreen` acknowledges the
-/// result): supportive, non-alarming copy plus a path to the same resource
-/// list used elsewhere in the app (`SupportResourcesScreen`), reused as-is
-/// here rather than duplicating the hotline/guidance-center list.
+/// Shown when the reassessment comparison is `noChange` or `worsened`:
+/// Hati acknowledges the result, followed by supportive, non-alarming copy
+/// and a path to the same resource list used elsewhere in the app
+/// (`SupportResourcesScreen`), reused as-is here rather than duplicating the
+/// hotline/guidance-center list.
 class ReferralScreen extends StatelessWidget {
   const ReferralScreen({super.key});
 
@@ -32,14 +33,16 @@ class ReferralScreen extends StatelessWidget {
                   color: _blue,
                 ),
               ),
-              const SizedBox(height: 14),
-              const Text(
-                'Your check-in shows things have felt about the same or a '
-                'little harder lately. That takes courage to see, and it '
-                "doesn't mean you've done anything wrong — social anxiety "
-                "can ebb and flow, and that's completely normal.",
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14, color: Colors.black54, height: 1.6),
+              const SizedBox(height: 16),
+              const HatiSpriteAnimation(
+                size: 200,
+                message:
+                    'Your check-in shows things have felt about the same '
+                    "or a little harder lately. That takes courage to see "
+                    "— it doesn't mean you've done anything wrong, and "
+                    "I'm here with you.",
+                startDelay: Duration.zero,
+                persistBubble: true,
               ),
               const SizedBox(height: 20),
               Container(

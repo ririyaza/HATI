@@ -6,7 +6,6 @@ import '../data/post_assessment_repository.dart';
 import '../data/post_assessment_scoring.dart';
 import 'progress_update_screen.dart';
 import 'referral_screen.dart';
-import 'worsened_update_screen.dart';
 
 class PostAssessmentResultsScreen extends StatefulWidget {
   const PostAssessmentResultsScreen({
@@ -133,25 +132,61 @@ class _PostAssessmentResultsScreenState
     }
   }
 
+  static const _bgGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [Color(0xFF0B28D9), Color(0xFF14184F)],
+  );
+
+  static Widget _texturedBackground({required Widget child}) {
+    return Container(
+      decoration: const BoxDecoration(gradient: _bgGradient),
+      child: Stack(
+        children: [
+          Positioned(
+            top: -60,
+            right: -40,
+            child: _BackgroundBlob(size: 220, opacity: 0.14),
+          ),
+          Positioned(
+            bottom: -80,
+            left: -60,
+            child: _BackgroundBlob(size: 260, opacity: 0.10),
+          ),
+          Positioned(
+            top: 180,
+            left: -30,
+            child: _BackgroundBlob(size: 120, opacity: 0.08),
+          ),
+          child,
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(
-        backgroundColor: Colors.white,
-        body: Center(child: CircularProgressIndicator(color: _blue)),
+      return Scaffold(
+        body: _texturedBackground(
+          child: const Center(
+            child: CircularProgressIndicator(color: Colors.white),
+          ),
+        ),
       );
     }
 
     if (_error != null || _comparison == null) {
       return Scaffold(
-        backgroundColor: Colors.white,
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Text(
-              _error ?? 'Unable to load results.',
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.black54, fontSize: 14),
+        body: _texturedBackground(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Text(
+                _error ?? 'Unable to load results.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white70, fontSize: 14),
+              ),
             ),
           ),
         ),
@@ -161,78 +196,126 @@ class _PostAssessmentResultsScreenState
     final comparison = _comparison!;
 
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text(
-                'Check-in Complete',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.black,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Center(child: _OverallBadge(overall: comparison.overall)),
-              const SizedBox(height: 20),
-              Text(
-                _summarySentence,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Colors.black54,
-                  height: 1.55,
-                ),
-              ),
-              const SizedBox(height: 28),
-              _ResultCard(
-                title: 'SPIN — Social Anxiety',
-                maxScore: 68,
-                current: _currentSpin,
-                previous: _baseline?.spin,
-                result: comparison.spinResult,
-                color: _severityColor(_currentSpin.severity),
-              ),
-              const SizedBox(height: 16),
-              _ResultCard(
-                title: 'GAD-7 — General Anxiety',
-                maxScore: 21,
-                current: _currentGad7,
-                previous: _baseline?.gad7,
-                result: comparison.gad7Result,
-                color: _severityColor(_currentGad7.severity),
-                noBaselineNote:
-                    _baseline?.gad7 == null
-                        ? "This is your first GAD-7 check-in, so there's "
-                            'nothing to compare it to yet.'
-                        : null,
-              ),
-              const SizedBox(height: 28),
-              SizedBox(
-                height: 52,
-                child: FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: _blue,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(26),
-                    ),
+      body: _texturedBackground(
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Container(
+                  padding: const EdgeInsets.fromLTRB(24, 26, 24, 24),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(28),
+                    boxShadow: [
+                      BoxShadow(
+                        color: _blue.withValues(alpha: 0.08),
+                        blurRadius: 24,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
                   ),
-                  onPressed: _continue,
-                  child: const Text(
-                    'Continue',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Text(
+                        'Check-in Complete',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.black,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Center(child: _OverallBadge(overall: comparison.overall)),
+                      const SizedBox(height: 18),
+                      Text(
+                        _summarySentence,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Colors.black54,
+                          height: 1.55,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ),
+                const SizedBox(height: 20),
+                _ComparisonChartCard(
+                  title: 'SPIN — Social Anxiety',
+                  maxScore: 68,
+                  current: _currentSpin,
+                  previous: _baseline?.spin,
+                  result: comparison.spinResult,
+                  color: _severityColor(_currentSpin.severity),
+                ),
+                const SizedBox(height: 16),
+                _ComparisonChartCard(
+                  title: 'GAD-7 — General Anxiety',
+                  maxScore: 21,
+                  current: _currentGad7,
+                  previous: _baseline?.gad7,
+                  result: comparison.gad7Result,
+                  color: _severityColor(_currentGad7.severity),
+                  noBaselineNote:
+                      _baseline?.gad7 == null
+                          ? "This is your first GAD-7 check-in, so there's "
+                              'nothing to compare it to yet.'
+                          : null,
+                ),
+                const SizedBox(height: 28),
+                SizedBox(
+                  height: 52,
+                  child: FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(26),
+                      ),
+                    ),
+                    onPressed: _continue,
+                    child: const Text(
+                      'Continue',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: _blue,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Soft blurred circle used to give the blue page background some depth and
+/// texture instead of a flat fill.
+class _BackgroundBlob extends StatelessWidget {
+  const _BackgroundBlob({required this.size, required this.opacity});
+
+  final double size;
+  final double opacity;
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: RadialGradient(
+            colors: [
+              Colors.white.withValues(alpha: opacity),
+              Colors.white.withValues(alpha: 0),
             ],
           ),
         ),
@@ -285,8 +368,11 @@ class _OverallBadge extends StatelessWidget {
   }
 }
 
-class _ResultCard extends StatelessWidget {
-  const _ResultCard({
+/// A card comparing the previous and current score for one instrument as a
+/// grouped bar chart, so the size of the change is visible at a glance
+/// rather than only readable as two numbers in a sentence.
+class _ComparisonChartCard extends StatelessWidget {
+  const _ComparisonChartCard({
     required this.title,
     required this.maxScore,
     required this.current,
@@ -304,82 +390,255 @@ class _ResultCard extends StatelessWidget {
   final Color color;
   final String? noBaselineNote;
 
+  static const _barAreaHeight = 110.0;
+  static const _previousColor = Color(0xFFC7CCE3);
+
+  double _barHeight(int value) {
+    final fraction = (value / maxScore).clamp(0.0, 1.0);
+    return (_barAreaHeight * fraction).clamp(6.0, _barAreaHeight);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final previous = this.previous;
+    final delta = previous == null ? null : current.total - previous.total;
+
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: color.withValues(alpha: 0.25)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: color.withValues(alpha: 0.16)),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.10),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              color: color,
-            ),
-          ),
-          const SizedBox(height: 10),
           Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                '${current.total}',
-                style: TextStyle(
-                  fontSize: 34,
-                  fontWeight: FontWeight.w900,
-                  color: Colors.black87,
-                  height: 1,
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 5, left: 4),
+              Expanded(
                 child: Text(
-                  '/ $maxScore',
-                  style: const TextStyle(fontSize: 13, color: Colors.black45),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 5,
-                ),
-                margin: const EdgeInsets.only(bottom: 4),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Text(
-                  current.severity,
+                  title,
                   style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
                     color: color,
                   ),
                 ),
               ),
+              if (delta != null) _DeltaChip(delta: delta, result: result),
             ],
           ),
-          const SizedBox(height: 10),
-          if (previous != null)
-            Text(
-              previous!.severity == current.severity
-                  ? 'Previous: ${previous!.total} (${previous!.severity})'
-                  : 'Previous: ${previous!.total} (${previous!.severity}) '
-                        '→ Now: ${current.total} (${current.severity})',
-              style: const TextStyle(fontSize: 12.5, color: Colors.black54),
+          const SizedBox(height: 4),
+          Text(
+            'out of $maxScore',
+            style: const TextStyle(fontSize: 11.5, color: Colors.black38),
+          ),
+          const SizedBox(height: 18),
+          if (previous == null)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Row(
+                children: [
+                  _Bar(
+                    label: 'Now',
+                    value: current.total,
+                    severity: current.severity,
+                    barColor: color,
+                    barHeight: _barHeight(current.total),
+                    areaHeight: _barAreaHeight,
+                  ),
+                  const SizedBox(width: 20),
+                  if (noBaselineNote != null)
+                    Expanded(
+                      child: Text(
+                        noBaselineNote!,
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          color: Colors.black45,
+                          height: 1.4,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             )
-          else if (noBaselineNote != null)
-            Text(
-              noBaselineNote!,
-              style: const TextStyle(fontSize: 12.5, color: Colors.black45),
+          else
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                _Bar(
+                  label: 'Previous',
+                  value: previous.total,
+                  severity: previous.severity,
+                  barColor: _previousColor,
+                  barHeight: _barHeight(previous.total),
+                  areaHeight: _barAreaHeight,
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 34),
+                  child: Icon(
+                    Icons.arrow_forward_rounded,
+                    color: color.withValues(alpha: 0.45),
+                    size: 22,
+                  ),
+                ),
+                _Bar(
+                  label: 'Now',
+                  value: current.total,
+                  severity: current.severity,
+                  barColor: color,
+                  barHeight: _barHeight(current.total),
+                  areaHeight: _barAreaHeight,
+                ),
+              ],
             ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One labeled bar within a [_ComparisonChartCard].
+class _Bar extends StatelessWidget {
+  const _Bar({
+    required this.label,
+    required this.value,
+    required this.severity,
+    required this.barColor,
+    required this.barHeight,
+    required this.areaHeight,
+  });
+
+  final String label;
+  final int value;
+  final String severity;
+  final Color barColor;
+  final double barHeight;
+  final double areaHeight;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          '$value',
+          style: const TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w800,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 6),
+        SizedBox(
+          height: areaHeight,
+          width: 52,
+          child: Align(
+            alignment: Alignment.bottomCenter,
+            child: Container(
+              height: barHeight,
+              decoration: BoxDecoration(
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(10),
+                  bottom: Radius.circular(4),
+                ),
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [barColor, barColor.withValues(alpha: 0.7)],
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: Colors.black54,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+          decoration: BoxDecoration(
+            color: barColor.withValues(alpha: 0.14),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Text(
+            severity,
+            style: TextStyle(
+              fontSize: 10.5,
+              fontWeight: FontWeight.w700,
+              color: barColor,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Small "+N" / "-N" pill summarizing the point change, colored by whether
+/// that change counts as improved / no change / worsened.
+class _DeltaChip extends StatelessWidget {
+  const _DeltaChip({required this.delta, required this.result});
+
+  final int delta;
+  final InstrumentComparisonResult result;
+
+  @override
+  Widget build(BuildContext context) {
+    final Color color;
+    switch (result) {
+      case InstrumentComparisonResult.improved:
+        color = const Color(0xFF0D9488);
+        break;
+      case InstrumentComparisonResult.noChange:
+        color = const Color(0xFF2563EB);
+        break;
+      case InstrumentComparisonResult.worsened:
+        color = const Color(0xFF7C3AED);
+        break;
+    }
+
+    final sign = delta > 0 ? '+' : '';
+    final icon = delta > 0
+        ? Icons.arrow_upward_rounded
+        : delta < 0
+        ? Icons.arrow_downward_rounded
+        : Icons.remove_rounded;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 2),
+          Text(
+            '$sign$delta',
+            style: TextStyle(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w800,
+              color: color,
+            ),
+          ),
         ],
       ),
     );
@@ -390,12 +649,7 @@ class _ResultCard extends StatelessWidget {
 /// code so it can be unit-tested directly without needing to pump a full
 /// widget tree or mock Firebase.
 Widget nextScreenForComparison(AssessmentComparisonResult comparison) {
-  switch (comparison.overall) {
-    case InstrumentComparisonResult.improved:
-      return const ProgressUpdateScreen();
-    case InstrumentComparisonResult.noChange:
-      return const ReferralScreen();
-    case InstrumentComparisonResult.worsened:
-      return const WorsenedUpdateScreen();
-  }
+  return comparison.isReferral
+      ? const ReferralScreen()
+      : const ProgressUpdateScreen();
 }

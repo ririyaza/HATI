@@ -13,10 +13,7 @@ import 'spin_result_screen.dart';
 class AssessmentCompleteScreen extends StatefulWidget {
   final int score;
 
-  const AssessmentCompleteScreen({
-    super.key,
-    required this.score,
-  });
+  const AssessmentCompleteScreen({super.key, required this.score});
 
   @override
   State<AssessmentCompleteScreen> createState() =>
@@ -51,9 +48,7 @@ class _AssessmentCompleteScreenState extends State<AssessmentCompleteScreen> {
       } else {
         Navigator.pushAndRemoveUntil(
           context,
-          MaterialPageRoute<void>(
-            builder: (_) => const TutorialScreen(),
-          ),
+          MaterialPageRoute<void>(builder: (_) => const TutorialScreen()),
           (route) => false,
         );
       }
@@ -70,9 +65,7 @@ class _AssessmentCompleteScreenState extends State<AssessmentCompleteScreen> {
   void _goDashboard() {
     Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute<void>(
-        builder: (_) => const DashboardScreen(),
-      ),
+      MaterialPageRoute<void>(builder: (_) => const DashboardScreen()),
       (route) => false,
     );
   }
@@ -86,30 +79,60 @@ class _AssessmentCompleteScreenState extends State<AssessmentCompleteScreen> {
     );
   }
 
+  static const _bgGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [Color(0xFF0B28D9), Color(0xFF14184F)],
+  );
+
+  static Widget _texturedBackground({required Widget child}) {
+    return Container(
+      decoration: const BoxDecoration(gradient: _bgGradient),
+      child: Stack(
+        children: [
+          Positioned(
+            top: -60,
+            right: -40,
+            child: _BackgroundBlob(size: 220, opacity: 0.14),
+          ),
+          Positioned(
+            bottom: -80,
+            left: -60,
+            child: _BackgroundBlob(size: 260, opacity: 0.10),
+          ),
+          Positioned(
+            top: 180,
+            left: -30,
+            child: _BackgroundBlob(size: 120, opacity: 0.08),
+          ),
+          child,
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: Column(
-          children: [
-            const SizedBox(height: 8),
-            Text(
-              'Assessment Complete',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.headlineLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: const Color(0xFF007AFF),
-                fontSize: 28,
+      body: _texturedBackground(
+        child: SafeArea(
+          child: Column(
+            children: [
+              const SizedBox(height: 8),
+              Text(
+                'Assessment Complete',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.headlineLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  fontSize: 28,
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              flex: 1,
-              child: ColoredBox(
-                color: const Color(0xFFF2F2F7),
+              const SizedBox(height: 16),
+              Expanded(
+                flex: 1,
                 child: Center(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.symmetric(
@@ -125,68 +148,100 @@ class _AssessmentCompleteScreenState extends State<AssessmentCompleteScreen> {
                   ),
                 ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  SizedBox(
-                    height: 52,
-                    child: FilledButton(
-                      style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFF007AFF),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(26),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    SizedBox(
+                      height: 52,
+                      child: FilledButton(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFF007AFF),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(26),
+                          ),
                         ),
-                      ),
-                      onPressed: _isNavigatingToApp ? null : _handleContinueToApp,
-                      child: _isNavigatingToApp
-                          ? const SizedBox(
-                              height: 22,
-                              width: 22,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.5,
-                                color: Colors.white,
+                        onPressed: _isNavigatingToApp
+                            ? null
+                            : _handleContinueToApp,
+                        child: _isNavigatingToApp
+                            ? const SizedBox(
+                                height: 22,
+                                width: 22,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.5,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Text(
+                                'Continue to App',
+                                style: TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
                               ),
-                            )
-                          : const Text(
-                              'Continue to App',
-                              style: TextStyle(
-                                fontSize: 17,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
-                              ),
-                            ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    height: 52,
-                    child: OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Colors.black, width: 1.5),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(26),
-                        ),
-                        backgroundColor: Colors.white,
-                      ),
-                      onPressed:
-                          _isNavigatingToApp ? null : _handleViewResult,
-                      child: const Text(
-                        'View Result',
-                        style: TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black,
-                        ),
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      height: 52,
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(
+                            color: Colors.black,
+                            width: 1.5,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(26),
+                          ),
+                          backgroundColor: Colors.white,
+                        ),
+                        onPressed: _isNavigatingToApp
+                            ? null
+                            : _handleViewResult,
+                        child: const Text(
+                          'View Result',
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BackgroundBlob extends StatelessWidget {
+  const _BackgroundBlob({required this.size, required this.opacity});
+
+  final double size;
+  final double opacity;
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: RadialGradient(
+            colors: [
+              Colors.white.withValues(alpha: opacity),
+              Colors.white.withValues(alpha: 0),
+            ],
+          ),
         ),
       ),
     );

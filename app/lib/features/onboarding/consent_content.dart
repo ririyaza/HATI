@@ -5,30 +5,30 @@ import 'package:flutter/material.dart';
 // ─────────────────────────────────────────────────────────────────────────────
 
 const _kHeadingStyle = TextStyle(
-  fontWeight: FontWeight.w700,
-  fontSize: 15,
+  fontWeight: FontWeight.w800,
+  fontSize: 16,
   color: Color(0xFF0B28D9),
-  height: 1.4,
+  height: 1.6,
 );
 
 const _kBodyStyle = TextStyle(
   fontSize: 14.5,
   color: Color(0xFF374151),
-  height: 1.65,
+  height: 1.8,
   fontWeight: FontWeight.w400,
 );
 
 const _kBulletStyle = TextStyle(
   fontSize: 14.5,
   color: Color(0xFF374151),
-  height: 1.65,
+  height: 1.8,
   fontWeight: FontWeight.w400,
 );
 
 const _kEmphasisStyle = TextStyle(
   fontSize: 14.5,
   color: Color(0xFF1A1A2E),
-  height: 1.65,
+  height: 1.8,
   fontWeight: FontWeight.w600,
 );
 
@@ -62,7 +62,7 @@ const List<InlineSpan> kConsentStudyAboutSpans = [
         'skills in social situations.\n',
     style: _kBodyStyle,
   ),
-  TextSpan(text: '\n'),
+  TextSpan(text: '\n\n'),
   TextSpan(
     text: '2. Why am I being invited to participate?\n',
     style: _kHeadingStyle,
@@ -87,7 +87,7 @@ const List<InlineSpan> kConsentStudyAboutSpans = [
     text: '  •  You are 20 years of age or older.\n',
     style: _kBulletStyle,
   ),
-  TextSpan(text: '\n'),
+  TextSpan(text: '\n\n'),
   TextSpan(
     text: '3. What will happen if I agree to participate?\n',
     style: _kHeadingStyle,
@@ -129,7 +129,7 @@ const List<InlineSpan> kConsentStudyAboutSpans = [
     text: '  •  Share your experience with the app through a feedback form.\n',
     style: _kBulletStyle,
   ),
-  TextSpan(text: '\n'),
+  TextSpan(text: '\n\n'),
   TextSpan(
     text: '4. Is HATI a substitute for professional mental health treatment?\n',
     style: _kHeadingStyle,
@@ -184,7 +184,7 @@ const List<InlineSpan> kConsentDataCollectedSpans = [
         '  •  Feedback Data: Interview responses if you participate in the optional feedback session.\n',
     style: _kBulletStyle,
   ),
-  TextSpan(text: '\n'),
+  TextSpan(text: '\n\n'),
   TextSpan(text: '6. How will my data be used?\n', style: _kHeadingStyle),
   TextSpan(
     text: 'Your data will be used for research purposes only, including:\n',
@@ -203,7 +203,7 @@ const List<InlineSpan> kConsentDataCollectedSpans = [
     text: '  •  Improving future versions of the application.\n',
     style: _kBulletStyle,
   ),
-  TextSpan(text: '\n'),
+  TextSpan(text: '\n\n'),
   TextSpan(text: '7. Will my data be kept private?\n', style: _kHeadingStyle),
   TextSpan(
     text:
@@ -260,13 +260,13 @@ const List<InlineSpan> kConsentRisksSupportSpans = [
         '  •  Privacy Risks: As with any digital application, there is a small risk of data breach, though we take extensive precautions to prevent this.\n',
     style: _kBulletStyle,
   ),
-  TextSpan(text: '\n'),
+  TextSpan(text: '\n\n'),
   TextSpan(
     text:
         'If you experience significant distress while using the app, you are encouraged to contact the research team using the information provided at the end of this form. You will also be provided with contact information for the university guidance and counselling office and other mental health resources.\n',
     style: _kBodyStyle,
   ),
-  TextSpan(text: '\n'),
+  TextSpan(text: '\n\n'),
   TextSpan(
     text: '9. What are the potential benefits of participating?\n',
     style: _kHeadingStyle,
@@ -309,7 +309,7 @@ const List<InlineSpan> kConsentParticipantRightsSpans = [
         'If you withdraw, any data collected from you will be deleted and not used in the research.\n',
     style: _kBodyStyle,
   ),
-  TextSpan(text: '\n'),
+  TextSpan(text: '\n\n'),
   TextSpan(
     text: '11. Who can I contact if I have questions or concerns?\n',
     style: _kHeadingStyle,
@@ -325,10 +325,10 @@ const List<InlineSpan> kConsentParticipantRightsSpans = [
   ),
   TextSpan(
     text:
-        '  •  Jaspher John E. Samalburo — jaspherjohn.samalburo@wvsu.edu.ph\n',
+        '  •  Jaspher John E. Samalburo — jaspherjohn.samalburo@wvsu.edu.ph · 09303243183\n',
     style: _kBulletStyle,
   ),
-  TextSpan(text: '\n'),
+  TextSpan(text: '\n\n'),
   TextSpan(
     text: 'If you experience distress, you can contact:\n',
     style: _kBodyStyle,

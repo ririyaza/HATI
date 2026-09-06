@@ -3,8 +3,14 @@ import 'dart:async' as async;
 import 'package:flutter/material.dart';
 
 import '../../emotiondetection/themed_scenario/shared_widgets.dart'
-    show HatiFrogAvatar, HatiMood;
+    show HatiFrogAvatar, HatiSpeakingBlock, HatiTapToAdvance;
 
+/// Hati's speech bubble outside the themed scenarios (dashboard, onboarding,
+/// post-assessment, spin-assessment screens). Delegates the actual bubble +
+/// typewriter to [HatiSpeakingBlock] — the same widget the scenarios use —
+/// so the typing speed (incl. the global 2x toggle), sentence-by-sentence
+/// pagination, tap-to-advance/dismiss, and bubble shape/animation all match
+/// scenario dialogue instead of keeping a second, simpler implementation.
 class HatiSpriteAnimation extends StatefulWidget {
   const HatiSpriteAnimation({
     super.key,
@@ -13,6 +19,9 @@ class HatiSpriteAnimation extends StatefulWidget {
         'Hello, I\'m Hati your virtual companion! How are you to see me?',
     this.startDelay = const Duration(seconds: 2),
     this.persistBubble = false,
+    this.autoAdvance = false,
+    this.holdAfterTyping = const Duration(seconds: 2),
+    this.onDismissed,
   });
 
   final double size;
@@ -20,140 +29,64 @@ class HatiSpriteAnimation extends StatefulWidget {
   final Duration startDelay;
   final bool persistBubble;
 
+  /// When true, the bubble advances through the message and dismisses on
+  /// its own after [holdAfterTyping] instead of waiting for a tap anywhere
+  /// on screen — for companion-style dialogue that talks on its own.
+  final bool autoAdvance;
+
+  /// How long a fully-typed sentence stays up before [autoAdvance] moves on
+  /// (to the next sentence, or dismisses on the last one).
+  final Duration holdAfterTyping;
+
+  /// Called once the bubble has fully dismissed (only reachable when
+  /// [persistBubble] is false, since a persistent bubble never dismisses).
+  final VoidCallback? onDismissed;
+
   @override
   State<HatiSpriteAnimation> createState() => _HatiSpriteAnimationState();
 }
 
 class _HatiSpriteAnimationState extends State<HatiSpriteAnimation> {
-  late final String _message;
-
   async.Timer? _startTimer;
-  async.Timer? _typingTimer;
-  async.Timer? _hideTimer;
-  bool _showTextbox = false;
-  int _visibleCharacters = 0;
+  bool _started = false;
 
   @override
   void initState() {
     super.initState();
-    _message = widget.message;
     if (widget.startDelay == Duration.zero) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _startTyping());
+      _started = true;
     } else {
-      _startTimer = async.Timer(widget.startDelay, _startTyping);
+      _startTimer = async.Timer(widget.startDelay, () {
+        if (mounted) setState(() => _started = true);
+      });
     }
   }
 
   @override
   void dispose() {
     _startTimer?.cancel();
-    _typingTimer?.cancel();
-    _hideTimer?.cancel();
     super.dispose();
   }
 
-  void _startTyping() {
-    if (!mounted) return;
-
-    setState(() {
-      _showTextbox = true;
-      _visibleCharacters = 0;
-    });
-
-    _typingTimer = async.Timer.periodic(const Duration(milliseconds: 90), (
-      timer,
-    ) {
-      if (!mounted) {
-        timer.cancel();
-        return;
-      }
-
-      if (_visibleCharacters >= _message.length) {
-        timer.cancel();
-        _typingTimer = null;
-        if (!widget.persistBubble) {
-          _hideTimer = async.Timer(const Duration(seconds: 2), _hideTextbox);
-        }
-        return;
-      }
-
-      setState(() {
-        _visibleCharacters++;
-      });
-    });
-  }
-
-  void _hideTextbox() {
-    if (!mounted) return;
-
-    setState(() {
-      _showTextbox = false;
-      _visibleCharacters = 0;
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
-    const textboxGap = 10.0;
-    final bubbleMaxHeight = (widget.size * 0.55).clamp(72.0, 120.0);
-
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        ConstrainedBox(
-          constraints: BoxConstraints(
-            minHeight: bubbleMaxHeight,
-            maxHeight: bubbleMaxHeight,
-          ),
-          child: Center(
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 250),
-              child: _showTextbox
-                  ? _HatiTextbox(
-                      key: const ValueKey('hati-textbox'),
-                      text: _message.substring(0, _visibleCharacters),
-                    )
-                  : const SizedBox.shrink(key: ValueKey('empty-textbox')),
-            ),
-          ),
-        ),
-        const SizedBox(height: textboxGap),
-        HatiFrogAvatar(size: widget.size, mood: HatiMood.idle),
-      ],
-    );
-  }
-}
-
-class _HatiTextbox extends StatelessWidget {
-  const _HatiTextbox({super.key, required this.text});
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(maxWidth: 320),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x2E000000),
-            blurRadius: 12,
-            offset: Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Text(
-        text,
-        textAlign: TextAlign.center,
-        style: const TextStyle(
-          color: Color(0xFF0B28D9),
-          fontSize: 15,
-          fontWeight: FontWeight.w700,
-          height: 1.4,
-        ),
+    return HatiTapToAdvance(
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 250),
+        child: _started
+            ? HatiSpeakingBlock(
+                key: const ValueKey('hati-speaking'),
+                persistentMessage: widget.message,
+                frogSize: widget.size,
+                dissolveBubble: !widget.persistBubble,
+                autoAdvance: widget.autoAdvance,
+                holdAfterTyping: widget.holdAfterTyping,
+                onBubbleDismissed: widget.onDismissed,
+              )
+            : HatiFrogAvatar(
+                key: const ValueKey('hati-waiting'),
+                size: widget.size,
+              ),
       ),
     );
   }

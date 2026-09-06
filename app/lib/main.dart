@@ -9,15 +9,9 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  // Debug-provider App Check so Firebase AI Logic (Gemini) calls aren't
-  // completely unprotected during development. This is NOT production
-  // ready: before shipping, register a real provider (Play Integrity for
-  // Android, App Attest for iOS) in the Firebase console and switch the
-  // providers below, then turn on enforcement for the Gemini API in
-  // App Check settings.
   await FirebaseAppCheck.instance.activate(
-    providerAndroid: const AndroidDebugProvider(),
-    providerApple: const AppleDebugProvider(),
+    providerAndroid: const AndroidPlayIntegrityProvider(),
+    providerApple: const AppleAppAttestProvider(),
   );
   runApp(const MyApp());
 }

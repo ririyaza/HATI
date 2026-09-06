@@ -864,12 +864,16 @@ class HatiSpeechSequence extends StatefulWidget {
   final String introMessage;
   final String persistentMessage;
   final VoidCallback? onSequenceComplete;
+  final bool autoAdvance;
+  final Duration holdAfterTyping;
 
   const HatiSpeechSequence({
     super.key,
     required this.introMessage,
     required this.persistentMessage,
     this.onSequenceComplete,
+    this.autoAdvance = false,
+    this.holdAfterTyping = const Duration(seconds: 2),
   });
 
   @override
@@ -891,6 +895,8 @@ class _HatiSpeechSequenceState extends State<HatiSpeechSequence> {
         maxWidth: HatiLayout.bubbleMaxWidth,
         maxHeight: HatiLayout.bubbleMaxHeight,
         onTypingComplete: widget.onSequenceComplete,
+        autoAdvance: widget.autoAdvance,
+        holdAfterTyping: widget.holdAfterTyping,
       );
     }
 
@@ -901,6 +907,8 @@ class _HatiSpeechSequenceState extends State<HatiSpeechSequence> {
       maxWidth: HatiLayout.bubbleMaxWidth,
       maxHeight: HatiLayout.bubbleMaxHeight,
       onDismissed: () => setState(() => _introFinished = true),
+      autoAdvance: widget.autoAdvance,
+      holdAfterTyping: widget.holdAfterTyping,
     );
   }
 }
@@ -1192,6 +1200,14 @@ class _AnimatedHatiSpeechBubble extends StatefulWidget {
   final VoidCallback? onDismissed;
   final VoidCallback? onTypingComplete;
 
+  /// When true, this bubble advances itself (sentence-to-sentence, then
+  /// dismiss/complete) [holdAfterTyping] after each sentence finishes
+  /// typing, instead of only advancing on [HatiDialogueTapController] taps.
+  /// Tapping still fast-forwards/advances early when this is set — it just
+  /// stops being required. Off by default so scenario dialogue elsewhere
+  /// keeps its tap-paced behavior.
+  final bool autoAdvance;
+
   const _AnimatedHatiSpeechBubble({
     super.key,
     required this.message,
@@ -1201,6 +1217,7 @@ class _AnimatedHatiSpeechBubble extends StatefulWidget {
     this.maxHeight = HatiLayout.bubbleMaxHeight,
     this.onDismissed,
     this.onTypingComplete,
+    this.autoAdvance = false,
   });
 
   @override
@@ -1221,6 +1238,7 @@ class _AnimatedHatiSpeechBubbleState extends State<_AnimatedHatiSpeechBubble>
   late final String _layoutReference;
 
   Timer? _typewriterTimer;
+  Timer? _autoAdvanceTimer;
   int _sentenceIndex = 0;
   int _visibleChars = 0;
   bool _dissolved = false;
@@ -1335,20 +1353,30 @@ class _AnimatedHatiSpeechBubbleState extends State<_AnimatedHatiSpeechBubble>
     });
   }
 
-  // Called once the current sentence's text is fully revealed. Dialogue no
-  // longer auto-advances on a timer — the player taps anywhere on screen
-  // (see [HatiDialogueTapController]) to move to the next line, so this
-  // only fires the "done" callback for a non-dissolving final line (which
-  // unblocks the scene's own Continue/options button) and otherwise just
-  // waits for [_handleTap].
+  // Called once the current sentence's text is fully revealed. By default,
+  // dialogue doesn't auto-advance on a timer — the player taps anywhere on
+  // screen (see [HatiDialogueTapController]) to move to the next line, so
+  // this only fires the "done" callback for a non-dissolving final line
+  // (which unblocks the scene's own Continue/options button) and otherwise
+  // just waits for [_handleTap]. When [_AnimatedHatiSpeechBubble.autoAdvance]
+  // is set, it additionally schedules [_advance] itself after
+  // [_AnimatedHatiSpeechBubble.holdAfterTyping], for companion-style
+  // dialogue that shouldn't require the player to tap through it.
   void _onSentenceFullyShown() {
     final isLast = _sentenceIndex >= _sentences.length - 1;
     if (isLast && !widget.dissolves) {
       widget.onTypingComplete?.call();
     }
+    if (widget.autoAdvance) {
+      _autoAdvanceTimer?.cancel();
+      _autoAdvanceTimer = Timer(widget.holdAfterTyping, () {
+        if (mounted) _advance();
+      });
+    }
   }
 
   void _advance() {
+    _autoAdvanceTimer?.cancel();
     if (_sentences.isEmpty) return;
     final isLast = _sentenceIndex >= _sentences.length - 1;
     if (!isLast) {
@@ -1390,6 +1418,7 @@ class _AnimatedHatiSpeechBubbleState extends State<_AnimatedHatiSpeechBubble>
   void dispose() {
     HatiDialogueTapController.removeListener(_handleTap);
     _typewriterTimer?.cancel();
+    _autoAdvanceTimer?.cancel();
     _entranceController.dispose();
     _dissolveController.dispose();
     super.dispose();
@@ -1624,6 +1653,11 @@ class HatiSpeakingBlock extends StatelessWidget {
   final Duration holdAfterTyping;
   final HatiMood mood;
 
+  /// When true, the bubble advances/dismisses itself after
+  /// [holdAfterTyping] instead of requiring a tap — see
+  /// [_AnimatedHatiSpeechBubble.autoAdvance].
+  final bool autoAdvance;
+
   const HatiSpeakingBlock({
     super.key,
     this.introMessage = '',
@@ -1635,6 +1669,7 @@ class HatiSpeakingBlock extends StatelessWidget {
     this.dissolveBubble = false,
     this.holdAfterTyping = const Duration(seconds: 2),
     this.mood = HatiMood.idle,
+    this.autoAdvance = false,
   });
 
   @override
@@ -1655,6 +1690,7 @@ class HatiSpeakingBlock extends StatelessWidget {
                 onSequenceComplete?.call();
               }
             : null,
+        autoAdvance: autoAdvance,
       );
     } else if (dissolveBubble) {
       bubble = _AnimatedHatiSpeechBubble(
@@ -1668,12 +1704,15 @@ class HatiSpeakingBlock extends StatelessWidget {
           onBubbleDismissed?.call();
           onSequenceComplete?.call();
         },
+        autoAdvance: autoAdvance,
       );
     } else {
       bubble = HatiSpeechSequence(
         introMessage: introMessage,
         persistentMessage: persistentMessage,
         onSequenceComplete: onSequenceComplete,
+        autoAdvance: autoAdvance,
+        holdAfterTyping: holdAfterTyping,
       );
     }
 
