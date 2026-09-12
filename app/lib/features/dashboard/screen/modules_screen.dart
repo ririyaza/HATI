@@ -49,6 +49,91 @@ class _ModulesScreenState extends State<ModulesScreen> {
     return result;
   }
 
+  /// One in-progress session per scenario_key, read straight from
+  /// `users/{uid}/scenarios/*` — the same collection scenario_engine.py's
+  /// `update_scenario_state` writes `current_step` and the full
+  /// `session_state` (including `session_state.data.difficulty`) to on
+  /// every turn. No backend change needed: this is exactly the data the
+  /// "Resume Scenario?" dialog already relies on being there.
+  ///
+  /// A live `.snapshots()` listener (not a one-shot `.get()`) so the
+  /// progress/difficulty badge updates the moment a step actually changes
+  /// server-side, instead of only refreshing whenever this screen happens
+  /// to rebuild — that one-shot version left the badge showing whatever it
+  /// was at the last time this screen was freshly mounted, not the
+  /// player's actual current progress.
+  Stream<Map<String, _InProgressInfo>> _watchInProgressScenarios() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return Stream.value(const {});
+
+    return FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('scenarios')
+        .snapshots()
+        .map(_parseInProgressScenarios);
+  }
+
+  Map<String, _InProgressInfo> _parseInProgressScenarios(
+    QuerySnapshot<Map<String, dynamic>> snapshot,
+  ) {
+    final result = <String, _InProgressInfo>{};
+    for (final doc in snapshot.docs) {
+      final data = doc.data();
+      final currentStep = (data['current_step'] ?? '').toString();
+      // 'complete' is the one step value scenario_engine.py sets once the
+      // player actually dismisses the finished-scenario screen (tapping
+      // "Close" on scene7_dashboard) — everything else, including
+      // scene7_dashboard itself, is still "in progress" as far as resuming
+      // goes, but scene7_dashboard specifically means the interactive part
+      // is already done, so it's excluded below via sceneForStep instead.
+      if (currentStep.isEmpty || currentStep == 'complete') continue;
+
+      final sessionState = data['session_state'];
+      final sessionData = sessionState is Map ? sessionState['data'] : null;
+      final scenarioKey = sessionData is Map
+          ? sessionData['scenario_key']?.toString()
+          : null;
+      if (scenarioKey == null || scenarioKey.isEmpty) continue;
+
+      final scene = sceneForStep(currentStep);
+      if (scene == SceneId.dashboard) continue;
+
+      final difficulty = sessionData is Map
+          ? sessionData['difficulty']?.toString()
+          : null;
+      // A brand-new session (e.g. right after "Start Over") only has
+      // create_scenario's `created_at` — `updated_at` isn't written until
+      // the first real step transition — so comparing on `updated_at`
+      // alone left a fresh session's doc with no timestamp to compare,
+      // which meant Firestore's arbitrary doc ordering could pick a stale
+      // abandoned session over it and show its old progress% instead of
+      // resetting to 0%. Falling back to `created_at` guarantees every
+      // session doc has a real, comparable timestamp.
+      final updatedAt =
+          DateTime.tryParse(data['updated_at']?.toString() ?? '') ??
+          DateTime.tryParse(data['created_at']?.toString() ?? '');
+
+      // A scenario_key can have more than one session doc (e.g. replayed
+      // after finishing once before) — keep whichever was updated most
+      // recently for that key.
+      final existing = result[scenarioKey];
+      if (existing != null &&
+          existing.updatedAt != null &&
+          updatedAt != null &&
+          existing.updatedAt!.isAfter(updatedAt)) {
+        continue;
+      }
+
+      result[scenarioKey] = _InProgressInfo(
+        progress: sceneOrdinal(scene) / 7,
+        isDifficult: difficulty == 'difficult',
+        updatedAt: updatedAt,
+      );
+    }
+    return result;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -175,20 +260,32 @@ class _ModulesScreenState extends State<ModulesScreen> {
                     const SizedBox(height: 12),
                     FutureBuilder<Map<String, double>>(
                       future: _loadThemeAverages(),
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState ==
+                      builder: (context, themeSnapshot) {
+                        if (themeSnapshot.connectionState ==
                             ConnectionState.waiting) {
                           return const SizedBox(
                             height: 220,
                             child: Center(child: CircularProgressIndicator()),
                           );
                         }
-                        final themeAverages = snapshot.data ?? {};
-                        return _scenarioGrid(
-                          context,
-                          themeAverages,
-                          query: _query,
-                          firstCardKey: widget.gridKey,
+                        final themeAverages = themeSnapshot.data ?? {};
+                        // Live-streamed (not a one-shot fetch) so the
+                        // progress %/difficulty badge updates the moment
+                        // the player advances a step, even while this
+                        // screen stays mounted underneath ScenarioPlayPage.
+                        return StreamBuilder<Map<String, _InProgressInfo>>(
+                          stream: _watchInProgressScenarios(),
+                          builder: (context, inProgressSnapshot) {
+                            final inProgress =
+                                inProgressSnapshot.data ?? const {};
+                            return _scenarioGrid(
+                              context,
+                              themeAverages,
+                              inProgress,
+                              query: _query,
+                              firstCardKey: widget.gridKey,
+                            );
+                          },
                         );
                       },
                     ),
@@ -352,6 +449,46 @@ Widget _recentActivityCard(BuildContext context) {
   );
 }
 
+class _InProgressPill extends StatelessWidget {
+  final String label;
+  final Color color;
+
+  const _InProgressPill({required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 10.5,
+          fontWeight: FontWeight.w700,
+          color: color,
+        ),
+      ),
+    );
+  }
+}
+
+/// Progress through an unfinished session for one scenario_key — see
+/// [_ModulesScreenState._loadInProgressScenarios].
+class _InProgressInfo {
+  final double progress;
+  final bool isDifficult;
+  final DateTime? updatedAt;
+
+  const _InProgressInfo({
+    required this.progress,
+    required this.isDifficult,
+    this.updatedAt,
+  });
+}
+
 class _ScenarioTemplate {
   final String theme;
   final String scenarioKey;
@@ -440,7 +577,7 @@ const List<_ScenarioTemplate> _kAllScenarioModules = [
   _ScenarioTemplate(
     theme: 'Fear of Social Gatherings',
     scenarioKey: 'fsg_party',
-    title: 'The House Party: To Approach or Not?',
+    title: 'The Student Gathering: To Approach or Not?',
   ),
   _ScenarioTemplate(
     theme: 'Fear of Negative Evaluation & Embarrassment',
@@ -450,7 +587,7 @@ const List<_ScenarioTemplate> _kAllScenarioModules = [
   _ScenarioTemplate(
     theme: 'Physiological Symptoms',
     scenarioKey: 'phys_jeepney',
-    title: 'The Bus Stop: Hiding Visible Anxiety',
+    title: 'The Jeep Stop: Hiding Visible Anxiety',
   ),
 ];
 
@@ -482,7 +619,8 @@ bool _matchesQuery(_ScenarioTemplate template, String query) {
 
 Widget _scenarioGrid(
   BuildContext context,
-  Map<String, double> themeAverages, {
+  Map<String, double> themeAverages,
+  Map<String, _InProgressInfo> inProgress, {
   String query = '',
   Key? firstCardKey,
 }) {
@@ -508,6 +646,7 @@ Widget _scenarioGrid(
     children: List.generate(templates.length, (index) {
       final template = templates[index];
       final score = _matchPercent(themeAverages, template.theme);
+      final info = inProgress[template.scenarioKey];
       return Padding(
         key: index == 0 ? firstCardKey : null,
         padding: EdgeInsets.only(
@@ -590,6 +729,29 @@ Widget _scenarioGrid(
                           height: 1.3,
                         ),
                       ),
+                      // Only shown for a scenario the user started but
+                      // hasn't finished — real progress through the FSM's
+                      // shared 7-scene numbering (see sceneOrdinal), plus
+                      // which difficulty that attempt is in.
+                      if (info != null) ...[
+                        const SizedBox(height: 6),
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 4,
+                          children: [
+                            _InProgressPill(
+                              label: '${(info.progress * 100).round()}% complete',
+                              color: const Color(0xFF0B28D9),
+                            ),
+                            _InProgressPill(
+                              label: info.isDifficult ? 'Hard Mode' : 'Easy Mode',
+                              color: info.isDifficult
+                                  ? const Color(0xFFC62828)
+                                  : const Color(0xFF2E7D32),
+                            ),
+                          ],
+                        ),
+                      ],
                     ],
                   ),
                 ),

@@ -62,7 +62,7 @@ class _Scene4DebriefState extends State<Scene4Debrief> {
       body = _AnxietySliderCard(
         key: ValueKey(step),
         question: question,
-        isLoading: provider.isLoading || !_dialogueComplete,
+        isLoading: provider.isLoading,
         onSubmit: (v) => provider.submitText(v.toString()),
       );
     } else if (ui.type == ScenarioUIType.buttons) {
@@ -75,7 +75,7 @@ class _Scene4DebriefState extends State<Scene4Debrief> {
         bottomBar = HatiButton(
           label: ui.options.first,
           icon: Icons.arrow_forward_rounded,
-          onTap: (provider.isLoading || !_dialogueComplete)
+          onTap: provider.isLoading
               ? null
               : () => provider.submitText(ui.options.first),
         );
@@ -84,19 +84,33 @@ class _Scene4DebriefState extends State<Scene4Debrief> {
         body = _DebriefChoiceCard(
           key: ValueKey(step),
           options: ui.options,
-          isLoading: provider.isLoading || !_dialogueComplete,
+          isLoading: provider.isLoading,
           onSubmit: provider.submitText,
         );
       }
     } else {
-      contentBackgroundColor = Colors.white;
-      body = TextResponseCard(
+      // Free text — pinned as a fixed bottom bar (like the single-Continue
+      // case above) rather than the scrollable body, so the text field +
+      // Send button can never get pushed below the fold by the coach zone.
+      bottomBar = TextResponseCard(
         key: ValueKey(step),
         hintText: ui.placeholder ?? 'Type your response...',
-        isLoading: provider.isLoading || !_dialogueComplete,
+        isLoading: provider.isLoading,
         onSubmit: provider.submitText,
       );
     }
+
+    // Body/input stay out of the tree — not just disabled — until Hati's
+    // coach line for this step has fully typed out, then pop in.
+    body = popInIfReady(body, ready: _dialogueComplete, stepKey: step ?? '');
+    bottomBar = popInIfReady(
+      bottomBar,
+      ready: _dialogueComplete,
+      stepKey: step ?? '',
+    );
+    // Otherwise this left a blank white box sitting there for the whole
+    // time Hati was still typing, even with body hidden above.
+    if (!_dialogueComplete) contentBackgroundColor = null;
 
     return Scaffold(
       body: ScenarioGradientBackground(

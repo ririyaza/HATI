@@ -1098,6 +1098,47 @@ class HatiTapToAdvance extends StatelessWidget {
   }
 }
 
+/// Fades + scales its child in once, meant to wrap a scene's
+/// choices/text-input area so it visibly "pops up" the moment it's first
+/// allowed to render — see [Scene1OfficePies]/[Scene3Interaction], which
+/// only build this in the tree once Hati/the NPC's line has finished typing
+/// instead of showing it early just disabled. TweenAnimationBuilder (rather
+/// than a manually-managed AnimationController) means this plays once on
+/// mount and is inert on later rebuilds of the same widget instance.
+class PopIn extends StatelessWidget {
+  final Widget child;
+
+  const PopIn({super.key, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutBack,
+      builder: (context, value, child) => Opacity(
+        opacity: value.clamp(0, 1),
+        child: Transform.scale(scale: 0.9 + 0.1 * value.clamp(0, 1), child: child),
+      ),
+      child: child,
+    );
+  }
+}
+
+/// Returns null while [ready] is false — hiding [child] entirely instead of
+/// just disabling it — else wraps it in [PopIn] keyed by [stepKey] so it
+/// pops in exactly once per step. Shared by every scene's choices/header/
+/// input slots, all gated on that scene's own `_dialogueComplete` (set once
+/// Hati's or the NPC's line finishes typing).
+Widget? popInIfReady(
+  Widget? child, {
+  required bool ready,
+  required Object stepKey,
+}) {
+  if (!ready || child == null) return null;
+  return PopIn(key: ValueKey(stepKey), child: child);
+}
+
 /// Small pill switch for [HatiSpeechSpeedController]. Meant to sit in a
 /// scene's top header, on the same side as the back button.
 class HatiSpeedToggle extends StatelessWidget {
@@ -1572,7 +1613,14 @@ String _hatiMoodAsset(HatiMood mood) {
 class HatiLayout {
   HatiLayout._();
 
-  static const double frogSize = 210;
+  // Only HatiCoachZone (Scene 1/2/4/5's coach zone) relies on this default —
+  // every other frog usage (Scene 0, Scene 3, Scene 6, HatiSpeakingBlock's
+  // callers) passes its own explicit size, so shrinking this doesn't touch
+  // them. Reduced from 210 so Hati's coach zone (frog + bubble, up to
+  // frogSize + bubbleMaxHeight + 28 tall) reliably fits centered in the
+  // area left ABOVE the draggable choice sheet's collapsed height, instead
+  // of a box tall enough to get partly covered by the sheet.
+  static const double frogSize = 150;
   static const double bubbleMaxWidth = 328;
   static const double bubbleMaxHeight = 220;
   static const double bubbleBaseFontSize = 16;
@@ -1878,7 +1926,17 @@ class HatiFixedBottomBar extends StatelessWidget {
           ),
         ],
       ),
-      child: SafeArea(top: false, child: child),
+      // SingleChildScrollView as a fallback, not the normal path: on a
+      // screen tall enough for both the coach zone above (fixed height,
+      // doesn't shrink) and this bar's content, nothing here ever scrolls
+      // and looks identical to a plain SafeArea. On a shorter screen where
+      // the two would otherwise compete for space and hard-overflow (seen
+      // with a multi-line bottomBar like TextResponseCard), this lets the
+      // bar scroll internally instead of throwing a RenderFlex overflow.
+      child: SafeArea(
+        top: false,
+        child: SingleChildScrollView(child: child),
+      ),
     );
   }
 }
@@ -1924,58 +1982,64 @@ class HatiSceneShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Widget contentArea = Column(
-      children: [
-        if (fixedHeader != null)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              HatiLayout.horizontalPadding,
-              8,
-              HatiLayout.horizontalPadding,
-              0,
-            ),
-            child: SizedBox(width: double.infinity, child: fixedHeader),
-          ),
-        Expanded(
-          child: ScrollHintArea(
-            padding: const EdgeInsets.fromLTRB(
-              HatiLayout.horizontalPadding,
-              8,
-              HatiLayout.horizontalPadding,
-              16,
-            ),
-            child: body ?? const SizedBox.shrink(),
-          ),
-        ),
-      ],
-    );
-
-    if (contentBackgroundColor != null) {
-      contentArea = Container(
-        width: double.infinity,
-        color: contentBackgroundColor,
-        child: contentArea,
-      );
-    }
+    // Only free-text steps (P.I.E.S. "Other", Preparation's custom-script
+    // entry, etc.) reach this with both null — they use bottomBar instead
+    // — so there's no sheet competing for room and Hati can use the full
+    // height. Squeezing him into the sheet's leftover space here too was
+    // wasted, and made the already-tight space left after the on-screen
+    // keyboard opens (which shrinks this whole Expanded, same as it
+    // shrinks everything else in the Scaffold) even tighter than it
+    // needed to be.
+    final hasSheet = fixedHeader != null || body != null;
 
     return HatiTapToAdvance(
       child: Column(
         children: [
           Expanded(
-            child: Column(
-              children: [
-                if (showCoach)
-                  HatiCoachZone(
-                    introMessage: introMessage,
-                    persistentMessage: persistentMessage,
-                    replacementMessage: replacementMessage,
-                    onSequenceComplete: onSequenceComplete,
-                    showBubble: showBubble,
-                    frogWidthScale: frogWidthScale,
-                    mood: mood,
-                  ),
-                Expanded(child: contentArea),
-              ],
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                // The sheet always covers at least this much of the stack
+                // from the bottom (its collapsed/peek height) — Hati needs
+                // to stay centered in whatever's left ABOVE that, not the
+                // full stack, or the sheet just covers him since both
+                // anchor to the same bottom edge.
+                final visibleHeight = hasSheet
+                    ? constraints.maxHeight *
+                          (1 - DraggableChoiceSheet.defaultMinChildSize)
+                    : constraints.maxHeight;
+                return Stack(
+                  children: [
+                    if (showCoach)
+                      Positioned(
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        height: visibleHeight,
+                        child: Center(
+                          child: HatiCoachZone(
+                            introMessage: introMessage,
+                            persistentMessage: persistentMessage,
+                            replacementMessage: replacementMessage,
+                            onSequenceComplete: onSequenceComplete,
+                            showBubble: showBubble,
+                            frogWidthScale: frogWidthScale,
+                            mood: mood,
+                          ),
+                        ),
+                      ),
+                    // Header + choices combined into one draggable sheet —
+                    // a player swiping up drags both together, rather than
+                    // a fixed header sitting above an independently-
+                    // scrolling choice list.
+                    if (fixedHeader != null || body != null)
+                      DraggableChoiceSheet(
+                        header: fixedHeader,
+                        body: body,
+                        backgroundColor: contentBackgroundColor ?? Colors.white,
+                      ),
+                  ],
+                );
+              },
             ),
           ),
           if (bottomBar != null) HatiFixedBottomBar(child: bottomBar!),
@@ -1985,138 +2049,124 @@ class HatiSceneShell extends StatelessWidget {
   }
 }
 
-/// A scrollable region that shows a fading edge + a gently bouncing
-/// chevron at the bottom whenever there's more content below the fold —
-/// e.g. a long list of choice chips/cards that the fixed coach zone above
-/// pushes past the visible area. Hides itself once there's nothing left
-/// to scroll to (including when the content already fits with no
-/// scrolling needed at all).
-class ScrollHintArea extends StatefulWidget {
-  final EdgeInsetsGeometry padding;
-  final Widget child;
+/// A bottom-sheet-style panel combining an optional [header] with [body] so
+/// they resize and scroll TOGETHER as one draggable unit — dragging the
+/// handle (or the header, or the list itself) expands the whole sheet, not
+/// just a scrollable region under a fixed title. Starts collapsed to
+/// [minChildSize] (enough to see a few choices without covering all of
+/// Hati/the NPC) and can be dragged up to [maxChildSize]; `snap: true`
+/// settles a partial drag to whichever end it's closer to, like every
+/// other bottom sheet on the platform, so a first-time (or non-technical)
+/// player never gets stuck at some in-between height.
+class DraggableChoiceSheet extends StatelessWidget {
+  /// Shared with [HatiSceneShell], which needs to know how much of its
+  /// stack the sheet covers at rest so it can center Hati in the space
+  /// left above it, rather than guessing a matching fraction independently.
+  static const double defaultMinChildSize = 0.4;
 
-  const ScrollHintArea({super.key, required this.padding, required this.child});
+  final Widget? header;
+  final Widget? body;
+  final Color backgroundColor;
+  final double minChildSize;
+  final double maxChildSize;
 
-  @override
-  State<ScrollHintArea> createState() => ScrollHintAreaState();
-}
-
-class ScrollHintAreaState extends State<ScrollHintArea> {
-  final ScrollController _controller = ScrollController();
-  bool _hasMoreBelow = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller.addListener(_updateHint);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _updateHint());
-  }
-
-  void _updateHint() {
-    if (!_controller.hasClients) return;
-    final position = _controller.position;
-    // A few px of slack so rounding at the very bottom doesn't leave the
-    // hint flickering on/off.
-    final hasMore = position.maxScrollExtent - position.pixels > 4;
-    if (hasMore != _hasMoreBelow) {
-      setState(() => _hasMoreBelow = hasMore);
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.removeListener(_updateHint);
-    _controller.dispose();
-    super.dispose();
-  }
+  const DraggableChoiceSheet({
+    super.key,
+    this.header,
+    this.body,
+    this.backgroundColor = Colors.white,
+    this.minChildSize = defaultMinChildSize,
+    this.maxChildSize = 0.9,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        NotificationListener<ScrollMetricsNotification>(
-          onNotification: (_) {
-            // Fires when content size/viewport changes (e.g. options load
-            // in), after the frame that produced it — safe to check now.
-            WidgetsBinding.instance.addPostFrameCallback((_) => _updateHint());
-            return false;
-          },
-          child: SingleChildScrollView(
-            controller: _controller,
-            padding: widget.padding,
-            child: widget.child,
+    if (header == null && body == null) return const SizedBox.shrink();
+
+    return DraggableScrollableSheet(
+      initialChildSize: minChildSize,
+      minChildSize: minChildSize,
+      maxChildSize: maxChildSize,
+      snap: true,
+      builder: (context, scrollController) {
+        return Container(
+          decoration: BoxDecoration(
+            color: backgroundColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.15),
+                blurRadius: 16,
+                offset: const Offset(0, -4),
+              ),
+            ],
           ),
-        ),
-        if (_hasMoreBelow)
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: IgnorePointer(
-              child: Container(
-                height: 40,
-                alignment: Alignment.bottomCenter,
-                padding: const EdgeInsets.only(bottom: 4),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.white.withValues(alpha: 0),
-                      Colors.white.withValues(alpha: 0.95),
+          child: Column(
+            children: [
+              // Grab handle + spelled-out hint, pinned above the scrollable
+              // area (not part of it) so it's always visible as the thing
+              // to drag, never scrolled out of view.
+              const Padding(
+                padding: EdgeInsets.only(top: 10, bottom: 2),
+                child: _SheetGrabHandle(),
+              ),
+              const SizedBox(height: 2),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.keyboard_arrow_up_rounded,
+                    size: 16,
+                    color: HatiColors.textMedium,
+                  ),
+                  const SizedBox(width: 2),
+                  Text(
+                    'Swipe up to see more',
+                    style: HatiTextStyles.caption.copyWith(
+                      color: HatiColors.textMedium,
+                    ),
+                  ),
+                ],
+              ),
+              Expanded(
+                child: SingleChildScrollView(
+                  controller: scrollController,
+                  padding: const EdgeInsets.fromLTRB(
+                    HatiLayout.horizontalPadding,
+                    10,
+                    HatiLayout.horizontalPadding,
+                    20,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      ?header,
+                      if (header != null && body != null)
+                        const SizedBox(height: 16),
+                      ?body,
                     ],
                   ),
                 ),
-                child: const _BouncingChevron(),
               ),
-            ),
+            ],
           ),
-      ],
+        );
+      },
     );
   }
 }
 
-class _BouncingChevron extends StatefulWidget {
-  const _BouncingChevron();
-
-  @override
-  State<_BouncingChevron> createState() => _BouncingChevronState();
-}
-
-class _BouncingChevronState extends State<_BouncingChevron>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-  late final Animation<double> _offset;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 700),
-    )..repeat(reverse: true);
-    _offset = Tween<double>(
-      begin: 0,
-      end: 5,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
+class _SheetGrabHandle extends StatelessWidget {
+  const _SheetGrabHandle();
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _offset,
-      builder: (context, child) =>
-          Transform.translate(offset: Offset(0, _offset.value), child: child),
-      child: Icon(
-        Icons.keyboard_arrow_down_rounded,
-        color: HatiColors.mossGreen.withValues(alpha: 0.6),
-        size: 24,
+    return Container(
+      width: 40,
+      height: 5,
+      decoration: BoxDecoration(
+        color: HatiColors.divider,
+        borderRadius: BorderRadius.circular(3),
       ),
     );
   }

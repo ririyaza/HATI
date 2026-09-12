@@ -52,6 +52,22 @@ class ScenarioProvider extends ChangeNotifier {
   String? lastTranscript;
   String? lastFinalEmotion;
 
+  /// Badge ids newly unlocked by the most recent response (from the
+  /// backend's scene6_closing completion payload — see
+  /// scenario_engine._evaluate_badges). The dashboard scene reads this via
+  /// [consumeNewlyUnlockedBadges] to show a one-time unlock notification,
+  /// which also clears it so the notification doesn't re-fire on rebuild.
+  List<String> newlyUnlockedBadges = const [];
+
+  /// Returns the badges newly unlocked since the last call, clearing them
+  /// so a widget rebuild (e.g. rotating the device) doesn't re-trigger the
+  /// unlock notification for the same completion.
+  List<String> consumeNewlyUnlockedBadges() {
+    final badges = newlyUnlockedBadges;
+    if (badges.isNotEmpty) newlyUnlockedBadges = const [];
+    return badges;
+  }
+
   String? _userId;
   String? _userName;
   bool _disposed = false;
@@ -212,6 +228,12 @@ class ScenarioProvider extends ChangeNotifier {
     ui = ScenarioUI.fromJson(data["ui"]);
     npcMood = data["npc_mood"]?.toString();
     history = data["history"];
+
+    final badges = data["newly_unlocked_badges"];
+    if (badges is List && badges.isNotEmpty) {
+      newlyUnlockedBadges = badges.map((b) => b.toString()).toList();
+    }
+
     isLoading = false;
     notifyListeners();
   }

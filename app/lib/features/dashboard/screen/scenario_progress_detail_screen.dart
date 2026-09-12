@@ -1,27 +1,23 @@
 import 'package:flutter/material.dart';
 
+import 'weekly_progress_data.dart';
+
 /// Detail view opened by tapping a Scenario Module card on the Progress
 /// screen. Mirrors `WeeklyProgressDetailScreen`'s header/background styling
 /// for consistency.
 ///
-/// UI-only for now, like `WeeklyProgressDetailScreen`: the four emotion
-/// scores below are placeholder demo data — the app doesn't yet aggregate a
-/// module's `emotionLogs` (see `emotiondetection/scenario_game.dart`)
-/// across play sessions into a single per-module score. The dominant-
-/// emotion emoji in the circle is real logic though: it's always whichever
-/// of the four scores is currently highest, so it keeps working correctly
-/// once real aggregated data replaces the placeholders below.
-class ScenarioProgressDetailScreen extends StatelessWidget {
-  const ScenarioProgressDetailScreen({super.key});
+/// Scores are real: every emotion log for [scenarioKey] across every play
+/// session, scoped to P.I.E.S./Interaction only (see
+/// `EmotionLogEntry.isPiesOrInteraction` in weekly_progress_data.dart) —
+/// the same scene scoping the end-of-scenario summary and the Weekly
+/// Progress screen already use, so this module's numbers never disagree
+/// with either of those.
+class ScenarioProgressDetailScreen extends StatefulWidget {
+  final String scenarioKey;
+
+  const ScenarioProgressDetailScreen({super.key, required this.scenarioKey});
 
   static const _blue = Color(0xFF0B28D9);
-
-  static const _scores = [
-    _EmotionScore('anxious', 'Anxious', 88),
-    _EmotionScore('happy', 'Happy', 51),
-    _EmotionScore('neutral', 'Neutral', 30),
-    _EmotionScore('sad', 'Sad', 71),
-  ];
 
   static const _emojis = {
     'anxious': '😰',
@@ -33,16 +29,41 @@ class ScenarioProgressDetailScreen extends StatelessWidget {
     'surprised': '😲',
   };
 
-  static _EmotionScore get _dominant =>
-      _scores.reduce((a, b) => b.value > a.value ? b : a);
+  @override
+  State<ScenarioProgressDetailScreen> createState() =>
+      _ScenarioProgressDetailScreenState();
+}
+
+class _ScenarioProgressDetailScreenState
+    extends State<ScenarioProgressDetailScreen> {
+  late final Future<List<EmotionLogEntry>> _logsFuture = fetchAllEmotionLogs();
+
+  static const _trackedEmotions = ['anxious', 'happy', 'neutral', 'sad'];
+
+  List<_EmotionScore> _scoresFrom(List<EmotionLogEntry> allLogs) {
+    final relevant = allLogs.where(
+      (e) => e.scenarioKey == widget.scenarioKey && e.isPiesOrInteraction,
+    );
+    final counts = <String, int>{};
+    var total = 0;
+    for (final entry in relevant) {
+      counts[entry.emotion] = (counts[entry.emotion] ?? 0) + 1;
+      total++;
+    }
+    return [
+      for (final key in _trackedEmotions)
+        _EmotionScore(
+          key,
+          key[0].toUpperCase() + key.substring(1),
+          total == 0 ? 0 : (counts[key] ?? 0) / total * 100,
+        ),
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
-    final dominant = _dominant;
-    final emoji = _emojis[dominant.key] ?? '🙂';
-
     return Scaffold(
-      backgroundColor: _blue,
+      backgroundColor: ScenarioProgressDetailScreen._blue,
       body: SafeArea(
         child: Column(
           children: [
@@ -74,63 +95,108 @@ class ScenarioProgressDetailScreen extends StatelessWidget {
               ),
             ),
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
-                child: Column(
-                  children: [
-                    _EmotionGlowCircle(emoji: emoji),
-                    const SizedBox(height: 28),
-                    const Text(
-                      'Take things one step at a time',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 21,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    const Text(
-                      'Your recent logs show increased anxiety. Try to slow '
-                      'down, breathe, and focus on small improvements.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 13.5,
-                        height: 1.5,
-                      ),
-                    ),
-                    const SizedBox(height: 22),
-                    SizedBox(
-                      height: 46,
-                      child: FilledButton(
-                        style: FilledButton.styleFrom(
-                          backgroundColor: const Color(0xFF3DA9FC),
-                          padding: const EdgeInsets.symmetric(horizontal: 28),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(24),
-                          ),
-                        ),
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text(
-                          "Let's Practice More",
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
+              child: FutureBuilder<List<EmotionLogEntry>>(
+                future: _logsFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(
+                      child: CircularProgressIndicator(color: Colors.white),
+                    );
+                  }
+                  final scores = _scoresFrom(snapshot.data ?? const []);
+                  final total = scores.fold<double>(
+                    0,
+                    (sum, s) => sum + s.value,
+                  );
+                  final dominant = total == 0
+                      ? null
+                      : scores.reduce((a, b) => b.value > a.value ? b : a);
+                  final emoji = dominant == null
+                      ? '🙂'
+                      : (ScenarioProgressDetailScreen._emojis[dominant.key] ??
+                            '🙂');
+
+                  final String headline;
+                  final String body;
+                  if (total == 0) {
+                    headline = "You haven't practiced this scenario yet";
+                    body =
+                        "Play through it once and I'll start tracking how "
+                        "you feel during the P.I.E.S. check-in and the "
+                        "conversation itself.";
+                  } else if (dominant?.key == 'anxious') {
+                    headline = 'Take things one step at a time';
+                    body =
+                        'Your logs for this scenario show more anxious '
+                        'moments than calm ones. Try to slow down, breathe, '
+                        'and focus on small improvements.';
+                  } else {
+                    headline = "You're handling this one well";
+                    body =
+                        'Your logs for this scenario lean toward steadier '
+                        'emotions. Keep practicing to build on that.';
+                  }
+
+                  return SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
+                    child: Column(
+                      children: [
+                        _EmotionGlowCircle(emoji: emoji),
+                        const SizedBox(height: 28),
+                        Text(
+                          headline,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
                             color: Colors.white,
+                            fontSize: 21,
+                            fontWeight: FontWeight.w800,
                           ),
                         ),
-                      ),
+                        const SizedBox(height: 10),
+                        Text(
+                          body,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 13.5,
+                            height: 1.5,
+                          ),
+                        ),
+                        const SizedBox(height: 22),
+                        SizedBox(
+                          height: 46,
+                          child: FilledButton(
+                            style: FilledButton.styleFrom(
+                              backgroundColor: const Color(0xFF3DA9FC),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 28,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(24),
+                              ),
+                            ),
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text(
+                              "Let's Practice More",
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 36),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: scores
+                              .map((s) => _EmotionBar(score: s))
+                              .toList(),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 36),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: _scores
-                          .map((s) => _EmotionBar(score: s))
-                          .toList(),
-                    ),
-                  ],
-                ),
+                  );
+                },
               ),
             ),
           ],

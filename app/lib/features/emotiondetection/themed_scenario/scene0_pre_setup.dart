@@ -132,18 +132,15 @@ class _Scene0PreSetupState extends State<Scene0PreSetup>
       body: HatiTapToAdvance(
         child: Stack(
         children: [
-          // Background gradient
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [HatiColors.deepForest, Color(0xFF2A4A2A)],
-              ),
-            ),
-          ),
+          // Background — the same brand blue (0xFF0B28D9) the Progress and
+          // Profile screens use for their own headers, so the scenario
+          // intro reads as part of one consistent app, not a different
+          // green-themed area.
+          Container(color: const Color(0xFF0B28D9)),
 
-          // Decorative circles
+          // Decorative circles — white-on-blue rather than the old
+          // green-on-green tones, which read as a background accent
+          // regardless of what's behind them.
           Positioned(
             top: -60,
             right: -60,
@@ -152,7 +149,7 @@ class _Scene0PreSetupState extends State<Scene0PreSetup>
               height: 200,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: HatiColors.mossGreen.withValues(alpha: 0.3),
+                color: Colors.white.withValues(alpha: 0.08),
               ),
             ),
           ),
@@ -164,7 +161,7 @@ class _Scene0PreSetupState extends State<Scene0PreSetup>
               height: 160,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: HatiColors.leafGreen.withValues(alpha: 0.15),
+                color: Colors.white.withValues(alpha: 0.06),
               ),
             ),
           ),
@@ -256,15 +253,23 @@ class _Scene0PreSetupState extends State<Scene0PreSetup>
 
                                 const Spacer(),
 
-                                // Begin button
-                                HatiButton(
-                                  label: beginLabel,
-                                  icon: Icons.play_arrow_rounded,
-                                  onTap: (!readyToBegin || provider.isLoading)
-                                      ? null
-                                      : () => provider.submitText(beginLabel),
-                                  color: HatiColors.leafGreen,
-                                ),
+                                // Begin button — stays out of the tree
+                                // (not just disabled) until Hati's greeting
+                                // has fully typed out, then pops in.
+                                if (readyToBegin)
+                                  PopIn(
+                                    key: const ValueKey('begin-button'),
+                                    child: HatiButton(
+                                      label: beginLabel,
+                                      icon: Icons.play_arrow_rounded,
+                                      onTap: provider.isLoading
+                                          ? null
+                                          : () => provider.submitText(beginLabel),
+                                      color: HatiColors.leafGreen,
+                                    ),
+                                  )
+                                else
+                                  const SizedBox(height: 52),
                                 const SizedBox(height: 12),
                                 TextButton(
                                   onPressed: () => Navigator.pop(context),

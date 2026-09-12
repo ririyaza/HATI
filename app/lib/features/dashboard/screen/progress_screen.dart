@@ -252,8 +252,9 @@ class _ProgressContent extends StatelessWidget {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) =>
-                                      const ScenarioProgressDetailScreen(),
+                                  builder: (_) => ScenarioProgressDetailScreen(
+                                    scenarioKey: module.id,
+                                  ),
                                 ),
                               );
                             },

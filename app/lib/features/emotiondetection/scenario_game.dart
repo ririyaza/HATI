@@ -221,9 +221,9 @@ class _EmotionPageState extends State<EmotionPage> {
       case 'Fear of Negative Evaluation & Embarassment':
         return 'The Group Project: Defending Your Work';
       case 'Physiological Symptoms':
-        return 'The Bus Stop: Hiding Visible Anxiety';
+        return 'The Jeep Stop: Hiding Visible Anxiety';
       case 'Fear of Social Gatherings':
-        return 'The House Party: To Approach or Not?';
+        return 'The Student Gathering: To Approach or Not?';
       case 'Fear of Strangers & New People':
         return "The Food Hall's Seat";
       case 'Fear of Being Observed & Performing':

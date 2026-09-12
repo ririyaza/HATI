@@ -175,9 +175,13 @@ double _pctOf(Set<String> bucket, List<EmotionLogEntry> pool) {
 }
 
 ConfidenceAnxietySummary computeConfidenceAnxiety(
-  List<EmotionLogEntry> logs,
+  List<EmotionLogEntry> allLogs,
   DateTime now,
 ) {
+  // Scoped to P.I.E.S./Interaction logs only, matching Trigger Patterns and
+  // Emotion Trends below — the user's own felt emotion during those two
+  // phases, not curated dialogue choices from Briefing/Debrief/Coping/Closing.
+  final logs = allLogs.where((e) => e.isPiesOrInteraction).toList();
   final weekStart = startOfWeek(now);
   final weekEnd = weekStart.add(const Duration(days: 7));
   final prevWeekStart = weekStart.subtract(const Duration(days: 7));

@@ -337,7 +337,7 @@ const Map<String, ScenarioConfig> kScenarioConfigs = {
   'fsg_party': ScenarioConfig(
     scenarioKey: 'fsg_party',
     theme: 'Fear of Social Gatherings',
-    title: 'The House Party: To Approach or Not?',
+    title: 'The Student Gathering: To Approach or Not?',
     backgroundAsset: 'assets/scenario_background/fsg_background.png',
     assetPrefix: 'fsg',
     // Julia and Precious share the girl asset; Jaspher is the boy.
@@ -427,7 +427,7 @@ const Map<String, ScenarioConfig> kScenarioConfigs = {
   'phys_jeepney': ScenarioConfig(
     scenarioKey: 'phys_jeepney',
     theme: 'Physiological Symptoms',
-    title: 'The Bus Stop: Hiding Visible Anxiety',
+    title: 'The Jeep Stop: Hiding Visible Anxiety',
     backgroundAsset: 'assets/scenario_background/phys_background.png',
     assetPrefix: 'phys',
     // Single-NPC scenario ("Classmate") — only asset provided is a girl
@@ -479,6 +479,16 @@ const Map<String, SceneId> kStepToScene = {
   'pies_physical': SceneId.office,
   'pies_emotional': SceneId.office,
   'pies_environmental': SceneId.office,
+  // The "Other" custom-text follow-up for each P.I.E.S. category (see
+  // scenario_engine.py's pies_physical_other/pies_emotional_other/
+  // pies_environmental_other handlers). Missing from this map meant
+  // sceneForStep fell through to its SceneId.preScene default, which sent
+  // the player back to Scene0PreSetup (the intro) instead of staying on
+  // Scene1OfficePies's "Tell me more:" text field — both when tapping
+  // "Other" live and when resuming a session saved mid-"Other" answer.
+  'pies_physical_other': SceneId.office,
+  'pies_emotional_other': SceneId.office,
+  'pies_environmental_other': SceneId.office,
 
   // Shared Easy/Difficult mode selector — runs after every theme's
   // prep/goal-setting scene2_* steps, right before Scene 3 begins. Rendered
@@ -625,6 +635,34 @@ const Map<String, SceneId> kStepToScene = {
 SceneId sceneForStep(String? step) {
   if (step == null) return SceneId.preScene;
   return kStepToScene[step] ?? SceneId.preScene;
+}
+
+/// Ordinal position of [scene] in the shared "N of 7 scenes" numbering
+/// every scene's SceneTopHeader/SceneProgressBar already shows (1=Office/
+/// P.I.E.S., 2=Preparation, 3=Interaction, 4=Debrief, 5=Coping, 6=Closing).
+/// preScene (not yet begun) is 0; dashboard (already finished) is 7. Used
+/// by modules_screen.dart to show real "N% through" progress for a
+/// scenario the user started but hasn't finished, from nothing more than
+/// its raw backend step name.
+int sceneOrdinal(SceneId scene) {
+  switch (scene) {
+    case SceneId.preScene:
+      return 0;
+    case SceneId.office:
+      return 1;
+    case SceneId.preparation:
+      return 2;
+    case SceneId.interaction:
+      return 3;
+    case SceneId.debrief:
+      return 4;
+    case SceneId.coping:
+      return 5;
+    case SceneId.closing:
+      return 6;
+    case SceneId.dashboard:
+      return 7;
+  }
 }
 
 /// A backend message with its speaker prefix (e.g. "**Hati:**",

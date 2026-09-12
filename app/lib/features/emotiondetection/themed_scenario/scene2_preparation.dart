@@ -64,7 +64,7 @@ class _Scene2PreparationState extends State<Scene2Preparation> {
           label: ui.options.first,
           icon: Icons.directions_walk_rounded,
           color: HatiColors.leafGreen,
-          onTap: (provider.isLoading || !_dialogueComplete)
+          onTap: provider.isLoading
               ? null
               : () => provider.submitText(ui.options.first),
         );
@@ -78,7 +78,7 @@ class _Scene2PreparationState extends State<Scene2Preparation> {
           title: 'Choose Your Difficulty',
           subtitle: 'Both are valid ways to practice',
         );
-        final isLoading = provider.isLoading || !_dialogueComplete;
+        final isLoading = provider.isLoading;
         body = Column(
           key: ValueKey(step),
           children: [
@@ -106,22 +106,48 @@ class _Scene2PreparationState extends State<Scene2Preparation> {
         body = _ScriptChoiceList(
           key: ValueKey(step),
           options: ui.options,
-          isLoading: provider.isLoading || !_dialogueComplete,
+          isLoading: provider.isLoading,
           onSubmit: provider.submitText,
         );
       }
     } else {
-      // foa_s2_script_custom / foa_s2_q_prep: free text. Same white
-      // background as Debrief's text-input steps instead of the green
-      // scenario background.
-      contentBackgroundColor = Colors.white;
-      body = TextResponseCard(
+      // foa_s2_script_custom / foa_s2_q_prep: free text. Lives in bottomBar
+      // (fixed, always on-screen) rather than the scrollable body — same
+      // slot every other primary action (Continue button, choice list) uses,
+      // so the text field + Send button can never get pushed below the fold
+      // by the coach zone above it.
+      bottomBar = TextResponseCard(
         key: ValueKey(step),
         hintText: ui.placeholder ?? 'Type your response...',
-        isLoading: provider.isLoading || !_dialogueComplete,
+        isLoading: provider.isLoading,
         onSubmit: provider.submitText,
       );
     }
+
+    // Header/choices/input stay out of the tree — not just disabled — until
+    // Hati's coach line for this step has fully typed out, then pop in
+    // together (see popInIfReady/PopIn in shared_widgets.dart). fixedHeader
+    // and body end up as direct siblings inside DraggableChoiceSheet's own
+    // Column, so their PopIn keys must differ — reusing the same stepKey
+    // for both previously triggered a "Duplicate keys found" crash.
+    body = popInIfReady(
+      body,
+      ready: _dialogueComplete,
+      stepKey: 'body:${step ?? ''}',
+    );
+    bottomBar = popInIfReady(
+      bottomBar,
+      ready: _dialogueComplete,
+      stepKey: 'bottomBar:${step ?? ''}',
+    );
+    fixedHeader = popInIfReady(
+      fixedHeader,
+      ready: _dialogueComplete,
+      stepKey: 'header:${step ?? ''}',
+    );
+    // Otherwise this left a blank white box sitting there for the whole
+    // time Hati was still typing, even with body/fixedHeader hidden above.
+    if (!_dialogueComplete) contentBackgroundColor = null;
 
     return Scaffold(
       body: ScenarioGradientBackground(

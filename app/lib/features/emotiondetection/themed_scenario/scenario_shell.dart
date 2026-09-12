@@ -143,10 +143,13 @@ class _ResumeScenarioDialog extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
               decoration: const BoxDecoration(
+                // Brand blue (0xFF0B28D9) — same header color as the
+                // Progress and Profile screens — rather than this dialog
+                // family's usual green, matching the Badge Unlocked dialog.
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [HatiColors.deepForest, HatiColors.mossGreen],
+                  colors: [Color(0xFF0B28D9), Color(0xFF081F9E)],
                 ),
                 borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
               ),
@@ -219,6 +222,14 @@ class _ResumeScenarioDialog extends StatelessWidget {
 class _ScenarioDashboardScene extends StatelessWidget {
   const _ScenarioDashboardScene({super.key});
 
+  // Only these two scenes count toward the end-of-scenario emotion summary:
+  // P.I.E.S. (office scene) and the NPC interaction scene. Everything else
+  // the FSM logs emotions for — scene0 greeting, debrief, coping, closing,
+  // Hati's own coaching turns — is deliberately excluded so the summary
+  // reflects the user's reaction to the scenario itself, not to Hati.
+  // Reuses sceneForStep so this stays correct across every scenario key
+  // without hand-listing step names here. Shown as one combined list
+  // ranked by count, not split into separate P.I.E.S./Interaction sections.
   Future<Map<String, int>> _loadEmotionCounts(String? sessionId) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null || sessionId == null) return {};
@@ -233,8 +244,13 @@ class _ScenarioDashboardScene extends StatelessWidget {
 
     final counts = <String, int>{};
     for (final doc in snapshot.docs) {
-      final emotion = (doc.data()['emotion'] ?? '').toString().trim().toLowerCase();
+      final data = doc.data();
+      final emotion = (data['emotion'] ?? '').toString().trim().toLowerCase();
       if (emotion.isEmpty) continue;
+
+      final scene = sceneForStep(data['step']?.toString());
+      if (scene != SceneId.office && scene != SceneId.interaction) continue;
+
       counts[emotion] = (counts[emotion] ?? 0) + 1;
     }
     return counts;
@@ -249,10 +265,28 @@ class _ScenarioDashboardScene extends StatelessWidget {
     );
   }
 
+  void _maybeShowBadgeUnlock(BuildContext context, ScenarioProvider provider) {
+    final newlyUnlocked = provider.consumeNewlyUnlockedBadges();
+    if (newlyUnlocked.isEmpty || !context.mounted) return;
+    showDialog(
+      context: context,
+      builder: (context) => _BadgeUnlockDialog(badgeIds: newlyUnlocked),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<ScenarioProvider>();
     final summary = joinMessageText(provider.messages, separator: ' ');
+
+    // Fires once per completion: consumeNewlyUnlockedBadges() clears the
+    // list it returns, so a later rebuild of this same scene (e.g. after
+    // returning from the emotion-summary dialog) naturally gets an empty
+    // list and shows nothing — no separate "have I already shown this"
+    // flag needed.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _maybeShowBadgeUnlock(context, provider);
+    });
 
     return Scaffold(
       body: Stack(
@@ -381,6 +415,12 @@ String _emotionLabelFor(String key) {
   return key[0].toUpperCase() + key.substring(1);
 }
 
+List<MapEntry<String, int>> _sortedEmotionEntries(Map<String, int> counts) {
+  final sorted = counts.entries.where((e) => e.value > 0).toList()
+    ..sort((a, b) => b.value.compareTo(a.value));
+  return sorted;
+}
+
 class _EmotionSummaryDialog extends StatelessWidget {
   final Map<String, int> counts;
 
@@ -388,8 +428,7 @@ class _EmotionSummaryDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final sorted = counts.entries.where((e) => e.value > 0).toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
+    final sorted = _sortedEmotionEntries(counts);
     final maxCount = sorted.isNotEmpty ? sorted.first.value.toDouble() : 1.0;
 
     return Dialog(
@@ -473,6 +512,190 @@ class _EmotionSummaryDialog extends StatelessWidget {
                 width: double.infinity,
                 child: HatiButton(
                   label: 'Close',
+                  color: HatiColors.mossGreen,
+                  onTap: () => Navigator.pop(context),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Badge unlock notification ────────────────────────────────────────────
+// Ids/order must match exactly what scenario_engine.py's _evaluate_badges
+// writes into badge_progress/summary.earnedBadges, and the display copy
+// (label/image) mirrors dashboard_user_data.dart's BadgeData list so the
+// notification and the Progress screen's badge grid never disagree.
+class _BadgeInfo {
+  final String label;
+  final String description;
+  final String image;
+
+  const _BadgeInfo({
+    required this.label,
+    required this.description,
+    required this.image,
+  });
+}
+
+const Map<String, _BadgeInfo> _kBadgeInfo = {
+  'first_step': _BadgeInfo(
+    label: 'First Step',
+    description: 'You completed your very first scenario.',
+    image: 'assets/badges/first_step.png',
+  ),
+  'five_day_streak': _BadgeInfo(
+    label: '5-Day Streak',
+    description: 'You practiced a scenario 5 days in a row.',
+    image: 'assets/badges/streak.png',
+  ),
+  'halfway': _BadgeInfo(
+    label: 'Half Way!',
+    description: "You've completed half of all available scenarios.",
+    image: 'assets/badges/half_way.png',
+  ),
+  'quick_thinker': _BadgeInfo(
+    label: 'Quick Thinker',
+    description: 'You finished a scenario within its target time.',
+    image: 'assets/badges/quick_thinker.png',
+  ),
+  'sharpshooter': _BadgeInfo(
+    label: 'Sharpshooter',
+    description: 'You handled several scenarios well, back to back.',
+    image: 'assets/badges/sharpshooter.png',
+  ),
+};
+
+/// Shown once, right after scene6_closing's response reports newly
+/// unlocked badges (see ScenarioProvider.consumeNewlyUnlockedBadges).
+/// Stacks multiple badges from the same completion into one dialog
+/// (rather than queuing separate popups) since they were unlocked by the
+/// exact same event.
+class _BadgeUnlockDialog extends StatelessWidget {
+  final List<String> badgeIds;
+
+  const _BadgeUnlockDialog({required this.badgeIds});
+
+  @override
+  Widget build(BuildContext context) {
+    final badges = badgeIds
+        .map((id) => _kBadgeInfo[id])
+        .whereType<_BadgeInfo>()
+        .toList();
+
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      child: Container(
+        decoration: BoxDecoration(
+          color: HatiColors.cardBg,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.2),
+              blurRadius: 24,
+              offset: const Offset(0, 12),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
+              decoration: const BoxDecoration(
+                // Brand blue (0xFF0B28D9) — the same header color as the
+                // Progress and Profile screens — rather than this dialog
+                // family's usual green, since a badge unlock is a
+                // dashboard-level moment, not scenario dialogue.
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFF0B28D9), Color(0xFF081F9E)],
+                ),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: HatiColors.softGold.withValues(alpha: 0.2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.emoji_events_rounded,
+                      color: HatiColors.softGold,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Text(
+                      badges.length > 1 ? 'Badges Unlocked!' : 'Badge Unlocked!',
+                      style: HatiTextStyles.heading3.copyWith(color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+              child: Column(
+                children: badges
+                    .map(
+                      (badge) => Padding(
+                        padding: const EdgeInsets.only(bottom: 14),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              width: 48,
+                              height: 48,
+                              decoration: BoxDecoration(
+                                color: HatiColors.softGold.withValues(alpha: 0.15),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Image.asset(
+                                badge.image,
+                                errorBuilder: (_, _, _) => const Icon(
+                                  Icons.military_tech_rounded,
+                                  color: HatiColors.softGold,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(badge.label, style: HatiTextStyles.heading3),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    badge.description,
+                                    style: HatiTextStyles.bodyMedium,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                    .toList(),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+              child: SizedBox(
+                width: double.infinity,
+                child: HatiButton(
+                  label: 'Nice!',
                   color: HatiColors.mossGreen,
                   onTap: () => Navigator.pop(context),
                 ),

@@ -14,6 +14,7 @@ class DashboardUserData {
     required this.copingPreferences,
     required this.modules,
     required this.assessments,
+    this.badgeProgress = const BadgeProgressData(),
   });
 
   final String uid;
@@ -25,6 +26,7 @@ class DashboardUserData {
   final String copingPreferences;
   final List<ModuleProgressData> modules;
   final List<AssessmentScoreData> assessments;
+  final BadgeProgressData badgeProgress;
 
   int get scenariosCompleted =>
       modules.fold(0, (sum, module) => sum + module.completedScenarios);
@@ -46,33 +48,58 @@ class DashboardUserData {
 
   List<bool> get weeklyActivity => _weeklyActivityFromModules(modules);
 
+  // Earned state now comes from the backend's persisted
+  // users/{uid}/badge_progress/summary (via badgeProgress.earnedBadges),
+  // set the moment scenario_engine.py's _evaluate_badges unlocks each one
+  // — not derived from these on-screen counters anymore. The ids below
+  // ('first_step', 'five_day_streak', ...) must match the badge ids
+  // scenario_engine.py writes into earnedBadges exactly.
   List<BadgeData> get badges => [
     BadgeData(
       image: 'assets/badges/first_step.png',
       label: 'First Step',
-      earned: scenariosCompleted > 0,
+      earned: badgeProgress.earnedBadges.containsKey('first_step'),
     ),
     BadgeData(
       image: 'assets/badges/streak.png',
       label: '5-Day\nStreak',
-      earned: currentStreak >= 5,
+      earned: badgeProgress.earnedBadges.containsKey('five_day_streak'),
     ),
     BadgeData(
       image: 'assets/badges/half_way.png',
       label: 'Half Way!',
-      earned: overallProgress >= 0.5,
+      earned: badgeProgress.earnedBadges.containsKey('halfway'),
     ),
     BadgeData(
       image: 'assets/badges/quick_thinker.png',
       label: 'Quick\nThinker',
-      earned: scenariosCompleted >= 3,
+      earned: badgeProgress.earnedBadges.containsKey('quick_thinker'),
     ),
     BadgeData(
       image: 'assets/badges/sharpshooter.png',
       label: 'Sharpshooter',
-      earned: overallProgress >= 1,
+      earned: badgeProgress.earnedBadges.containsKey('sharpshooter'),
     ),
   ];
+}
+
+/// Parsed from users/{uid}/badge_progress/summary — the durable badge
+/// state scenario_engine.py's _evaluate_badges/EmotionDatabase.
+/// update_badge_progress maintains server-side. `earnedBadges` maps
+/// badge id to the timestamp it was earned (kept, not just a Set, in case
+/// a future screen wants to show "earned on" a specific date).
+class BadgeProgressData {
+  const BadgeProgressData({
+    this.earnedBadges = const {},
+    this.distinctScenariosCompleted = 0,
+    this.currentDayStreak = 0,
+    this.currentSuccessStreak = 0,
+  });
+
+  final Map<String, DateTime> earnedBadges;
+  final int distinctScenariosCompleted;
+  final int currentDayStreak;
+  final int currentSuccessStreak;
 }
 
 class ModuleProgressData {
@@ -153,12 +180,17 @@ class DashboardDataService {
     DocumentSnapshot<Map<String, dynamic>>? latestUserDoc;
     List<QueryDocumentSnapshot<Map<String, dynamic>>>? latestModuleDocs;
     List<QueryDocumentSnapshot<Map<String, dynamic>>>? latestAssessmentDocs;
+    DocumentSnapshot<Map<String, dynamic>>? latestBadgeDoc;
 
     void emitIfReady() {
       final userDoc = latestUserDoc;
       final moduleDocs = latestModuleDocs;
       final assessmentDocs = latestAssessmentDocs;
-      if (userDoc == null || moduleDocs == null || assessmentDocs == null) {
+      final badgeDoc = latestBadgeDoc;
+      if (userDoc == null ||
+          moduleDocs == null ||
+          assessmentDocs == null ||
+          badgeDoc == null) {
         return;
       }
       controller.add(
@@ -167,6 +199,7 @@ class DashboardDataService {
           userDoc: userDoc,
           moduleDocs: moduleDocs,
           assessmentDocs: assessmentDocs,
+          badgeDoc: badgeDoc,
         ),
       );
     }
@@ -187,6 +220,19 @@ class DashboardDataService {
             latestAssessmentDocs = snap.docs;
             emitIfReady();
           }, onError: controller.addError),
+          // badge_progress/summary — a single doc (not a query) that may
+          // not exist yet for a user who hasn't earned anything; a
+          // snapshot listener still fires once immediately with
+          // exists=false in that case, so this unblocks emitIfReady() the
+          // same as the other three.
+          userRef
+              .collection('badge_progress')
+              .doc('summary')
+              .snapshots()
+              .listen((doc) {
+            latestBadgeDoc = doc;
+            emitIfReady();
+          }, onError: controller.addError),
         ];
       },
       onCancel: () async {
@@ -201,31 +247,84 @@ class DashboardDataService {
 }
 
 class DashboardUserDataParser {
+  // Fallback/default cards for a scenario the user hasn't completed even
+  // once yet (so it still shows as a 0/1 card instead of not appearing at
+  // all) — the moment it IS completed, scenario_engine.py's own
+  // _MODULE_DISPLAY_INFO writes the real title/subtitle/icon straight into
+  // Firestore and that overrides this fallback (see _parseModules below).
+  // Mirrors _MODULE_DISPLAY_INFO exactly so a card never visually changes
+  // between "not started" and "started" states. Deliberately excludes:
+  //  - 'where_to_sit' — a legacy, pre-backend placeholder id for what's
+  //    now 'foa_classroom' ("WHERE TO SIT?"); nothing ever writes to this
+  //    id anymore.
+  //  - 'foa_classroom' itself — kept hidden from the dashboard by product
+  //    decision (it's an alternate "Fear of Authority" scenario in
+  //    scenario_engine.py's ALLOWED_SCENARIO_KEYS, not one of the 6 the
+  //    app surfaces per theme via THEME_SCENARIO_KEYS).
+  // The 6 remaining entries below match THEME_SCENARIO_KEYS one-for-one —
+  // same 6 scenario_engine.py counts for the badges feature's Halfway
+  // calculation (len(THEME_SCENARIO_KEYS)), so the dashboard's own
+  // "scenarios completed out of N" agrees with what unlocks Halfway.
   static const _knownModules = {
-    'where_to_sit': _ModuleDefinition(
-      title: 'WHERE TO SIT?',
-      subtitle: 'Social awareness - 1 scenario',
-      icon: 'W',
-      totalScenarios: 1,
-    ),
     'foa_supervisor': _ModuleDefinition(
-      title: "THE PROFESSOR'S SIGNATURE",
+      title: "The Professor's Signature",
       subtitle: 'Fear of Authority - 1 scenario',
       icon: 'P',
       totalScenarios: 1,
     ),
+    'fsn_seat': _ModuleDefinition(
+      title: "The Food Hall's Seat",
+      subtitle: 'Fear of Strangers & New People - 1 scenario',
+      icon: 'F',
+      totalScenarios: 1,
+    ),
+    'fbop_spotlight': _ModuleDefinition(
+      title: 'Project Defense: Defended or Offended',
+      subtitle: 'Fear of Being Observed & Performing - 1 scenario',
+      icon: 'D',
+      totalScenarios: 1,
+    ),
+    'fsg_party': _ModuleDefinition(
+      title: 'The Student Gathering: To Approach or Not?',
+      subtitle: 'Fear of Social Gatherings - 1 scenario',
+      icon: 'H',
+      totalScenarios: 1,
+    ),
+    'fne_stage': _ModuleDefinition(
+      title: 'The Group Project: Defending Your Work',
+      subtitle: 'Fear of Negative Evaluation & Embarrassment - 1 scenario',
+      icon: 'G',
+      totalScenarios: 1,
+    ),
+    'phys_jeepney': _ModuleDefinition(
+      title: 'The Jeep Stop: Hiding Visible Anxiety',
+      subtitle: 'Physiological Symptoms - 1 scenario',
+      icon: 'B',
+      totalScenarios: 1,
+    ),
   };
+
+  // Belt-and-suspenders: if a stray users/{uid}/moduleProgress/where_to_sit
+  // document exists (real Firestore data, not just the hardcoded fallback
+  // above), it would otherwise still show up via the live-docs loop in
+  // _parseModules regardless of what's in _knownModules — 'foa_classroom'
+  // in particular WILL have real data the moment anyone completes it
+  // (scenario_engine.py writes to it same as any other scenario_key), so
+  // omitting it from _knownModules alone isn't enough to actually hide it.
+  static const _hiddenModuleIds = {'where_to_sit', 'foa_classroom'};
 
   static DashboardUserData parse({
     required User user,
     required DocumentSnapshot<Map<String, dynamic>> userDoc,
     required List<QueryDocumentSnapshot<Map<String, dynamic>>> moduleDocs,
     required List<QueryDocumentSnapshot<Map<String, dynamic>>> assessmentDocs,
+    DocumentSnapshot<Map<String, dynamic>>? badgeDoc,
   }) {
     final data = userDoc.data() ?? {};
     final modules = _parseModules(moduleDocs);
     final assessments = _parseAssessments(data, assessmentDocs);
     final copingPreferences = _parseCopingPreferences(data, assessmentDocs);
+    final badgeProgress = _parseBadgeProgress(badgeDoc);
 
     return DashboardUserData(
       uid: user.uid,
@@ -244,6 +343,7 @@ class DashboardUserDataParser {
       pronouns: _string(data['pronouns']),
       goal: _string(data['goal']),
       copingPreferences: copingPreferences,
+      badgeProgress: badgeProgress,
       modules: modules,
       assessments: assessments,
     );
@@ -268,6 +368,7 @@ class DashboardUserDataParser {
     }
 
     for (final doc in docs) {
+      if (_hiddenModuleIds.contains(doc.id)) continue;
       final data = doc.data();
       final definition = _knownModules[doc.id];
       final total = _int(
@@ -336,6 +437,29 @@ class DashboardUserDataParser {
         postDate: postDate,
       ),
     ];
+  }
+
+  static BadgeProgressData _parseBadgeProgress(
+    DocumentSnapshot<Map<String, dynamic>>? doc,
+  ) {
+    final data = doc?.data();
+    if (data == null) return const BadgeProgressData();
+
+    final rawEarned = data['earnedBadges'];
+    final earned = <String, DateTime>{};
+    if (rawEarned is Map) {
+      for (final entry in rawEarned.entries) {
+        final date = _date(entry.value);
+        if (date != null) earned[entry.key.toString()] = date;
+      }
+    }
+
+    return BadgeProgressData(
+      earnedBadges: earned,
+      distinctScenariosCompleted: _int(data['distinctScenariosCompleted']),
+      currentDayStreak: _int(data['currentDayStreak']),
+      currentSuccessStreak: _int(data['currentSuccessStreak']),
+    );
   }
 
   static String _parseCopingPreferences(

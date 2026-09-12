@@ -104,14 +104,6 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
     provider.submitText(text);
   }
 
-  double _progressForStep(String? step, ScenarioUIType uiType) {
-    if (step == 'foa_s3_npc') return 0.15;
-    if (step == 'foa_s3_reaction' && uiType == ScenarioUIType.textInput) {
-      return 0.55;
-    }
-    return 0.9;
-  }
-
   @override
   void dispose() {
     _controller.dispose();
@@ -171,6 +163,18 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
               .map((p) => p.text)
               .where((t) => t.trim().isNotEmpty)
               .join('\n\n');
+    // fsg_party/fsn_seat/phys_jeepney's NPC avatar matches foa_supervisor's
+    // single-sprite sizing (sceneHeight * 0.34) by request — fbop_spotlight
+    // and fne_stage keep the smaller fixed _SpeakerBlockWidget default
+    // (130) they already had, since those weren't part of the ask. At the
+    // larger size, the bubble also needs foa's own stacked (bubble-above-
+    // sprite) layout instead of the default side-by-side Row — see
+    // _SpeakerBlockWidget.stackVertically.
+    const matchFoaSizeKeys = {'fsg_party', 'fsn_seat', 'phys_jeepney'};
+    final matchesFoaLayout = matchFoaSizeKeys.contains(config.scenarioKey);
+    final npcAvatarSize = matchesFoaLayout
+        ? sceneHeight * 0.34
+        : _SpeakerBlockWidget.defaultAvatarSize;
     final hatiText = hatiLines.join('\n\n');
     final isTextInput = provider.ui.type == ScenarioUIType.textInput;
 
@@ -186,268 +190,304 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
       backgroundColor: _kApproachBlue,
       body: HatiTapToAdvance(
         child: SafeArea(
-        bottom: false,
-        child: Column(
-          children: [
-            _ApproachTopBar(progress: _progressForStep(step, provider.ui.type)),
-            const SceneSpeedToggleRow(),
-            Expanded(
-              // Explicit flex (rather than the implicit 1 this used to
-              // rely on) now that the multi-option choice panel below is
-              // also Expanded when it's showing — they split the
-              // remaining space by ratio instead of the panel being free
-              // to size itself to however many options there are.
-              flex: 3,
-              child: Stack(
-                fit: StackFit.expand,
-                clipBehavior: Clip.none,
-                children: [
-                  Image.asset(
-                    config.backgroundAsset,
-                    fit: BoxFit.cover,
-                    width: double.infinity,
-                    height: double.infinity,
-                  ),
-                  // A real flex layout, not two independently-floating
-                  // Positioned regions each guessing how tall the other is:
-                  // the scrollable dialogue area gets whatever space is left
-                  // over after the Hati lane below it takes what it
-                  // actually needs (which varies with message length). That
-                  // guarantees they can never visually collide — no fixed
-                  // pixel reserve to get wrong for a longer message. Only
-                  // the scrollable area is inset — the Hati lane keeps its
-                  // own edge-to-edge gradient background, same as before.
-                  Column(
-                    children: [
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.only(
-                            left: 16,
-                            right: 4,
-                            top: 12,
-                          ),
-                          child: SingleChildScrollView(
-                            // Anchored to the TOP, not the bottom — the
-                            // NPC's own line renders first in this column,
-                            // the player's echoed last message after it.
-                            // With reverse:true (the old setting) a long
-                            // turn auto-scrolled to keep the echo in view
-                            // and pushed the NPC's actual line off the top
-                            // instead — backwards, since the echo is just
-                            // what the player already knows they typed,
-                            // while the NPC's line is the whole point.
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                // NPC content comes first (top); the user's
-                                // own last message renders below it, in its
-                                // own left-aligned row, instead of the two
-                                // sitting side-by-side — keeps a long NPC
-                                // turn from squeezing the user's bubble down
-                                // to a sliver, and reads top-to-bottom like
-                                // a normal chat log.
-                                ...useMultiSpeakerLayout
-                                    ? [
-                                        // One visually distinct block per
-                                        // speaker run this turn: name label
-                                        // + bubble, plus that character's
-                                        // small mood sprite (see
-                                        // _SpeakerBlockWidget below) — so in
-                                        // e.g. the 5-professor panel it's
-                                        // always clear who said which line.
-                                        for (final block in speakerBlocks) ...[
-                                          _SpeakerBlockWidget(block: block),
-                                          const SizedBox(height: 10),
-                                        ],
-                                        if (needsSingleNpcFallback)
-                                          Align(
-                                            alignment: Alignment.centerRight,
-                                            child:
-                                                singleNpcCharacter.sprites.blink
-                                                    .endsWith('.riv')
-                                                ? NpcRiveSprite(
-                                                    assetPath:
-                                                        singleNpcCharacter
-                                                            .sprites
-                                                            .blink,
-                                                    height: 84,
-                                                  )
-                                                : Image.asset(
-                                                    singleNpcCharacter
-                                                        .sprites
-                                                        .blink,
-                                                    height: 84,
-                                                    fit: BoxFit.contain,
-                                                  ),
-                                          ),
-                                      ]
-                                    : [
-                                        if (profText.isNotEmpty)
-                                          _CharacterSpeechBubble(
-                                            text: profText,
-                                          ),
-                                        if (activeSpriteAsset != null) ...[
-                                          const SizedBox(height: 8),
-                                          // NPC art is either a static image
-                                          // or a Rive animation (.riv) —
-                                          // Image.asset can't decode Rive's
-                                          // binary format, so branch by
-                                          // extension. Keyed by asset path
-                                          // so switching between the
-                                          // default and angry sprite
-                                          // (different widget subtrees/
-                                          // state) rebuilds cleanly.
-                                          activeSpriteAsset.endsWith('.riv')
-                                              ? NpcRiveSprite(
-                                                  key: ValueKey(
-                                                    activeSpriteAsset,
-                                                  ),
-                                                  assetPath: activeSpriteAsset,
-                                                  height: sceneHeight * 0.34,
-                                                )
-                                              : Image.asset(
-                                                  activeSpriteAsset,
-                                                  height: sceneHeight * 0.34,
-                                                  fit: BoxFit.contain,
-                                                ),
-                                        ],
-                                      ],
-                                if (_lastSentText != null &&
-                                    _lastSentText!.isNotEmpty) ...[
-                                  const SizedBox(height: 12),
-                                  Row(
+          bottom: false,
+          child: Column(
+            children: [
+              // 3 of 7 — the same shared scene numbering every other scene's
+              // SceneTopHeader uses (1=Office, 2=Preparation, 4=Debrief,
+              // 5=Coping, 6=Closing). Previously this varied by step name
+              // within Interaction itself (0.15/0.55/0.9), fractions that
+              // didn't correspond to anything real.
+              const _ApproachTopBar(currentStep: 3, totalSteps: 7),
+              const SceneSpeedToggleRow(),
+              Expanded(
+                child: Stack(
+                  fit: StackFit.expand,
+                  clipBehavior: Clip.none,
+                  children: [
+                    Image.asset(
+                      config.backgroundAsset,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      height: double.infinity,
+                    ),
+                    // A real flex layout, not two independently-floating
+                    // Positioned regions each guessing how tall the other is:
+                    // the scrollable dialogue area gets whatever space is left
+                    // over after the Hati lane below it takes what it
+                    // actually needs (which varies with message length). That
+                    // guarantees they can never visually collide — no fixed
+                    // pixel reserve to get wrong for a longer message. Only
+                    // the scrollable area is inset — the Hati lane keeps its
+                    // own edge-to-edge gradient background, same as before.
+                    //
+                    // _ApproachHatiLane is the one non-flexible child here —
+                    // its natural size (frog + a possible speech bubble, up
+                    // to ~360px) is normally fine, but this whole Expanded
+                    // shrinks a lot once the on-screen keyboard opens for the
+                    // text-input turn, and a fixed-size Column child can't
+                    // shrink to make room the way the Expanded sibling can.
+                    // Capping it to a fraction of whatever height is actually
+                    // available (via the LayoutBuilder below), and clipping
+                    // instead of erroring on the rare turn where even that
+                    // doesn't fit, is what actually prevents the crash —
+                    // Expanded alone on the OTHER child doesn't help a fixed-
+                    // size sibling that's too big for the total.
+                    LayoutBuilder(
+                      builder: (context, laneConstraints) {
+                        final maxHatiLaneHeight =
+                            laneConstraints.maxHeight * 0.45;
+                        return Column(
+                          children: [
+                            Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.only(
+                                  left: 16,
+                                  right: 4,
+                                  top: 12,
+                                ),
+                                child: SingleChildScrollView(
+                                  // Anchored to the TOP, not the bottom — the
+                                  // NPC's own line renders first in this column,
+                                  // the player's echoed last message after it.
+                                  // With reverse:true (the old setting) a long
+                                  // turn auto-scrolled to keep the echo in view
+                                  // and pushed the NPC's actual line off the top
+                                  // instead — backwards, since the echo is just
+                                  // what the player already knows they typed,
+                                  // while the NPC's line is the whole point.
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
                                     children: [
-                                      _CharacterSpeechBubble(
-                                        text: _lastSentText!,
-                                        alignEnd: false,
-                                      ),
+                                      // NPC content comes first (top); the user's
+                                      // own last message renders below it, in its
+                                      // own left-aligned row, instead of the two
+                                      // sitting side-by-side — keeps a long NPC
+                                      // turn from squeezing the user's bubble down
+                                      // to a sliver, and reads top-to-bottom like
+                                      // a normal chat log.
+                                      ...useMultiSpeakerLayout
+                                          ? [
+                                              // One visually distinct block per
+                                              // speaker run this turn: name label
+                                              // + bubble, plus that character's
+                                              // small mood sprite (see
+                                              // _SpeakerBlockWidget below) — so in
+                                              // e.g. the 5-professor panel it's
+                                              // always clear who said which line.
+                                              for (final block
+                                                  in speakerBlocks) ...[
+                                                _SpeakerBlockWidget(
+                                                  block: block,
+                                                  avatarSize: npcAvatarSize,
+                                                  stackVertically:
+                                                      matchesFoaLayout,
+                                                ),
+                                                const SizedBox(height: 10),
+                                              ],
+                                              if (needsSingleNpcFallback)
+                                                Align(
+                                                  alignment:
+                                                      Alignment.centerRight,
+                                                  child:
+                                                      singleNpcCharacter
+                                                          .sprites
+                                                          .blink
+                                                          .endsWith('.riv')
+                                                      ? NpcRiveSprite(
+                                                          assetPath:
+                                                              singleNpcCharacter
+                                                                  .sprites
+                                                                  .blink,
+                                                          height:
+                                                              npcAvatarSize,
+                                                        )
+                                                      : Image.asset(
+                                                          singleNpcCharacter
+                                                              .sprites
+                                                              .blink,
+                                                          height:
+                                                              npcAvatarSize,
+                                                          fit: BoxFit.contain,
+                                                        ),
+                                                ),
+                                            ]
+                                          : [
+                                              if (profText.isNotEmpty)
+                                                _CharacterSpeechBubble(
+                                                  text: profText,
+                                                ),
+                                              if (activeSpriteAsset !=
+                                                  null) ...[
+                                                const SizedBox(height: 8),
+                                                // NPC art is either a static image
+                                                // or a Rive animation (.riv) —
+                                                // Image.asset can't decode Rive's
+                                                // binary format, so branch by
+                                                // extension. Keyed by asset path
+                                                // so switching between the
+                                                // default and angry sprite
+                                                // (different widget subtrees/
+                                                // state) rebuilds cleanly.
+                                                activeSpriteAsset.endsWith(
+                                                      '.riv',
+                                                    )
+                                                    ? NpcRiveSprite(
+                                                        key: ValueKey(
+                                                          activeSpriteAsset,
+                                                        ),
+                                                        assetPath:
+                                                            activeSpriteAsset,
+                                                        height:
+                                                            sceneHeight * 0.34,
+                                                      )
+                                                    : Image.asset(
+                                                        activeSpriteAsset,
+                                                        height:
+                                                            sceneHeight * 0.34,
+                                                        fit: BoxFit.contain,
+                                                      ),
+                                              ],
+                                            ],
+                                      if (_lastSentText != null &&
+                                          _lastSentText!.isNotEmpty) ...[
+                                        const SizedBox(height: 12),
+                                        Row(
+                                          children: [
+                                            _CharacterSpeechBubble(
+                                              text: _lastSentText!,
+                                              alignEnd: false,
+                                            ),
+                                          ],
+                                        ),
+                                      ],
                                     ],
                                   ),
-                                ],
-                              ],
+                                ),
+                              ),
                             ),
-                          ),
-                        ),
-                      ),
-                      _ApproachHatiLane(
-                        showBubble: hatiText.isNotEmpty,
-                        message: hatiText,
-                        bubbleKey: bubbleKey,
-                        frogSize: _kFrogSize,
-                        onSequenceComplete: () {
-                          if (mounted && !_dialogueComplete) {
-                            setState(() => _dialogueComplete = true);
-                          }
-                        },
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            if (isTextInput)
-              _ApproachInputBar(
-                controller: _controller,
-                enabled:
-                    !provider.isLoading &&
-                    !_isRecording &&
-                    !_isTranscribing &&
-                    dialogueReady,
-                isRecording: _isRecording,
-                isTranscribing: _isTranscribing,
-                hintText: _isRecording
-                    ? 'Listening…'
-                    : (_isTranscribing
-                          ? 'Converting your voice…'
-                          : 'Type your response...'),
-                onSend: () => _sendText(provider),
-                onMicTap: () =>
-                    _isRecording ? _stopRecording(provider) : _startRecording(),
-              )
-            else if (provider.ui.options.length > 1)
-              // Difficult Mode's branch points (e.g. "Sorry, I just wanted
-              // to..." / "Never mind." / continue angrily / custom) send
-              // several real choices, not one default "Continue" — show
-              // every option instead of silently only offering the first.
-              // Matches Preparation's "Choose Your Script" panel exactly,
-              // not just visually: Expanded (shares remaining space with
-              // the scene above by flex ratio, same as HatiSceneShell's
-              // coach-zone/content split) with the fixed header pinned
-              // above a ScrollHintArea — the same scrollable-with-a-hint
-              // list, not a container forced to reserve a big chunk of
-              // screen regardless of how many options there are.
-              Expanded(
-                flex: 2,
-                child: Container(
-                  width: double.infinity,
-                  color: Colors.white,
-                  child: SafeArea(
-                    top: false,
-                    child: Column(
-                      children: [
-                        const Padding(
-                          padding: EdgeInsets.fromLTRB(16, 16, 16, 0),
-                          child: SectionHeader(
+                            ClipRect(
+                              child: ConstrainedBox(
+                                constraints: BoxConstraints(
+                                  maxHeight: maxHatiLaneHeight,
+                                ),
+                                child: _ApproachHatiLane(
+                                  showBubble: hatiText.isNotEmpty,
+                                  message: hatiText,
+                                  bubbleKey: bubbleKey,
+                                  frogSize: _kFrogSize,
+                                  onSequenceComplete: () {
+                                    if (mounted && !_dialogueComplete) {
+                                      setState(() => _dialogueComplete = true);
+                                    }
+                                  },
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                    // Difficult Mode's branch points (e.g. "Sorry, I just
+                    // wanted to..." / "Never mind." / continue angrily /
+                    // custom) send several real choices, not one default
+                    // "Continue" — show every option instead of silently
+                    // only offering the first. A draggable sheet overlaying
+                    // the dialogue above (matching HatiSceneShell's own
+                    // header+choices sheet everywhere else) rather than a
+                    // fixed-size panel, so the header and the option cards
+                    // drag up together as one unit.
+                    if (dialogueReady &&
+                        !isTextInput &&
+                        provider.ui.options.length > 1)
+                      PopIn(
+                        key: ValueKey(bubbleKey),
+                        child: DraggableChoiceSheet(
+                          header: const SectionHeader(
                             title: 'Choose Your Response',
                             subtitle: 'Select one or write your own',
                           ),
-                        ),
-                        Expanded(
-                          child: ScrollHintArea(
-                            padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                for (
-                                  var i = 0;
-                                  i < provider.ui.options.length;
-                                  i++
-                                )
-                                  ScriptOptionCard(
-                                    label: String.fromCharCode(65 + i),
-                                    script: provider.ui.options[i],
-                                    selected: false,
-                                    enabled:
-                                        !(provider.isLoading || !dialogueReady),
-                                    onTap:
-                                        (provider.isLoading || !dialogueReady)
-                                        ? () {}
-                                        : () => provider.submitText(
-                                            provider.ui.options[i],
-                                          ),
-                                  ),
-                              ],
-                            ),
+                          body: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              for (
+                                var i = 0;
+                                i < provider.ui.options.length;
+                                i++
+                              )
+                                ScriptOptionCard(
+                                  label: String.fromCharCode(65 + i),
+                                  script: provider.ui.options[i],
+                                  selected: false,
+                                  enabled: !provider.isLoading,
+                                  onTap: provider.isLoading
+                                      ? () {}
+                                      : () => provider.submitText(
+                                          provider.ui.options[i],
+                                        ),
+                                ),
+                            ],
                           ),
                         ),
-                      ],
+                      ),
+                  ],
+                ),
+              ),
+              // The input bar / single continue button stay out of the tree
+              // — not just disabled — until Hati's and the NPC's lines this
+              // turn have fully typed out, then pop in via PopIn. The
+              // multi-option case above is handled by the draggable sheet
+              // overlay instead, not this fixed-height bottom slot.
+              if (!dialogueReady)
+                const SizedBox.shrink()
+              else if (isTextInput)
+                PopIn(
+                  key: ValueKey(bubbleKey),
+                  child: _ApproachInputBar(
+                    controller: _controller,
+                    enabled:
+                        !provider.isLoading &&
+                        !_isRecording &&
+                        !_isTranscribing,
+                    isRecording: _isRecording,
+                    isTranscribing: _isTranscribing,
+                    hintText: _isRecording
+                        ? 'Listening…'
+                        : (_isTranscribing
+                              ? 'Converting your voice…'
+                              : 'Type your response...'),
+                    onSend: () => _sendText(provider),
+                    onMicTap: () => _isRecording
+                        ? _stopRecording(provider)
+                        : _startRecording(),
+                  ),
+                )
+              else if (provider.ui.options.length <= 1)
+                PopIn(
+                  key: ValueKey(bubbleKey),
+                  child: Container(
+                    color: Colors.white,
+                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+                    child: SafeArea(
+                      top: false,
+                      child: HatiButton(
+                        label: provider.ui.options.isNotEmpty
+                            ? provider.ui.options.first
+                            : 'Continue',
+                        icon: Icons.arrow_forward_rounded,
+                        onTap: provider.isLoading
+                            ? null
+                            : () => provider.submitText(
+                                provider.ui.options.isNotEmpty
+                                    ? provider.ui.options.first
+                                    : 'Continue',
+                              ),
+                      ),
                     ),
                   ),
                 ),
-              )
-            else
-              Container(
-                color: Colors.white,
-                padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-                child: SafeArea(
-                  top: false,
-                  child: HatiButton(
-                    label: provider.ui.options.isNotEmpty
-                        ? provider.ui.options.first
-                        : 'Continue',
-                    icon: Icons.arrow_forward_rounded,
-                    onTap: (provider.isLoading || !dialogueReady)
-                        ? null
-                        : () => provider.submitText(
-                            provider.ui.options.isNotEmpty
-                                ? provider.ui.options.first
-                                : 'Continue',
-                          ),
-                  ),
-                ),
-              ),
-          ],
-        ),
+            ],
+          ),
         ),
       ),
     );
@@ -475,57 +515,54 @@ class _ApproachHatiLane extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.fromLTRB(6, 12, 8, 10),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Colors.transparent,
-            _kApproachBlue.withValues(alpha: 0.55),
-            _kApproachBlue.withValues(alpha: 0.92),
-          ],
-        ),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Flexible(
-            // Lets the bubble grow up to its full HatiLayout.bubbleMaxWidth
-            // — it used to be a fixed SizedBox(width: frogSize + 16), just
-            // enough for the frog, which squeezed the bubble down to that
-            // width and made it wrap into a tall, narrow column instead of
-            // using its intended width. Flexible (rather than a fixed
-            // SizedBox) also means it can't overflow on a screen narrower
-            // than bubbleMaxWidth — it just uses whatever's available.
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(
-                maxWidth: HatiLayout.bubbleMaxWidth,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  if (showBubble && message.isNotEmpty)
-                    HatiSpeakingBlock(
-                      key: ValueKey(bubbleKey),
-                      persistentMessage: message,
-                      frogSize: frogSize,
-                      mood: HatiMood.encourage,
-                      // Fades the bubble out a couple seconds after it
-                      // finishes typing, leaving just the frog — it used to
-                      // stay put indefinitely, which could crowd out the
-                      // NPC's own bubble above it in the scrollable area.
-                      dissolveBubble: true,
-                      onSequenceComplete: onSequenceComplete,
-                    )
-                  else
-                    HatiFrogAvatar(size: frogSize, mood: HatiMood.encourage),
-                ],
-              ),
+      // No background here on purpose — the gradient scrim this used to
+      // have read as a visible divider between the NPC dialogue above and
+      // Hati below. Hati's own bubble already dissolves a couple seconds
+      // after it finishes typing (dissolveBubble: true below), so letting
+      // it float directly over the NPC content — briefly overlapping it,
+      // same as a chat app's own message briefly covering what's behind it
+      // — is fine and reads as one continuous scene instead of two banded
+      // sections.
+      // FittedBox (rather than the Row+Spacer this used to be) guarantees
+      // the frog+bubble always fit within whatever height this lane is
+      // actually given, scaling down instead of overflowing — the caller
+      // already caps that height for extreme cases (keyboard open, a long
+      // Hati line) via a ConstrainedBox+ClipRect around this whole widget,
+      // but that cap alone only stopped the OUTER Column from overflowing;
+      // the frog+bubble content itself still overflowed INSIDE that
+      // capped box without this.
+      child: Align(
+        alignment: Alignment.bottomLeft,
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.bottomLeft,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(
+              maxWidth: HatiLayout.bubbleMaxWidth,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                if (showBubble && message.isNotEmpty)
+                  HatiSpeakingBlock(
+                    key: ValueKey(bubbleKey),
+                    persistentMessage: message,
+                    frogSize: frogSize,
+                    mood: HatiMood.encourage,
+                    // Fades the bubble out a couple seconds after it
+                    // finishes typing, leaving just the frog — it used to
+                    // stay put indefinitely, which could crowd out the
+                    // NPC's own bubble above it in the scrollable area.
+                    dissolveBubble: true,
+                    onSequenceComplete: onSequenceComplete,
+                  )
+                else
+                  HatiFrogAvatar(size: frogSize, mood: HatiMood.encourage),
+              ],
             ),
           ),
-          const Spacer(),
-        ],
+        ),
       ),
     );
   }
@@ -534,13 +571,14 @@ class _ApproachHatiLane extends StatelessWidget {
 // ── Top bar (reference-style) ─────────────────────────────────────────────────
 
 class _ApproachTopBar extends StatelessWidget {
-  final double progress;
+  final int currentStep;
+  final int totalSteps;
 
-  const _ApproachTopBar({required this.progress});
+  const _ApproachTopBar({required this.currentStep, required this.totalSteps});
 
   @override
   Widget build(BuildContext context) {
-    final pct = (progress * 100).round().clamp(0, 100);
+    final progress = currentStep / totalSteps;
 
     return Container(
       color: _kApproachBlue,
@@ -582,7 +620,7 @@ class _ApproachTopBar extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      '$pct%',
+                      '$currentStep / $totalSteps',
                       style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -753,10 +791,25 @@ List<_SpeakerBlock> _buildSpeakerBlocks(
 /// stack in one turn without dominating the screen.
 class _SpeakerBlockWidget extends StatelessWidget {
   final _SpeakerBlock block;
+  final double avatarSize;
 
-  const _SpeakerBlockWidget({required this.block});
+  /// True for the scenarios whose avatar was enlarged to match
+  /// foa_supervisor's sizing — at that size, the default side-by-side Row
+  /// squeezed the bubble's available width down to almost nothing (since
+  /// the now-much-wider sprite ate most of the row), forcing it into a
+  /// tall, narrow wrap that got clipped by the scene below. Stacking the
+  /// bubble above the sprite instead — foa_supervisor's own actual layout
+  /// — gives it the full row width and matches foa's look completely, not
+  /// just its avatar size.
+  final bool stackVertically;
 
-  static const double _avatarSize = 130;
+  const _SpeakerBlockWidget({
+    required this.block,
+    this.avatarSize = defaultAvatarSize,
+    this.stackVertically = false,
+  });
+
+  static const double defaultAvatarSize = 130;
   static const double _narratorAvatarSize = 56;
 
   @override
@@ -801,30 +854,35 @@ class _SpeakerBlockWidget extends StatelessWidget {
       );
     }
     final spriteAsset = block.spriteAsset;
+    final bubble = _CharacterSpeechBubble(
+      text: text,
+      nameLabel: block.displayName.isNotEmpty ? block.displayName : null,
+    );
+    final sprite = spriteAsset == null
+        ? null
+        : (spriteAsset.endsWith('.riv')
+              ? NpcRiveSprite(
+                  key: ValueKey('${block.key}:$spriteAsset'),
+                  assetPath: spriteAsset,
+                  height: avatarSize,
+                )
+              : Image.asset(spriteAsset, height: avatarSize, fit: BoxFit.contain));
+
+    if (stackVertically) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          bubble,
+          if (sprite != null) ...[const SizedBox(height: 8), sprite],
+        ],
+      );
+    }
     return Row(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        Flexible(
-          child: _CharacterSpeechBubble(
-            text: text,
-            nameLabel: block.displayName.isNotEmpty ? block.displayName : null,
-          ),
-        ),
-        if (spriteAsset != null) ...[
-          const SizedBox(width: 8),
-          spriteAsset.endsWith('.riv')
-              ? NpcRiveSprite(
-                  key: ValueKey('${block.key}:$spriteAsset'),
-                  assetPath: spriteAsset,
-                  height: _avatarSize,
-                )
-              : Image.asset(
-                  spriteAsset,
-                  height: _avatarSize,
-                  fit: BoxFit.contain,
-                ),
-        ],
+        Flexible(child: bubble),
+        if (sprite != null) ...[const SizedBox(width: 8), sprite],
       ],
     );
   }

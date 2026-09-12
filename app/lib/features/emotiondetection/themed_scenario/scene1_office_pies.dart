@@ -72,7 +72,6 @@ class _Scene1OfficePiesState extends State<Scene1OfficePies> {
 
     final hatiText = joinMessageText(provider.messages);
     final isPies = provider.ui.type == ScenarioUIType.buttons;
-    final isLoading = provider.isLoading || !_dialogueComplete;
 
     return Scaffold(
       body: ScenarioGradientBackground(
@@ -95,39 +94,79 @@ class _Scene1OfficePiesState extends State<Scene1OfficePies> {
                     setState(() => _dialogueComplete = true);
                   }
                 },
+                // fixedHeader and body end up as direct siblings inside
+                // DraggableChoiceSheet's own Column, so their PopIn keys
+                // must differ — a 'header:'/'body:' prefix keeps that true
+                // even though today's nesting happens to avoid a collision.
                 fixedHeader: isPies
-                    ? _PiesHeader(
-                        label: labels[index],
-                        emoji: emojis[index],
-                        stepSubtitle: subtitles[index],
+                    ? popInIfReady(
+                        _PiesHeader(
+                          label: labels[index],
+                          emoji: emojis[index],
+                          stepSubtitle: subtitles[index],
+                        ),
+                        ready: _dialogueComplete,
+                        stepKey: 'header:${step ?? index}',
                       )
                     : null,
-                body: isPies
+                // Chips/text field stay out of the tree entirely (not just
+                // disabled) until Hati's prompt has fully typed out, then
+                // pop in via PopIn — previously they rendered immediately
+                // just grayed out, so the tail end of a long prompt could
+                // still be typing while the options already sat there.
+                body: isPies && _dialogueComplete
                     ? Padding(
                         padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                        child: Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: provider.ui.options
-                              .map(
-                                (opt) => PIESChip(
-                                  label: opt,
-                                  selected: _selected == opt,
-                                  selectedColor: selectedColors[index],
-                                  enabled: !isLoading,
-                                  onTap: isLoading
-                                      ? () {}
-                                      : () {
-                                          setState(() => _selected = opt);
-                                          provider.submitText(opt);
-                                        },
-                                ),
-                              )
-                              .toList(),
+                        child: PopIn(
+                          key: ValueKey('body:$step'),
+                          child: Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: provider.ui.options
+                                .map(
+                                  (opt) => PIESChip(
+                                    label: opt,
+                                    selected: _selected == opt,
+                                    selectedColor: selectedColors[index],
+                                    enabled: !provider.isLoading,
+                                    onTap: provider.isLoading
+                                        ? () {}
+                                        : () {
+                                            setState(() => _selected = opt);
+                                            provider.submitText(opt);
+                                          },
+                                  ),
+                                )
+                                .toList(),
+                          ),
                         ),
                       )
                     : null,
-                contentBackgroundColor: Colors.white,
+                // "Other" tapped on any P.I.E.S. category switches the
+                // backend to a text_input turn ("Tell me more:"). Pinned as
+                // a fixed bottomBar — the same slot every other primary
+                // action in this scene shell uses — rather than the
+                // scrollable body, so the field + Send button are always
+                // fully visible without needing to scroll past the coach
+                // zone to reach them. Hidden (not just disabled) until
+                // Hati's line finishes typing, same as the chips above.
+                bottomBar: isPies || !_dialogueComplete
+                    ? null
+                    : PopIn(
+                        key: ValueKey(step),
+                        child: TextResponseCard(
+                          key: ValueKey(step),
+                          hintText: provider.ui.placeholder ?? 'Tell me more...',
+                          isLoading: provider.isLoading,
+                          onSubmit: provider.submitText,
+                        ),
+                      ),
+                // Only paints the white content panel once the chips are
+                // actually showing — otherwise it left a blank white box
+                // sitting there for the whole time Hati was still typing.
+                contentBackgroundColor: isPies && _dialogueComplete
+                    ? Colors.white
+                    : null,
               ),
             ),
           ],

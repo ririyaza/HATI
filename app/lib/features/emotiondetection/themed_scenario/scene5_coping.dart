@@ -46,7 +46,7 @@ class _Scene5CopingState extends State<Scene5Coping> {
       _dialogueComplete = false;
     }
 
-    Widget body;
+    Widget? body;
     Widget? bottomBar;
     String persistentMessage;
 
@@ -54,7 +54,7 @@ class _Scene5CopingState extends State<Scene5Coping> {
       persistentMessage = parsedTexts.join('\n\n');
       body = _PracticeWalkthrough(
         key: const ValueKey('practice'),
-        isLoading: provider.isLoading || !_dialogueComplete,
+        isLoading: provider.isLoading,
         onFinished: () => provider.submitText(
           provider.ui.options.isNotEmpty
               ? provider.ui.options.first
@@ -83,13 +83,13 @@ class _Scene5CopingState extends State<Scene5Coping> {
                   ? HatiButton(
                       label: opt,
                       icon: Icons.play_circle_rounded,
-                      onTap: (provider.isLoading || !_dialogueComplete)
+                      onTap: provider.isLoading
                           ? null
                           : () => provider.submitText(opt),
                     )
                   : HatiOutlineButton(
                       label: opt,
-                      onTap: (provider.isLoading || !_dialogueComplete)
+                      onTap: provider.isLoading
                           ? () {}
                           : () => provider.submitText(opt),
                     ),
@@ -97,6 +97,15 @@ class _Scene5CopingState extends State<Scene5Coping> {
         ],
       );
     }
+
+    // Body/input stay out of the tree — not just disabled — until Hati's
+    // coach line for this step has fully typed out, then pop in.
+    body = popInIfReady(body, ready: _dialogueComplete, stepKey: step ?? '');
+    bottomBar = popInIfReady(
+      bottomBar,
+      ready: _dialogueComplete,
+      stepKey: step ?? '',
+    );
 
     return Scaffold(
       body: ScenarioGradientBackground(
@@ -121,7 +130,10 @@ class _Scene5CopingState extends State<Scene5Coping> {
                 },
                 body: body,
                 bottomBar: bottomBar,
-                contentBackgroundColor: Colors.white,
+                // Only white once the body is actually showing — otherwise
+                // this left a blank white box sitting there for the whole
+                // time Hati was still typing.
+                contentBackgroundColor: _dialogueComplete ? Colors.white : null,
               ),
             ),
           ],
@@ -299,15 +311,11 @@ class _Scene6ClosingState extends State<Scene6Closing> {
       body: HatiTapToAdvance(
         child: Stack(
         children: [
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [HatiColors.deepForest, Color(0xFF2A4A2A)],
-              ),
-            ),
-          ),
+          // Brand blue (0xFF0B28D9) — same header color as the Progress
+          // and Profile screens — rather than the scenario's usual green,
+          // since this is the "you're done" completion screen, not
+          // in-scenario dialogue.
+          Container(color: const Color(0xFF0B28D9)),
           Positioned(
             top: -80,
             left: -80,
@@ -316,7 +324,7 @@ class _Scene6ClosingState extends State<Scene6Closing> {
               height: 240,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: HatiColors.leafGreen.withValues(alpha: 0.1),
+                color: Colors.white.withValues(alpha: 0.08),
               ),
             ),
           ),
@@ -426,14 +434,22 @@ class _Scene6ClosingState extends State<Scene6Closing> {
                       ),
                     ),
                   ),
-                  HatiButton(
-                    label: finishLabel,
-                    icon: Icons.check_rounded,
-                    color: HatiColors.leafGreen,
-                    onTap: (provider.isLoading || !_dialogueComplete)
-                        ? null
-                        : () => provider.submitText(finishLabel),
-                  ),
+                  // Stays out of the tree — not just disabled — until the
+                  // closing line has fully typed out, then pops in.
+                  if (_dialogueComplete)
+                    PopIn(
+                      key: const ValueKey('finish-button'),
+                      child: HatiButton(
+                        label: finishLabel,
+                        icon: Icons.check_rounded,
+                        color: HatiColors.leafGreen,
+                        onTap: provider.isLoading
+                            ? null
+                            : () => provider.submitText(finishLabel),
+                      ),
+                    )
+                  else
+                    const SizedBox(height: 52),
                   const SizedBox(height: 8),
                 ],
               ),
