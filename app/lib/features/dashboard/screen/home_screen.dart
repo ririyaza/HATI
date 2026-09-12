@@ -38,19 +38,19 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   static const _welcomeMessage =
       "Welcome to HATI! I'm Hati, your companion for this journey. "
-      "I'm really glad you're here — I'll be around whenever you need "
+      "I'm really glad you're here. I'll be around whenever you need "
       'me, one step at a time.';
 
   static const _companionTips = <String>[
     "Small steps count. Even opening the app today is progress worth noticing.",
     'Feeling a little on edge? Try breathing in for 4 counts, and out for 6.',
-    "You don't have to get social situations perfectly right — showing up is enough.",
+    "You don't have to get social situations perfectly right. Just showing up is enough.",
     'The Modules tab has exercises ready whenever you want to practice something new.',
     "Curious how far you've come? Your Progress tab keeps track of it for you.",
     "It's okay to go at your own pace. There's no deadline on feeling better.",
     'A racing mind often slows down once you name what it is you\'re feeling.',
     "I'm just a tap away in the chat if you ever want to talk something through.",
-    'Proud of you for checking in today — that matters more than it feels like.',
+    'Proud of you for checking in today. That matters more than it feels like.',
     'Anxiety can shrink a little just by putting it into words. Try it sometime.',
   ];
 

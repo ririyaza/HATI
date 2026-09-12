@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../auth/screen/login_screen.dart';
 import 'consent_content.dart';
+import 'consent_intro_screen.dart';
 import 'profile_setup_screen.dart';
 
 class ConsentFlowScreen extends StatefulWidget {
@@ -177,7 +178,16 @@ class _ConsentFlowScreenState extends State<ConsentFlowScreen>
             stepIcons: _stepIcons,
             onBack: () {
               if (_stepIndex == 0) {
-                Navigator.of(context).pop();
+                // ConsentIntroScreen reaches this screen via
+                // pushReplacement (see its "Let's Get Started" button),
+                // so it's no longer on the stack to pop back to — a plain
+                // pop() here would reveal nothing (a black screen) once
+                // this is the only route left. Replace forward to a fresh
+                // intro screen instead, matching how we got here.
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ConsentIntroScreen()),
+                );
               } else {
                 _previousStep();
               }
@@ -304,7 +314,7 @@ class _ConsentFlowScreenState extends State<ConsentFlowScreen>
                 ),
                 SizedBox(width: 8),
                 Text(
-                  'Section read — you may proceed.',
+                  'Section read. You may proceed.',
                   style: TextStyle(
                     fontSize: 12,
                     color: Color(0xFF166534),

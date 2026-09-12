@@ -6,7 +6,7 @@ import '../../dashboard/widgets/hati_sprite_animation.dart';
 import '../../onboarding/tutorial_screen.dart';
 import '../../dashboard/screen/dashboard_screen.dart';
 import '../data/assessment_complete_hati_dialogue.dart';
-import 'spin_result_screen.dart';
+import 'spin_result_review_screen.dart';
 
 /// Final confirmation screen after completing the SPIN assessment
 /// and optional coping reflection.
@@ -22,6 +22,8 @@ class AssessmentCompleteScreen extends StatefulWidget {
 
 class _AssessmentCompleteScreenState extends State<AssessmentCompleteScreen> {
   bool _isNavigatingToApp = false;
+  bool _dialogueComplete = false;
+  bool _hasReviewedResult = false;
 
   Future<void> _handleContinueToApp() async {
     if (_isNavigatingToApp) return;
@@ -70,13 +72,21 @@ class _AssessmentCompleteScreenState extends State<AssessmentCompleteScreen> {
     );
   }
 
-  void _handleViewResult() {
-    Navigator.pushReplacement(
+  Future<void> _handleViewResult() async {
+    await Navigator.push(
       context,
       MaterialPageRoute<void>(
-        builder: (_) => SpinResultScreen(score: widget.score),
+        builder: (_) => SpinResultReviewScreen(score: widget.score),
       ),
     );
+    if (!mounted) return;
+    // Returning from the review: swap in the follow-up line and make Hati
+    // "talk" again (re-gating the buttons until it finishes) instead of
+    // silently repeating the same opening dialogue.
+    setState(() {
+      _hasReviewedResult = true;
+      _dialogueComplete = false;
+    });
   }
 
   static const _bgGradient = LinearGradient(
@@ -140,10 +150,22 @@ class _AssessmentCompleteScreenState extends State<AssessmentCompleteScreen> {
                       vertical: 16,
                     ),
                     child: HatiSpriteAnimation(
+                      // HatiSpeechSequence's bubble uses a hardcoded const
+                      // key internally, so a message-only change wouldn't
+                      // remount it or restart the typewriter — this key
+                      // forces a clean remount when the dialogue should
+                      // change (e.g. returning from View Result).
+                      key: ValueKey(_hasReviewedResult),
                       size: 220,
-                      message: AssessmentCompleteHatiDialogue.message,
+                      message: _hasReviewedResult
+                          ? AssessmentCompleteHatiDialogue.afterReviewMessage
+                          : AssessmentCompleteHatiDialogue.message,
                       startDelay: Duration.zero,
                       persistBubble: true,
+                      autoAdvance: true,
+                      onTypingComplete: () {
+                        if (mounted) setState(() => _dialogueComplete = true);
+                      },
                     ),
                   ),
                 ),
@@ -162,9 +184,9 @@ class _AssessmentCompleteScreenState extends State<AssessmentCompleteScreen> {
                             borderRadius: BorderRadius.circular(26),
                           ),
                         ),
-                        onPressed: _isNavigatingToApp
-                            ? null
-                            : _handleContinueToApp,
+                        onPressed: (_dialogueComplete && !_isNavigatingToApp)
+                            ? _handleContinueToApp
+                            : null,
                         child: _isNavigatingToApp
                             ? const SizedBox(
                                 height: 22,
@@ -198,9 +220,9 @@ class _AssessmentCompleteScreenState extends State<AssessmentCompleteScreen> {
                           ),
                           backgroundColor: Colors.white,
                         ),
-                        onPressed: _isNavigatingToApp
-                            ? null
-                            : _handleViewResult,
+                        onPressed: (_dialogueComplete && !_isNavigatingToApp)
+                            ? _handleViewResult
+                            : null,
                         child: const Text(
                           'View Result',
                           style: TextStyle(

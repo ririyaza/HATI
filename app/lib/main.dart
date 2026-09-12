@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'features/onboarding/loading_screen.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
@@ -9,9 +10,19 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  // Play Integrity / App Attest only issue valid verdicts for builds that
+  // went through Play/App Store signing and distribution — a debug build
+  // deployed straight from Android Studio or Xcode will never pass them.
+  // Use the debug provider for debug builds (each tester device's printed
+  // debug token still needs to be added in Firebase Console > App Check),
+  // and the real attestation providers for release builds.
   await FirebaseAppCheck.instance.activate(
-    providerAndroid: const AndroidPlayIntegrityProvider(),
-    providerApple: const AppleAppAttestProvider(),
+    providerAndroid: kDebugMode
+        ? const AndroidDebugProvider()
+        : const AndroidPlayIntegrityProvider(),
+    providerApple: kDebugMode
+        ? const AppleDebugProvider()
+        : const AppleAppAttestProvider(),
   );
   runApp(const MyApp());
 }

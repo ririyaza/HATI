@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../data/assessment_comparison.dart';
 import '../data/post_assessment_repository.dart';
 import '../data/post_assessment_scoring.dart';
+import '../data/reassessment_notification_service.dart';
 import 'progress_update_screen.dart';
 import 'referral_screen.dart';
 
@@ -76,6 +77,13 @@ class _PostAssessmentResultsScreenState
         comparison: comparison,
       );
 
+      // Reschedule the on-device reminder for the new due date. Best-effort
+      // — a failure here shouldn't turn a successfully-saved result into an
+      // error screen.
+      try {
+        await ReassessmentNotificationService.sync(user.uid);
+      } catch (_) {}
+
       if (!mounted) return;
       setState(() {
         _baseline = baseline;
@@ -119,11 +127,11 @@ class _PostAssessmentResultsScreenState
   String get _summarySentence {
     switch (_comparison!.overall) {
       case InstrumentComparisonResult.improved:
-        return "Great news — your scores show real improvement since your "
+        return "Great news, your scores show real improvement since your "
             'last check-in. Keep up the practice!';
       case InstrumentComparisonResult.noChange:
         return "Your scores are about the same as last time. That's "
-            "completely okay — progress isn't always a straight line, and "
+            "completely okay. Progress isn't always a straight line, and "
             'a little extra support can help.';
       case InstrumentComparisonResult.worsened:
         return 'Your scores show things have felt a bit harder lately. '

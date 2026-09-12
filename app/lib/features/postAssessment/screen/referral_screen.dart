@@ -38,8 +38,8 @@ class ReferralScreen extends StatelessWidget {
                 size: 200,
                 message:
                     'Your check-in shows things have felt about the same '
-                    "or a little harder lately. That takes courage to see "
-                    "— it doesn't mean you've done anything wrong, and "
+                    "or a little harder lately. That takes courage to see. "
+                    "It doesn't mean you've done anything wrong, and "
                     "I'm here with you.",
                 startDelay: Duration.zero,
                 persistBubble: true,
@@ -62,7 +62,7 @@ class ReferralScreen extends StatelessWidget {
                     SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        'HATI is a self-help tool meant to support you — it '
+                        'HATI is a self-help tool meant to support you. It '
                         "is not a diagnosis and doesn't replace care from a "
                         'mental health professional. If things feel like '
                         'more than you can manage alone, reaching out to '

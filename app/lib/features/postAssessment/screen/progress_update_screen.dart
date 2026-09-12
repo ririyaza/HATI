@@ -45,7 +45,7 @@ class ProgressUpdateScreen extends StatelessWidget {
                       size: 220,
                       message:
                           "Your scores show real improvement since your "
-                          "last check-in — that's your effort paying off. "
+                          "last check-in. That's your effort paying off. "
                           "Keep going, one scenario at a time!",
                       startDelay: Duration.zero,
                       persistBubble: true,

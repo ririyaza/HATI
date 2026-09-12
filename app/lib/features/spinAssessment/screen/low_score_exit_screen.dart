@@ -7,7 +7,7 @@ import '../../dashboard/widgets/hati_sprite_animation.dart';
 import '../data/low_score_exit_hati_dialogue.dart';
 import '../data/spin_retake_policy.dart';
 import 'spin_assessment_screen.dart';
-import 'spin_result_screen.dart';
+import 'spin_result_review_screen.dart';
 
 class LowScoreExitScreen extends StatefulWidget {
   final int score;
@@ -21,6 +21,8 @@ class LowScoreExitScreen extends StatefulWidget {
 class _LowScoreExitScreenState extends State<LowScoreExitScreen> {
   bool _loadingEligibility = true;
   DateTime? _retakeEligibleAt;
+  bool _dialogueComplete = false;
+  bool _hasReviewedResult = false;
 
   @override
   void initState() {
@@ -62,6 +64,23 @@ class _LowScoreExitScreenState extends State<LowScoreExitScreen> {
     );
   }
 
+  Future<void> _handleReviewResult() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SpinResultReviewScreen(score: widget.score),
+      ),
+    );
+    if (!mounted) return;
+    // Returning from the review: swap in the follow-up line and make Hati
+    // "talk" again (re-gating the buttons until it finishes) instead of
+    // silently repeating the same opening dialogue.
+    setState(() {
+      _hasReviewedResult = true;
+      _dialogueComplete = false;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -100,10 +119,22 @@ class _LowScoreExitScreenState extends State<LowScoreExitScreen> {
                       vertical: 16,
                     ),
                     child: HatiSpriteAnimation(
+                      // HatiSpeechSequence's bubble uses a hardcoded const
+                      // key internally, so a message-only change wouldn't
+                      // remount it or restart the typewriter — this key
+                      // forces a clean remount when the dialogue should
+                      // change (e.g. returning from Review Result).
+                      key: ValueKey(_hasReviewedResult),
                       size: 220,
-                      message: LowScoreExitHatiDialogue.message,
+                      message: _hasReviewedResult
+                          ? LowScoreExitHatiDialogue.afterReviewMessage
+                          : LowScoreExitHatiDialogue.message,
                       startDelay: Duration.zero,
                       persistBubble: true,
+                      autoAdvance: true,
+                      onTypingComplete: () {
+                        if (mounted) setState(() => _dialogueComplete = true);
+                      },
                     ),
                   ),
                 ),
@@ -131,7 +162,7 @@ class _LowScoreExitScreenState extends State<LowScoreExitScreen> {
                             borderRadius: BorderRadius.circular(26),
                           ),
                         ),
-                        onPressed: _handleRetake,
+                        onPressed: _dialogueComplete ? _handleRetake : null,
                         child: const Text(
                           'Retake Assessment',
                           style: TextStyle(
@@ -158,7 +189,9 @@ class _LowScoreExitScreenState extends State<LowScoreExitScreen> {
                               ),
                               backgroundColor: Colors.white,
                             ),
-                            onPressed: () => SystemNavigator.pop(),
+                            onPressed: _dialogueComplete
+                                ? () => SystemNavigator.pop()
+                                : null,
                             child: const Text(
                               'Exit the App',
                               style: TextStyle(
@@ -175,7 +208,9 @@ class _LowScoreExitScreenState extends State<LowScoreExitScreen> {
                                 borderRadius: BorderRadius.circular(26),
                               ),
                             ),
-                            onPressed: () => SystemNavigator.pop(),
+                            onPressed: _dialogueComplete
+                                ? () => SystemNavigator.pop()
+                                : null,
                             child: const Text(
                               'Exit the App',
                               style: TextStyle(
@@ -197,15 +232,8 @@ class _LowScoreExitScreenState extends State<LowScoreExitScreen> {
                         ),
                         backgroundColor: Colors.white,
                       ),
-                      onPressed: () {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                SpinResultScreen(score: widget.score),
-                          ),
-                        );
-                      },
+                      onPressed:
+                          _dialogueComplete ? _handleReviewResult : null,
                       child: const Text(
                         'Review Result',
                         style: TextStyle(
@@ -244,7 +272,7 @@ class _RetakeStatusCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final String message;
     if (canRetake) {
-      message = 'It\'s been 14 days since your last check-in — you\'re '
+      message = 'It\'s been 14 days since your last check-in. You\'re '
           'welcome to retake the assessment whenever you\'re ready.';
     } else if (eligibleAt != null) {
       final daysLeft = eligibleAt!.difference(DateTime.now()).inHours / 24;

@@ -231,7 +231,7 @@ class _SpinAssessmentScreenState extends State<SpinAssessmentScreen> {
                       title: 'What to expect',
                       body:
                           '17 short questions about how social situations feel '
-                          'for you. No right or wrong answers — just honest ones.',
+                          'for you. There are no right or wrong answers, just honest ones.',
                     ),
                     const SizedBox(height: 20),
 
@@ -390,7 +390,7 @@ class _SpinAssessmentScreenState extends State<SpinAssessmentScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Over the past week, how much did the following '
+                    'Over the past week, how much did this statement '
                     'describe you?',
                     style: TextStyle(
                       fontSize: 13,
@@ -410,15 +410,6 @@ class _SpinAssessmentScreenState extends State<SpinAssessmentScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  const Text(
-                    'HOW MUCH DOES THIS DESCRIBE YOU?',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.black38,
-                      letterSpacing: 1,
-                    ),
-                  ),
                 ],
               ),
             ),

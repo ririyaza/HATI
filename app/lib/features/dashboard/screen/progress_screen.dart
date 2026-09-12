@@ -302,67 +302,60 @@ class _WeeklyStreak extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFE0E0E0)),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '$streak-Day Streak',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 15,
-                    color: Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                const Text(
-                  'Built from completed scenarios',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.black45,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
+          Text(
+            '$streak-Day Streak',
+            style: const TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 15,
+              color: Colors.black87,
             ),
           ),
+          const SizedBox(height: 2),
+          const Text(
+            'Built from completed scenarios',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.black45,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 14),
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: List.generate(_days.length, (i) {
               final active = i < completedDays.length && completedDays[i];
-              return Padding(
-                padding: const EdgeInsets.only(left: 6),
-                child: Column(
-                  children: [
-                    Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: active
-                            ? const Color(0xFF0B28D9)
-                            : const Color(0xFFE8ECFF),
-                      ),
-                      child: Icon(
-                        active ? Icons.check : Icons.remove,
-                        size: 16,
-                        color: active ? Colors.white : Colors.black26,
-                      ),
+              return Column(
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: active
+                          ? const Color(0xFF0B28D9)
+                          : const Color(0xFFE8ECFF),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _days[i],
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: active
-                            ? const Color(0xFF0B28D9)
-                            : Colors.black38,
-                      ),
+                    child: Icon(
+                      active ? Icons.check : Icons.remove,
+                      size: 16,
+                      color: active ? Colors.white : Colors.black26,
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _days[i],
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: active
+                          ? const Color(0xFF0B28D9)
+                          : Colors.black38,
+                    ),
+                  ),
+                ],
               );
             }),
           ),

@@ -136,6 +136,7 @@ class ConfidenceAnxietySummary {
     required this.confidenceSparkline,
     required this.anxietySparkline,
     required this.totalLogsThisWeek,
+    required this.hasPreviousWeekData,
   });
 
   /// 0..1 fraction of this week's logs that were confidence emotions
@@ -158,6 +159,13 @@ class ConfidenceAnxietySummary {
   /// tell "no activity yet this week" apart from "confidencePct/anxietyPct
   /// both happen to be 0," since both read 0 in the no-data case too.
   final int totalLogsThisWeek;
+
+  /// Whether last week had any logs at all. `_pctOf` returns 0 for an empty
+  /// pool, so without this flag a brand-new user's first week would read as
+  /// a swing from 0% to whatever this week's rate is — a false "change"
+  /// against a baseline that never existed. computeFeedbackMessage uses this
+  /// to fall back to judging the week's absolute mix instead of a delta.
+  final bool hasPreviousWeekData;
 }
 
 double _pctOf(Set<String> bucket, List<EmotionLogEntry> pool) {
@@ -201,14 +209,22 @@ ConfidenceAnxietySummary computeConfidenceAnxiety(
     confidenceSparkline: confidenceSparkline,
     anxietySparkline: anxietySparkline,
     totalLogsThisWeek: thisWeek.length,
+    hasPreviousWeekData: prevWeek.isNotEmpty,
   );
 }
 
-/// Picks one of a few feedback messages based on how this week's anxiety
-/// rate moved relative to last week — a >=5 percentage-point swing either
-/// way is treated as a real change worth commenting on; anything smaller is
-/// "steady." Mirrors the tone of the original static placeholder text for
-/// the "clearly improving" case.
+/// Picks one of a few feedback messages from the Confidence/Anxiety summary.
+///
+/// When there's a real previous week to compare against, this is based on
+/// how far anxiety moved relative to it — a >=5 percentage-point swing
+/// either way is treated as a real change worth commenting on, anything
+/// smaller is "steady." Without a previous week (a brand-new user's first
+/// active week), there is no honest baseline to diff against — `_pctOf`
+/// returns 0 for an empty pool, so diffing against it would read as a false
+/// swing from 0% no matter what this week looks like. In that case the
+/// message instead judges this week's absolute confidence-vs-anxiety mix
+/// directly, which is what "depends on the summary" means with no history
+/// yet to lean on.
 String computeFeedbackMessage(ConfidenceAnxietySummary summary) {
   if (summary.totalLogsThisWeek == 0) {
     return "You haven't logged any scenario activity yet this week. Try a "
@@ -216,6 +232,23 @@ String computeFeedbackMessage(ConfidenceAnxietySummary summary) {
   }
 
   const meaningfulShift = 0.05; // 5 percentage points
+
+  if (!summary.hasPreviousWeekData) {
+    final gap = summary.confidencePct - summary.anxietyPct;
+    if (gap >= meaningfulShift) {
+      return 'Your first tracked week leans more confident than anxious — '
+          'a great start. Keep completing scenarios to build on it.';
+    }
+    if (gap <= -meaningfulShift) {
+      return "Your first tracked week leans a bit more anxious than "
+          "confident, which is completely normal starting out. Keep "
+          "practicing and revisit scenarios that felt manageable.";
+    }
+    return "Your first tracked week shows a fairly even mix of confidence "
+        "and anxiety. Keep practicing consistently and check back next "
+        "week to see how it shifts.";
+  }
+
   final anxietyChange = summary.anxietyChangePct;
 
   if (anxietyChange <= -meaningfulShift) {

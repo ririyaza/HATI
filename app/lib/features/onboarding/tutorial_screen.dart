@@ -30,10 +30,10 @@ const _slides = [
     title: 'Welcome to HATI',
     subtitle: 'Helping Anxiety Through Immersion',
     description:
-        'HATI is your private, gamified companion designed to help you '
-        'understand and manage social anxiety symptoms — at your own pace, '
+        'HATI is your private, gamified companion, here to help you '
+        'understand and manage social anxiety symptoms at your own pace, '
         'anytime you need it.',
-    accentColor: Color(0xFF5B8AF5),
+    accentColor: Color(0xFFFF9500),
   ),
   _TutorialSlide(
     icon: Icons.assignment_outlined,
@@ -43,17 +43,17 @@ const _slides = [
         'Answer 17 quick questions so HATI can understand your anxiety '
         'triggers. Your profile is completely private and used only to '
         'personalise your experience.',
-    accentColor: Color(0xFF7B61FF),
+    accentColor: Color(0xFFFF9500),
   ),
   _TutorialSlide(
     icon: Icons.extension_outlined,
     title: 'Scenario Modules',
     subtitle: 'Practice in a safe space',
     description:
-        'Choose from social scenarios tailored to your profile — like finding '
+        'Choose from social scenarios tailored to your profile, like finding '
         'a seat in a crowded room or talking to strangers. HATI guides you '
         'step by step and adapts to how you feel.',
-    accentColor: Color(0xFF0BA2D9),
+    accentColor: Color(0xFFFF9500),
   ),
   _TutorialSlide(
     icon: Icons.mic_outlined,
@@ -63,7 +63,7 @@ const _slides = [
         'Type or speak your responses. HATI analyses your text and optional '
         'voice input in real time to detect your emotional state and offer '
         'the right coping strategy at the right moment.',
-    accentColor: Color(0xFF1DB95B),
+    accentColor: Color(0xFFFF9500),
   ),
   _TutorialSlide(
     icon: Icons.trending_up_rounded,
@@ -71,7 +71,7 @@ const _slides = [
     subtitle: 'See yourself grow over time',
     description:
         'The Progress tab shows your completed scenarios, daily streak, '
-        'emotion trends, and badges earned — giving you a clear picture of '
+        'emotion trends, and badges earned, giving you a clear picture of '
         'how far you\'ve come.',
     accentColor: Color(0xFFFF9500),
   ),
@@ -80,10 +80,10 @@ const _slides = [
     title: 'You\'re Not Alone',
     subtitle: 'HATI is a support tool, not a diagnosis',
     description:
-        'HATI supplements — but does not replace — professional care. '
-        'If you ever feel overwhelmed, the app will guide you to counselling '
-        'resources. Your well-being always comes first.',
-    accentColor: Color(0xFFFF6B6B),
+        'HATI supplements professional care, but it\'s not a replacement '
+        'for it. If you ever feel overwhelmed, the app will guide you to '
+        'counselling resources. Your well-being always comes first.',
+    accentColor: Color(0xFFFF9500),
   ),
 ];
 
@@ -150,13 +150,10 @@ class _TutorialScreenState extends State<TutorialScreen>
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       try {
-        await FirebaseFirestore.instance.collection('users').doc(user.uid).set(
-          {
-            'tutorialCompleted': true,
-            'tutorialCompletedAt': FieldValue.serverTimestamp(),
-          },
-          SetOptions(merge: true),
-        );
+        await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+          'tutorialCompleted': true,
+          'tutorialCompletedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
       } catch (_) {}
     }
 
@@ -166,10 +163,7 @@ class _TutorialScreenState extends State<TutorialScreen>
         pageBuilder: (context, animation, secondaryAnimation) =>
             const DashboardScreen(),
         transitionsBuilder: (context, animation, secondaryAnimation, child) =>
-            FadeTransition(
-          opacity: animation,
-          child: child,
-        ),
+            FadeTransition(opacity: animation, child: child),
         transitionDuration: const Duration(milliseconds: 500),
       ),
       (route) => false,
@@ -291,16 +285,14 @@ class _TutorialScreenState extends State<TutorialScreen>
                             style: TextStyle(
                               color: isLast
                                   ? Colors.white
-                                  : const Color(0xFF0B28D9),
+                                  : const Color(0xFFFF9500),
                               fontSize: 16,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
                           const SizedBox(width: 8),
                           Icon(
-                            isLast
-                                ? Icons.rocket_launch_rounded
-                                : Icons.arrow_forward_rounded,
+                            Icons.arrow_forward_rounded,
                             color: isLast
                                 ? Colors.white
                                 : const Color(0xFF0B28D9),
@@ -321,10 +313,7 @@ class _TutorialScreenState extends State<TutorialScreen>
 }
 
 class _TutorialSlideView extends StatelessWidget {
-  const _TutorialSlideView({
-    required this.slide,
-    required this.fadeAnimation,
-  });
+  const _TutorialSlideView({required this.slide, required this.fadeAnimation});
 
   final _TutorialSlide slide;
   final Animation<double> fadeAnimation;
@@ -350,11 +339,7 @@ class _TutorialSlideView extends StatelessWidget {
                 ),
               ),
               child: Center(
-                child: Icon(
-                  slide.icon,
-                  size: 56,
-                  color: Colors.white,
-                ),
+                child: Icon(slide.icon, size: 56, color: Colors.white),
               ),
             ),
             const SizedBox(height: 36),

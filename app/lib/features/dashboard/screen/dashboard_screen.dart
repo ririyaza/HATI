@@ -1,5 +1,7 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../../postAssessment/data/reassessment_notification_service.dart';
 import '../widgets/dashboard_tour_overlay.dart';
 import '../widgets/draggable_help_button.dart';
 import 'home_screen.dart';
@@ -47,6 +49,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
+    // Re-sync (not request) the reminder against Firestore's current
+    // enabled/due state on every dashboard load — catches cases the
+    // reassessment flow's own sync call can't: a fresh reinstall, or the
+    // scheduled reminder having already fired and needing to roll forward.
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid != null) {
+      ReassessmentNotificationService.sync(uid).catchError((_) {});
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       final started = await DashboardTourOverlay.maybeShow(

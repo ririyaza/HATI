@@ -22,6 +22,7 @@ class HatiSpriteAnimation extends StatefulWidget {
     this.autoAdvance = false,
     this.holdAfterTyping = const Duration(seconds: 2),
     this.onDismissed,
+    this.onTypingComplete,
   });
 
   final double size;
@@ -41,6 +42,14 @@ class HatiSpriteAnimation extends StatefulWidget {
   /// Called once the bubble has fully dismissed (only reachable when
   /// [persistBubble] is false, since a persistent bubble never dismisses).
   final VoidCallback? onDismissed;
+
+  /// Called once the message has fully finished typing out (its last
+  /// sentence/page, specifically — not fired again per intermediate page).
+  /// Reachable with [persistBubble] true or false. Use this to gate a
+  /// screen's own Continue/action buttons until Hati is done talking,
+  /// matching how scenario scenes gate their Continue/option buttons off
+  /// [HatiCoachZone]'s `onSequenceComplete`.
+  final VoidCallback? onTypingComplete;
 
   @override
   State<HatiSpriteAnimation> createState() => _HatiSpriteAnimationState();
@@ -82,6 +91,7 @@ class _HatiSpriteAnimationState extends State<HatiSpriteAnimation> {
                 autoAdvance: widget.autoAdvance,
                 holdAfterTyping: widget.holdAfterTyping,
                 onBubbleDismissed: widget.onDismissed,
+                onSequenceComplete: widget.onTypingComplete,
               )
             : HatiFrogAvatar(
                 key: const ValueKey('hati-waiting'),

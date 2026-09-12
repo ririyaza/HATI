@@ -49,7 +49,7 @@ TextSpan _spacer() => const TextSpan(text: '\n');
 // ─────────────────────────────────────────────────────────────────────────────
 
 const List<InlineSpan> kConsentStudyAboutSpans = [
-  TextSpan(text: '1. What is this study about?\n', style: _kHeadingStyle),
+  TextSpan(text: '1. What is this study about?\n\n', style: _kHeadingStyle),
   TextSpan(
     text:
         'You are invited to participate in a research study developing and '
@@ -64,7 +64,7 @@ const List<InlineSpan> kConsentStudyAboutSpans = [
   ),
   TextSpan(text: '\n\n'),
   TextSpan(
-    text: '2. Why am I being invited to participate?\n',
+    text: '2. Why am I being invited to participate?\n\n',
     style: _kHeadingStyle,
   ),
   TextSpan(text: 'You are being invited because:\n', style: _kBodyStyle),
@@ -83,13 +83,9 @@ const List<InlineSpan> kConsentStudyAboutSpans = [
         '  •  You are not currently diagnosed with Social Anxiety Disorder or receiving active professional mental health treatment.\n',
     style: _kBulletStyle,
   ),
-  TextSpan(
-    text: '  •  You are 20 years of age or older.\n',
-    style: _kBulletStyle,
-  ),
   TextSpan(text: '\n\n'),
   TextSpan(
-    text: '3. What will happen if I agree to participate?\n',
+    text: '3. What will happen if I agree to participate?\n\n',
     style: _kHeadingStyle,
   ),
   TextSpan(
@@ -131,7 +127,8 @@ const List<InlineSpan> kConsentStudyAboutSpans = [
   ),
   TextSpan(text: '\n\n'),
   TextSpan(
-    text: '4. Is HATI a substitute for professional mental health treatment?\n',
+    text:
+        '4. Is HATI a substitute for professional mental health treatment?\n\n',
     style: _kHeadingStyle,
   ),
   TextSpan(
@@ -156,7 +153,7 @@ const List<InlineSpan> kConsentStudyAboutSpans = [
 
 const List<InlineSpan> kConsentDataCollectedSpans = [
   TextSpan(
-    text: '5. What type of data will be collected?\n',
+    text: '5. What type of data will be collected?\n\n',
     style: _kHeadingStyle,
   ),
   TextSpan(text: 'The following data will be collected:\n', style: _kBodyStyle),
@@ -185,7 +182,7 @@ const List<InlineSpan> kConsentDataCollectedSpans = [
     style: _kBulletStyle,
   ),
   TextSpan(text: '\n\n'),
-  TextSpan(text: '6. How will my data be used?\n', style: _kHeadingStyle),
+  TextSpan(text: '6. How will my data be used?\n\n', style: _kHeadingStyle),
   TextSpan(
     text: 'Your data will be used for research purposes only, including:\n',
     style: _kBodyStyle,
@@ -204,7 +201,7 @@ const List<InlineSpan> kConsentDataCollectedSpans = [
     style: _kBulletStyle,
   ),
   TextSpan(text: '\n\n'),
-  TextSpan(text: '7. Will my data be kept private?\n', style: _kHeadingStyle),
+  TextSpan(text: '7. Will my data be kept private?\n\n', style: _kHeadingStyle),
   TextSpan(
     text:
         'Yes. The research team will protect your privacy in the following ways:\n',
@@ -243,7 +240,7 @@ const List<InlineSpan> kConsentDataCollectedSpans = [
 
 const List<InlineSpan> kConsentRisksSupportSpans = [
   TextSpan(
-    text: '8. What are the potential risks of participating?\n',
+    text: '8. What are the potential risks of participating?\n\n',
     style: _kHeadingStyle,
   ),
   TextSpan(
@@ -268,7 +265,7 @@ const List<InlineSpan> kConsentRisksSupportSpans = [
   ),
   TextSpan(text: '\n\n'),
   TextSpan(
-    text: '9. What are the potential benefits of participating?\n',
+    text: '9. What are the potential benefits of participating?\n\n',
     style: _kHeadingStyle,
   ),
   TextSpan(
@@ -302,7 +299,10 @@ const List<InlineSpan> kConsentRisksSupportSpans = [
 // ─────────────────────────────────────────────────────────────────────────────
 
 const List<InlineSpan> kConsentParticipantRightsSpans = [
-  TextSpan(text: '10. Is my participation mandatory?\n', style: _kHeadingStyle),
+  TextSpan(
+    text: '10. Is my participation mandatory?\n\n',
+    style: _kHeadingStyle,
+  ),
   TextSpan(
     text:
         'No. Your participation is completely voluntary. You may choose not to participate, or you may withdraw from the study at any time without any penalty, loss of benefits, or negative consequences to your academic standing.\n\n'
@@ -311,7 +311,7 @@ const List<InlineSpan> kConsentParticipantRightsSpans = [
   ),
   TextSpan(text: '\n\n'),
   TextSpan(
-    text: '11. Who can I contact if I have questions or concerns?\n',
+    text: '11. Who can I contact if I have questions or concerns?\n\n',
     style: _kHeadingStyle,
   ),
   TextSpan(

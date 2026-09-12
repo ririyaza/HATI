@@ -111,7 +111,7 @@ class _ConsentIntroScreenState extends State<ConsentIntroScreen>
                     ),
                     const SizedBox(height: 10),
                     Text(
-                      'We need your informed consent to include\nyour participation in our research study.',
+                      'We need your informed consent before you take part\nin our research study.',
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.75),
                         fontSize: 15,

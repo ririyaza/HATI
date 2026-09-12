@@ -58,11 +58,11 @@ class PostGad7IntroScreen extends StatelessWidget {
                   children: [
                     const _InfoCard(
                       icon: Icons.checklist_rounded,
-                      title: "Nice work — first section done",
+                      title: "Nice work, first section done",
                       body:
                           "You've finished the social anxiety questions. "
                           "Next is a short, different set about general "
-                          "anxiety — how you've been feeling day-to-day "
+                          "anxiety, how you've been feeling day-to-day "
                           "over the past two weeks.",
                     ),
                     const SizedBox(height: 20),

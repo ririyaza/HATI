@@ -746,173 +746,208 @@ class _EmotionTrendsPage extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 12),
-                SizedBox(
-                  height: 260,
-                  child: emotions.every((e) => e.value <= 0)
-                      ? const Center(
+                emotions.every((e) => e.value <= 0)
+                    ? const SizedBox(
+                        height: 260,
+                        child: Center(
                           child: Text(
                             'Finish a few scenarios to see your emotion trends here.',
                             textAlign: TextAlign.center,
                             style: TextStyle(color: Colors.white70, fontSize: 12.5),
                           ),
-                        )
-                      : CustomPaint(
-                          painter: _EmotionRosePainter(emotions: emotions),
-                          size: Size.infinite,
                         ),
-                ),
+                      )
+                    : _EmotionDonutChart(emotions: emotions),
               ],
             ),
           ),
-          const SizedBox(height: 20),
-          _EmotionLegend(emotions: emotions),
         ],
       ),
     );
   }
 }
 
-class _EmotionRosePainter extends CustomPainter {
-  _EmotionRosePainter({required this.emotions});
-
-  final List<EmotionDatum> emotions;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final maxRadius = math.min(size.width, size.height) / 2 - 24;
-    final maxValue = emotions.map((e) => e.value).reduce(math.max);
-    if (maxValue <= 0) return; // no data yet — nothing to draw, avoids a div-by-zero
-    final sweep = (2 * math.pi) / emotions.length;
-    var start = -math.pi / 2;
-
-    for (final emotion in emotions) {
-      final radius = maxRadius * (emotion.value / maxValue);
-      final path = Path()
-        ..moveTo(center.dx, center.dy)
-        ..arcTo(
-          Rect.fromCircle(center: center, radius: radius),
-          start,
-          sweep,
-          false,
-        )
-        ..close();
-
-      canvas.drawPath(
-        path,
-        Paint()..color = emotion.color.withValues(alpha: 0.9),
-      );
-      canvas.drawPath(
-        path,
-        Paint()
-          ..color = Colors.white.withValues(alpha: 0.5)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.5,
-      );
-
-      final labelAngle = start + sweep / 2;
-      final labelRadius = radius * 0.62 + 14;
-      final labelCenter = Offset(
-        center.dx + labelRadius * math.cos(labelAngle),
-        center.dy + labelRadius * math.sin(labelAngle),
-      );
-
-      final tp = TextPainter(
-        text: TextSpan(
-          children: [
-            TextSpan(
-              text: '${emotion.label}\n',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            TextSpan(
-              text: emotion.value.toStringAsFixed(0),
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ],
-        ),
-        textAlign: TextAlign.center,
-        textDirection: TextDirection.ltr,
-      )..layout();
-
-      tp.paint(
-        canvas,
-        Offset(labelCenter.dx - tp.width / 2, labelCenter.dy - tp.height / 2),
-      );
-
-      start += sweep;
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _EmotionRosePainter oldDelegate) =>
-      oldDelegate.emotions != emotions;
-}
-
-class _EmotionLegend extends StatelessWidget {
-  const _EmotionLegend({required this.emotions});
+/// A real pie/donut chart — slices are proportional to value by angle only
+/// (equal radius throughout), unlike the earlier polar/"rose" chart that
+/// varied *both* radius and angle, which made slices impossible to compare
+/// at a glance. Improvements over a plain pie: slices are ordered
+/// largest-first from 12 o'clock clockwise (so position itself communicates
+/// rank), a thin background-color gap separates every slice, big-enough
+/// slices carry their own "NN%" label, the donut hole surfaces the total
+/// log count instead of going to waste, and the legend below lists every
+/// emotion in the same largest-first order with its exact percentage and
+/// count, so nothing depends on eyeballing similar hues.
+class _EmotionDonutChart extends StatelessWidget {
+  const _EmotionDonutChart({required this.emotions});
 
   final List<EmotionDatum> emotions;
 
   @override
   Widget build(BuildContext context) {
-    final left = emotions.sublist(0, 4);
-    final right = emotions.sublist(4);
+    final sorted = [...emotions]..sort((a, b) => b.value.compareTo(a.value));
+    final total = sorted.fold<double>(0, (sum, e) => sum + e.value);
+    final slices = sorted.where((e) => e.value > 0).toList();
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Column(
       children: [
-        Expanded(child: _EmotionLegendColumn(emotions: left)),
-        Expanded(child: _EmotionLegendColumn(emotions: right)),
+        SizedBox(
+          height: 200,
+          width: 200,
+          child: CustomPaint(
+            painter: _EmotionDonutPainter(slices: slices, total: total),
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    total.toStringAsFixed(0),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 26,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const Text(
+                    'logged',
+                    style: TextStyle(color: Colors.white70, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+        Column(
+          children: [
+            for (final emotion in sorted)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 12,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: emotion.color,
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        emotion.label,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      total <= 0
+                          ? '0%'
+                          : '${(emotion.value / total * 100).round()}%',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    SizedBox(
+                      width: 24,
+                      child: Text(
+                        emotion.value.toStringAsFixed(0),
+                        textAlign: TextAlign.right,
+                        style: const TextStyle(
+                          color: Colors.white54,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
       ],
     );
   }
 }
 
-class _EmotionLegendColumn extends StatelessWidget {
-  const _EmotionLegendColumn({required this.emotions});
+class _EmotionDonutPainter extends CustomPainter {
+  _EmotionDonutPainter({required this.slices, required this.total});
 
-  final List<EmotionDatum> emotions;
+  /// Non-zero-value emotions only, already sorted largest-first.
+  final List<EmotionDatum> slices;
+  final double total;
+
+  /// Angular gap left as background between adjacent slices — a visual
+  /// separator that works regardless of how close two slice colors are,
+  /// rather than relying on a stroke outline.
+  static const _gapRadians = 0.035;
 
   @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: emotions
-          .map(
-            (e) => Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: Row(
-                children: [
-                  Container(
-                    width: 10,
-                    height: 10,
-                    decoration: BoxDecoration(
-                      color: e.color,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    e.label,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
+  void paint(Canvas canvas, Size size) {
+    if (total <= 0 || slices.isEmpty) return;
+
+    final center = Offset(size.width / 2, size.height / 2);
+    final outerRadius = math.min(size.width, size.height) / 2;
+    final ringWidth = outerRadius * 0.4;
+    final ringRadius = outerRadius - ringWidth / 2;
+    final ringRect = Rect.fromCircle(center: center, radius: ringRadius);
+
+    final totalGap = _gapRadians * slices.length;
+    final sweepBudget = (2 * math.pi) - totalGap;
+
+    var startAngle = -math.pi / 2;
+    for (final slice in slices) {
+      final sweep = (slice.value / total) * sweepBudget;
+
+      canvas.drawArc(
+        ringRect,
+        startAngle,
+        sweep,
+        false,
+        Paint()
+          ..color = slice.color
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = ringWidth
+          ..strokeCap = StrokeCap.butt,
+      );
+
+      // Only label slices wide enough to fit "NN%" without crowding —
+      // everything else is still exact in the legend below.
+      final share = slice.value / total;
+      if (share >= 0.06) {
+        final labelAngle = startAngle + sweep / 2;
+        final labelCenter = Offset(
+          center.dx + ringRadius * math.cos(labelAngle),
+          center.dy + ringRadius * math.sin(labelAngle),
+        );
+        final tp = TextPainter(
+          text: TextSpan(
+            text: '${(share * 100).round()}%',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
             ),
-          )
-          .toList(),
-    );
+          ),
+          textDirection: TextDirection.ltr,
+        )..layout();
+        tp.paint(
+          canvas,
+          Offset(labelCenter.dx - tp.width / 2, labelCenter.dy - tp.height / 2),
+        );
+      }
+
+      startAngle += sweep + _gapRadians;
+    }
   }
+
+  @override
+  bool shouldRepaint(covariant _EmotionDonutPainter oldDelegate) =>
+      oldDelegate.slices != slices || oldDelegate.total != total;
 }

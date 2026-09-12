@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../auth/screen/login_screen.dart';
 import '../../auth/session_persistence.dart';
 import '../../postAssessment/data/post_assessment_repository.dart';
+import '../../postAssessment/data/reassessment_notification_service.dart';
 import '../../postAssessment/screen/post_assessment_intro_screen.dart';
 import '../data/dashboard_user_data.dart';
 import '../widgets/help_center_sheet.dart';
@@ -44,34 +45,138 @@ class ProfileScreen extends StatelessWidget {
 Future<void> _handleLogout(BuildContext context) async {
   final confirmed = await showDialog<bool>(
     context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Log Out'),
-      content: const Text('Are you sure you want to log out of HATI?'),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context, false),
-          child: const Text('Cancel'),
-        ),
-        TextButton(
-          onPressed: () => Navigator.pop(context, true),
-          child: const Text(
-            'Log Out',
-            style: TextStyle(color: Color(0xFFD9250B)),
-          ),
-        ),
-      ],
-    ),
+    builder: (context) => const _LogoutConfirmDialog(),
   );
   if (confirmed != true) return;
+  if (!context.mounted) return;
+
+  // Grabbed now, before signing out: this screen watches Firebase's auth
+  // state directly, so the moment signOut() resolves it swaps itself for
+  // a "Please log in." placeholder — unmounting this context. The
+  // NavigatorState itself lives higher up the tree and stays valid, but
+  // only if captured before that happens.
+  final navigator = Navigator.of(context);
 
   await clearLoginTimestamp();
   await FirebaseAuth.instance.signOut();
-  if (!context.mounted) return;
 
-  Navigator.of(context).pushAndRemoveUntil(
+  navigator.pushAndRemoveUntil(
     MaterialPageRoute(builder: (_) => const LoginScreen()),
     (route) => false,
   );
+}
+
+/// Confirm-to-proceed dialog for logging out — styled to match
+/// `_ConsentSuccessDialog` in `consent_flow_screen.dart` (the one shown
+/// right before profile setup): a rounded white card, a tinted circular
+/// icon badge, a bold headline, and full-width pill buttons, instead of a
+/// plain [AlertDialog]. Unlike that one-button success dialog, this needs
+/// two actions, stacked the same way `consent_flow_screen.dart`'s bottom
+/// bar stacks "I Agree & Continue" over "I Do Not Agree".
+class _LogoutConfirmDialog extends StatelessWidget {
+  const _LogoutConfirmDialog();
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      elevation: 0,
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 36),
+      child: Container(
+        padding: const EdgeInsets.all(28),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.12),
+              blurRadius: 30,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 68,
+              height: 68,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFFD9250B).withOpacity(0.1),
+              ),
+              child: const Icon(
+                Icons.logout_rounded,
+                color: Color(0xFFD9250B),
+                size: 32,
+              ),
+            ),
+            const SizedBox(height: 18),
+            const Text(
+              'Log Out?',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF1A1A2E),
+              ),
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              'Are you sure you want to log out of HATI?',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: Color(0xFF64748B),
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFD9250B),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(25),
+                  ),
+                ),
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text(
+                  'Log Out',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: OutlinedButton(
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Color(0xFFD1D5DB), width: 1.2),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(25),
+                  ),
+                ),
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text(
+                  'Cancel',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF6B7280),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _ProfileContent extends StatelessWidget {
@@ -255,7 +360,8 @@ class _ProfileContent extends StatelessWidget {
                     _SettingsTile(
                       icon: Icons.notifications_outlined,
                       label: 'Notifications',
-                      onTap: () {},
+                      onTap: () =>
+                          _showNotificationSettingsSheet(context, data.uid),
                     ),
                     _SettingsTile(
                       icon: Icons.volume_up_outlined,
@@ -1012,6 +1118,143 @@ class _CopingPreferencesCard extends StatelessWidget {
               style: TextStyle(color: Colors.black45, height: 1.4),
             ),
         ],
+      ),
+    );
+  }
+}
+
+Future<void> _showNotificationSettingsSheet(
+  BuildContext context,
+  String uid,
+) {
+  return showModalBottomSheet<void>(
+    context: context,
+    backgroundColor: Colors.white,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    ),
+    builder: (_) => _NotificationSettingsSheet(uid: uid),
+  );
+}
+
+/// Toggle for the on-device "2-week check-in due" reminder
+/// ([ReassessmentNotificationService]). Turning it on requests the OS
+/// notification permission; if that's denied, the switch snaps back off
+/// and a message explains why, rather than silently saving a setting that
+/// can't actually notify anyone.
+class _NotificationSettingsSheet extends StatefulWidget {
+  const _NotificationSettingsSheet({required this.uid});
+
+  final String uid;
+
+  @override
+  State<_NotificationSettingsSheet> createState() =>
+      _NotificationSettingsSheetState();
+}
+
+class _NotificationSettingsSheetState
+    extends State<_NotificationSettingsSheet> {
+  bool? _enabled;
+  bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    ReassessmentNotificationService.isEnabled(widget.uid).then((value) {
+      if (mounted) setState(() => _enabled = value);
+    });
+  }
+
+  Future<void> _toggle(bool value) async {
+    setState(() => _busy = true);
+    final effective = await ReassessmentNotificationService.setEnabled(
+      widget.uid,
+      value,
+    );
+    if (!mounted) return;
+    setState(() {
+      _enabled = effective;
+      _busy = false;
+    });
+    if (value && !effective) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            "Notifications are blocked for HATI in your phone's settings. "
+            'Enable them there, then try again.',
+          ),
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Notifications',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF1A1A2E),
+              ),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Get a reminder on your phone when your 2-week check-in is '
+              'ready.',
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.black45,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 18),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8F9FF),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFE2E6FF)),
+              ),
+              child: Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Check-in reminders',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF1A1A2E),
+                      ),
+                    ),
+                  ),
+                  _enabled == null
+                      ? const Padding(
+                          padding: EdgeInsets.all(12),
+                          child: SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        )
+                      : Switch(
+                          value: _enabled!,
+                          activeThumbColor: const Color(0xFF0B28D9),
+                          onChanged: _busy ? null : _toggle,
+                        ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
