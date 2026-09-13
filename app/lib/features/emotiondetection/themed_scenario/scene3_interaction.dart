@@ -23,6 +23,8 @@
 // and the follow-up reply.
 // ─────────────────────────────────────────────
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:path_provider/path_provider.dart';
@@ -523,44 +525,39 @@ class _ApproachHatiLane extends StatelessWidget {
       // same as a chat app's own message briefly covering what's behind it
       // — is fine and reads as one continuous scene instead of two banded
       // sections.
-      // FittedBox (rather than the Row+Spacer this used to be) guarantees
-      // the frog+bubble always fit within whatever height this lane is
-      // actually given, scaling down instead of overflowing — the caller
-      // already caps that height for extreme cases (keyboard open, a long
-      // Hati line) via a ConstrainedBox+ClipRect around this whole widget,
-      // but that cap alone only stopped the OUTER Column from overflowing;
-      // the frog+bubble content itself still overflowed INSIDE that
-      // capped box without this.
+      // No FittedBox here on purpose — scaling Hati down to fit tight space
+      // (e.g. once the keyboard opens) made him look tiny, which is worse
+      // than just letting the caller's ClipRect+ConstrainedBox crop the
+      // bottom of this lane when it doesn't fully fit. Hati stays at his
+      // real size always; the keyboard can cover him, but he never shrinks.
       child: Align(
-        alignment: Alignment.bottomLeft,
-        child: FittedBox(
-          fit: BoxFit.scaleDown,
-          alignment: Alignment.bottomLeft,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(
-              maxWidth: HatiLayout.bubbleMaxWidth,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                if (showBubble && message.isNotEmpty)
-                  HatiSpeakingBlock(
-                    key: ValueKey(bubbleKey),
-                    persistentMessage: message,
-                    frogSize: frogSize,
-                    mood: HatiMood.encourage,
-                    // Fades the bubble out a couple seconds after it
-                    // finishes typing, leaving just the frog — it used to
-                    // stay put indefinitely, which could crowd out the
-                    // NPC's own bubble above it in the scrollable area.
-                    dissolveBubble: true,
-                    onSequenceComplete: onSequenceComplete,
-                  )
-                else
-                  HatiFrogAvatar(size: frogSize, mood: HatiMood.encourage),
-              ],
-            ),
+        // Bottom-left, clear of the NPC dialogue above and roughly where
+        // the frog sits in every other scene's coach zone — not centered.
+        alignment: const Alignment(-0.7, 0.75),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(
+            maxWidth: HatiLayout.bubbleMaxWidth,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (showBubble && message.isNotEmpty)
+                HatiSpeakingBlock(
+                  key: ValueKey(bubbleKey),
+                  persistentMessage: message,
+                  frogSize: frogSize,
+                  mood: HatiMood.encourage,
+                  // Fades the bubble out a couple seconds after it
+                  // finishes typing, leaving just the frog — it used to
+                  // stay put indefinitely, which could crowd out the
+                  // NPC's own bubble above it in the scrollable area.
+                  dissolveBubble: true,
+                  onSequenceComplete: onSequenceComplete,
+                )
+              else
+                HatiFrogAvatar(size: frogSize, mood: HatiMood.encourage),
+            ],
           ),
         ),
       ),
@@ -585,9 +582,24 @@ class _ApproachTopBar extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(8, 4, 12, 12),
       child: Column(
         children: [
-          const Row(
+          Row(
             children: [
-              Expanded(
+              // Same back-to-modules navigation every other scene's
+              // SceneTopHeader already has — this scene's header is a
+              // separate widget (its own blue/progress-bar styling
+              // predates SceneTopHeader), so it needs its own back button
+              // rather than inheriting one.
+              SizedBox(
+                width: 40,
+                height: 40,
+                child: IconButton(
+                  onPressed: () => Navigator.maybePop(context),
+                  icon: const Icon(Icons.arrow_back, color: Colors.white),
+                  padding: EdgeInsets.zero,
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
+              const Expanded(
                 child: Text(
                   'The Approach',
                   textAlign: TextAlign.center,
@@ -598,7 +610,7 @@ class _ApproachTopBar extends StatelessWidget {
                   ),
                 ),
               ),
-              SizedBox(width: 48),
+              const SizedBox(width: 40),
             ],
           ),
           const SizedBox(height: 4),
@@ -678,6 +690,13 @@ class _SpeakerBlock {
   // names two professors. Shown as a small avatar row above the narration
   // instead of leaving a reaction beat with nobody pictured.
   final List<String> narratorSprites;
+  // Same narration, split one sentence per mentioned character (sprite,
+  // sentence) — e.g. [(reyesSprite, "Sir Reyes nods."), (santosSprite,
+  // "Sir Santos smiles slightly."), ...]. Lets a multi-character reaction
+  // beat reveal one character at a time instead of dumping the whole panel
+  // on screen at once (QA: "make the npc appears then disappear so it
+  // wont cramp up the scenario").
+  final List<(String, String)> narratorBeats;
 
   _SpeakerBlock({
     required this.key,
@@ -686,7 +705,43 @@ class _SpeakerBlock {
     required this.spriteAsset,
     required this.lines,
     List<String>? narratorSprites,
-  }) : narratorSprites = narratorSprites ?? [];
+    List<(String, String)>? narratorBeats,
+  }) : narratorSprites = narratorSprites ?? [],
+       narratorBeats = narratorBeats ?? [];
+}
+
+/// Splits a multi-character Narrator line like "Sir Reyes nods. Sir Santos
+/// smiles slightly." into one (sprite, sentence) pair per character
+/// mentioned. A sentence matching no known character is folded into the
+/// previous beat's text (same sprite) instead of being dropped or shown
+/// with nobody pictured.
+List<(String, String)> _splitNarratorBeats(
+  String text,
+  List<NpcCharacter> npcCharacters,
+) {
+  final sentences = text
+      .split(RegExp(r'(?<=[.!?])\s+'))
+      .map((s) => s.trim())
+      .where((s) => s.isNotEmpty)
+      .toList();
+
+  final beats = <(String, String)>[];
+  for (final sentence in sentences) {
+    NpcCharacter? match;
+    for (final ch in npcCharacters) {
+      if (ch.matches(sentence)) {
+        match = ch;
+        break;
+      }
+    }
+    if (match != null) {
+      beats.add((match.sprites.blink, sentence));
+    } else if (beats.isNotEmpty) {
+      final last = beats.removeLast();
+      beats.add((last.$1, '${last.$2} $sentence'));
+    }
+  }
+  return beats;
 }
 
 /// "User (impulse):" / "User:" lines (a couple of fsg_party/fne_stage
@@ -750,12 +805,14 @@ List<_SpeakerBlock> _buildSpeakerBlocks(
     }
 
     List<String> mentionedSprites = const [];
+    List<(String, String)> beats = const [];
     if (isNarrator) {
       final seenIds = <String>{};
       mentionedSprites = [
         for (final ch in config.npcCharacters)
           if (ch.matches(text) && seenIds.add(ch.id)) ch.sprites.blink,
       ];
+      beats = _splitNarratorBeats(text, config.npcCharacters);
     }
 
     if (key == currentKey && current != null) {
@@ -765,6 +822,7 @@ List<_SpeakerBlock> _buildSpeakerBlocks(
           current.narratorSprites.add(sprite);
         }
       }
+      current.narratorBeats.addAll(beats);
     } else {
       current = _SpeakerBlock(
         key: key,
@@ -773,6 +831,7 @@ List<_SpeakerBlock> _buildSpeakerBlocks(
         spriteAsset: spriteAsset,
         lines: [text],
         narratorSprites: mentionedSprites,
+        narratorBeats: beats,
       );
       blocks.add(current);
       currentKey = key;
@@ -827,30 +886,16 @@ class _SpeakerBlockWidget extends StatelessWidget {
       if (block.narratorSprites.length <= 1) {
         return _CharacterSpeechBubble(text: text, italic: true);
       }
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              for (final sprite in block.narratorSprites) ...[
-                sprite.endsWith('.riv')
-                    ? NpcRiveSprite(
-                        assetPath: sprite,
-                        height: _narratorAvatarSize,
-                      )
-                    : Image.asset(
-                        sprite,
-                        height: _narratorAvatarSize,
-                        fit: BoxFit.contain,
-                      ),
-                const SizedBox(width: 6),
-              ],
-            ],
-          ),
-          const SizedBox(height: 6),
-          _CharacterSpeechBubble(text: text, italic: true),
-        ],
+      // Several characters react in the same narration beat (e.g. a
+      // 5-professor panel) — reveal one at a time (sprite fades in, holds,
+      // fades out, next one takes its place) instead of showing every
+      // sprite and the whole combined paragraph at once, which cramped the
+      // scene and made it unclear which line belonged to which reaction.
+      return _SequentialNarratorReveal(
+        beats: block.narratorBeats.isNotEmpty
+            ? block.narratorBeats
+            : [for (final s in block.narratorSprites) (s, text)],
+        avatarSize: _narratorAvatarSize,
       );
     }
     final spriteAsset = block.spriteAsset;
@@ -883,6 +928,104 @@ class _SpeakerBlockWidget extends StatelessWidget {
       children: [
         Flexible(child: bubble),
         if (sprite != null) ...[const SizedBox(width: 8), sprite],
+      ],
+    );
+  }
+}
+
+/// Auto-advances through a multi-character narration one (sprite, sentence)
+/// pair at a time — each shown for a few seconds, faded out, replaced by
+/// the next — instead of dumping every character and the whole combined
+/// paragraph on screen together. Stops on the last beat (stays visible)
+/// rather than disappearing once the cycle finishes, so there's still
+/// something to read afterward. Respects the scene's existing 2x speed
+/// toggle, same as Hati's own typewriter effect.
+class _SequentialNarratorReveal extends StatefulWidget {
+  final List<(String, String)> beats;
+  final double avatarSize;
+
+  const _SequentialNarratorReveal({
+    required this.beats,
+    required this.avatarSize,
+  });
+
+  @override
+  State<_SequentialNarratorReveal> createState() =>
+      _SequentialNarratorRevealState();
+}
+
+class _SequentialNarratorRevealState extends State<_SequentialNarratorReveal> {
+  int _index = 0;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _scheduleNext();
+  }
+
+  @override
+  void didUpdateWidget(covariant _SequentialNarratorReveal oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.beats != oldWidget.beats) {
+      _index = 0;
+      _scheduleNext();
+    }
+  }
+
+  void _scheduleNext() {
+    _timer?.cancel();
+    if (_index >= widget.beats.length - 1) return;
+    final sentence = widget.beats[_index].$2;
+    // Roughly reading-time-scaled (base + per-character), clamped to a
+    // sane range so a short "Sir Cruz nods." and a longer sentence both
+    // get an appropriate hold before advancing.
+    final baseMs = 1400 + sentence.length * 35;
+    final clampedMs = baseMs.clamp(1800, 4200);
+    final ms = HatiSpeechSpeedController.isFast.value
+        ? clampedMs ~/ 2
+        : clampedMs;
+    _timer = Timer(Duration(milliseconds: ms), () {
+      if (!mounted) return;
+      setState(() => _index++);
+      _scheduleNext();
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.beats.isEmpty) return const SizedBox.shrink();
+    final (sprite, sentence) = widget.beats[_index];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 350),
+          child: KeyedSubtree(
+            key: ValueKey(_index),
+            child: sprite.endsWith('.riv')
+                ? NpcRiveSprite(assetPath: sprite, height: widget.avatarSize)
+                : Image.asset(
+                    sprite,
+                    height: widget.avatarSize,
+                    fit: BoxFit.contain,
+                  ),
+          ),
+        ),
+        const SizedBox(height: 6),
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 350),
+          child: KeyedSubtree(
+            key: ValueKey(_index),
+            child: _CharacterSpeechBubble(text: sentence, italic: true),
+          ),
+        ),
       ],
     );
   }
@@ -982,68 +1125,82 @@ class _ApproachInputBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // SafeArea(top: false) — without it, a phone using gesture navigation
+    // (no physical/on-screen button bar reserving its own space) draws its
+    // nav bar directly on top of this fixed 12px bottom padding, covering
+    // part of the text field and send button. The sibling single-button
+    // "Continue" branch right below this one in scene3_interaction.dart
+    // already wraps in SafeArea for the same reason.
     return Container(
       color: Colors.white,
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 48,
-            height: 48,
-            child: isTranscribing
-                ? const Center(
-                    child: SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.4,
-                        color: _kApproachBlue,
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 48,
+                height: 48,
+                child: isTranscribing
+                    ? const Center(
+                        child: SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.4,
+                            color: _kApproachBlue,
+                          ),
+                        ),
+                      )
+                    : IconButton(
+                        icon: Icon(
+                          isRecording
+                              ? Icons.stop_circle_rounded
+                              : Icons.mic_none_rounded,
+                          color: isRecording
+                              ? Colors.red
+                              : (enabled ? _kApproachBlue : Colors.grey),
+                          size: 28,
+                        ),
+                        onPressed: (enabled || isRecording) ? onMicTap : null,
                       ),
+              ),
+              Expanded(
+                child: TextField(
+                  controller: controller,
+                  enabled: enabled,
+                  onSubmitted: enabled ? (_) => onSend() : null,
+                  decoration: InputDecoration(
+                    hintText: hintText,
+                    hintStyle: TextStyle(
+                      color: Colors.grey.shade500,
+                      fontSize: 15,
                     ),
-                  )
-                : IconButton(
-                    icon: Icon(
-                      isRecording
-                          ? Icons.stop_circle_rounded
-                          : Icons.mic_none_rounded,
-                      color: isRecording
-                          ? Colors.red
-                          : (enabled ? _kApproachBlue : Colors.grey),
-                      size: 28,
+                    filled: true,
+                    fillColor: const Color(0xFFF0F0F0),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
                     ),
-                    onPressed: (enabled || isRecording) ? onMicTap : null,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24),
+                      borderSide: BorderSide.none,
+                    ),
                   ),
-          ),
-          Expanded(
-            child: TextField(
-              controller: controller,
-              enabled: enabled,
-              onSubmitted: enabled ? (_) => onSend() : null,
-              decoration: InputDecoration(
-                hintText: hintText,
-                hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 15),
-                filled: true,
-                fillColor: const Color(0xFFF0F0F0),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(24),
-                  borderSide: BorderSide.none,
                 ),
               ),
-            ),
+              const SizedBox(width: 4),
+              IconButton(
+                icon: Icon(
+                  Icons.send_rounded,
+                  color: enabled ? _kApproachBlue : Colors.grey,
+                ),
+                onPressed: enabled ? onSend : null,
+              ),
+            ],
           ),
-          const SizedBox(width: 4),
-          IconButton(
-            icon: Icon(
-              Icons.send_rounded,
-              color: enabled ? _kApproachBlue : Colors.grey,
-            ),
-            onPressed: enabled ? onSend : null,
-          ),
-        ],
+        ),
       ),
     );
   }

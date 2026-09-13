@@ -29,6 +29,12 @@ class Scene5Coping extends StatefulWidget {
 class _Scene5CopingState extends State<Scene5Coping> {
   String? _trackedStep;
   bool _dialogueComplete = false;
+  // 'scene5_coping_done' no longer carries the tool text in its own
+  // messages (the backend's reply there is just "Great. Try it now.") —
+  // remembered here from the prior 'scene5_coping' step so the walkthrough
+  // can actually reflect whichever strategy was assigned (Anchor, Reframe,
+  // Savoring, ...) instead of always showing a generic grounding script.
+  String _lastToolText = '';
 
   @override
   Widget build(BuildContext context) {
@@ -54,6 +60,7 @@ class _Scene5CopingState extends State<Scene5Coping> {
       persistentMessage = parsedTexts.join('\n\n');
       body = _PracticeWalkthrough(
         key: const ValueKey('practice'),
+        strategy: _lastToolText,
         isLoading: provider.isLoading,
         onFinished: () => provider.submitText(
           provider.ui.options.isNotEmpty
@@ -72,6 +79,7 @@ class _Scene5CopingState extends State<Scene5Coping> {
         introText,
         questionText,
       ].where((s) => s.isNotEmpty).join('\n\n');
+      if (toolText.isNotEmpty) _lastToolText = toolText;
       body = _CopingStrategyCard(key: ValueKey(step), strategy: toolText);
       bottomBar = Column(
         mainAxisSize: MainAxisSize.min,
@@ -178,14 +186,20 @@ class _CopingStrategyCard extends StatelessWidget {
   }
 }
 
-/// Client-only grounding walkthrough. Not driven by the backend — the
-/// backend only expects to hear "I'm done" once this completes.
+/// Client-only practice walkthrough. Not driven by the backend — the
+/// backend only expects to hear "I'm done" once this completes. [strategy]
+/// is whichever tool text `_scene5_coping` actually assigned (Anchor,
+/// Reframe, Savoring, grounding, ...) — the first step below surfaces that
+/// exact text instead of a generic script, so the walkthrough always
+/// matches what Hati said the strategy was, whatever it happened to be.
 class _PracticeWalkthrough extends StatefulWidget {
+  final String strategy;
   final bool isLoading;
   final VoidCallback onFinished;
 
   const _PracticeWalkthrough({
     super.key,
+    required this.strategy,
     required this.isLoading,
     required this.onFinished,
   });
@@ -195,12 +209,13 @@ class _PracticeWalkthrough extends StatefulWidget {
 }
 
 class _PracticeWalkthroughState extends State<_PracticeWalkthrough> {
-  static const _steps = [
-    'Press your feet flat into the floor right now. Feel the ground beneath you.',
-    'Feel your back against your seat. Notice its support.',
+  late final List<String> _steps = [
+    widget.strategy.isNotEmpty
+        ? widget.strategy
+        : 'Take a moment to settle in with the strategy Hati just gave you.',
     'Take a slow breath in for 4 counts... hold for 2... out for 6.',
     'Now say your first line silently in your head three times.',
-    "Good. You're grounded. That's the skill.",
+    "Good. That's the skill—carry it with you.",
   ];
 
   int _step = 0;

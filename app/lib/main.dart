@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'features/onboarding/loading_screen.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -7,6 +8,14 @@ import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Explicit, not left to whatever a given Android/OEM build defaults to —
+  // without this, some 3-button-nav OEM skins report an inconsistent (or
+  // zero) bottom WindowInsets value to Flutter's MediaQuery even though the
+  // nav bar visually still occupies that space, which is what let bottom
+  // action bars/buttons render underneath it (QA: "Continue button being
+  // covered up"). Forcing edgeToEdge makes every system bar transparent and
+  // inset-reported consistently, so SafeArea's padding.bottom is reliable.
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );

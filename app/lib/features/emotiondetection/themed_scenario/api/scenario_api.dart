@@ -26,12 +26,23 @@ class ScenarioApi {
   /// no error — the scenario looks "stuck loading" forever instead of
   /// failing visibly. This caps every request so ScenarioProvider's
   /// try/catch always gets a chance to surface a real error message.
-  static const Duration _requestTimeout = Duration(seconds: 15);
+  ///
+  /// 60s, not 15s: the backend runs on Azure Container Apps' consumption
+  /// plan, which scales to zero when idle — a "cold start" has to boot
+  /// Python, load VGGish, 4 from-scratch ensemble members, the fine-tuned
+  /// text model, and Whisper before it can answer its first request. QA
+  /// testing (ver 1.0) hit exactly this: a real, reachable backend that
+  /// just hadn't finished starting up yet inside the old 15s window,
+  /// which _throwUnreachable()'s wording below misleadingly blamed on the
+  /// user's network instead.
+  static const Duration _requestTimeout = Duration(seconds: 60);
 
   Never _throwUnreachable() {
     throw Exception(
-      "Couldn't reach the scenario server at $baseUrl. Make sure it's "
-      "running and that this device is on the same network.",
+      "Couldn't reach the scenario server. It may still be starting up "
+      "(this can take up to a minute after being idle) — please try "
+      "again in a moment. If it still doesn't connect, check that this "
+      "device has a working internet connection.",
     );
   }
 

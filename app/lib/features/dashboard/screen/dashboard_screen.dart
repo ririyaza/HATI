@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show SystemNavigator;
 
 import '../../postAssessment/data/reassessment_notification_service.dart';
 import '../widgets/dashboard_tour_overlay.dart';
@@ -103,59 +104,99 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
-        children: [
-          IndexedStack(
-            index: _selectedIndex,
-            children: _screens,
+  Future<bool> _confirmExit() async {
+    final shouldExit = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Exit HATI?'),
+        content: const Text('Are you sure you want to close the app?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
           ),
-          if (_selectedIndex != _profileTabIndex || _tourActive)
-            Positioned.fill(
-              child: DraggableHelpButton(
-                buttonKey: _tourKeys.helpButtonKey,
-                onReplayTour: _replayTour,
-              ),
-            ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Exit'),
+          ),
         ],
       ),
-      bottomNavigationBar: SafeArea(
-        child: BottomNavigationBar(
-          key: _tourKeys.navBarKey,
-          currentIndex: _selectedIndex,
-          onTap: _onItemTapped,
-          type: BottomNavigationBarType.fixed,
-          backgroundColor: Colors.white,
-          selectedItemColor: const Color(0xFF007AFF),
-          unselectedItemColor: Colors.grey,
-          selectedLabelStyle: const TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 12,
-          ),
-          unselectedLabelStyle: const TextStyle(
-            fontWeight: FontWeight.w500,
-            fontSize: 12,
-          ),
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home),
-              label: 'Home',
+    );
+    return shouldExit ?? false;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      // This is the dashboard shell sitting at the root of the nav stack
+      // (login reaches it via pushReplacement, so there's nothing behind
+      // it) — without this, the system back button had no PopScope/
+      // WillPopScope anywhere in the app to intercept it and just exited
+      // immediately on any tab, and on non-Home tabs there was no way to
+      // "back" to Home first.
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        if (_selectedIndex != 0) {
+          setState(() => _selectedIndex = 0);
+          return;
+        }
+        if (await _confirmExit()) {
+          if (mounted) SystemNavigator.pop();
+        }
+      },
+      child: Scaffold(
+        body: Stack(
+          children: [
+            IndexedStack(
+              index: _selectedIndex,
+              children: _screens,
             ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.extension),
-              label: 'Modules',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.trending_up),
-              label: 'Progress',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.person),
-              label: 'Profile',
-            ),
+            if (_selectedIndex != _profileTabIndex || _tourActive)
+              Positioned.fill(
+                child: DraggableHelpButton(
+                  buttonKey: _tourKeys.helpButtonKey,
+                  onReplayTour: _replayTour,
+                ),
+              ),
           ],
+        ),
+        bottomNavigationBar: SafeArea(
+          child: BottomNavigationBar(
+            key: _tourKeys.navBarKey,
+            currentIndex: _selectedIndex,
+            onTap: _onItemTapped,
+            type: BottomNavigationBarType.fixed,
+            backgroundColor: Colors.white,
+            selectedItemColor: const Color(0xFF007AFF),
+            unselectedItemColor: Colors.grey,
+            selectedLabelStyle: const TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 12,
+            ),
+            unselectedLabelStyle: const TextStyle(
+              fontWeight: FontWeight.w500,
+              fontSize: 12,
+            ),
+            items: const [
+              BottomNavigationBarItem(
+                icon: Icon(Icons.home),
+                label: 'Home',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.extension),
+                label: 'Modules',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.trending_up),
+                label: 'Progress',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.person),
+                label: 'Profile',
+              ),
+            ],
+          ),
         ),
       ),
     );

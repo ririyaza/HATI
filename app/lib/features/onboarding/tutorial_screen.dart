@@ -33,7 +33,7 @@ const _slides = [
         'HATI is your private, gamified companion, here to help you '
         'understand and manage social anxiety symptoms at your own pace, '
         'anytime you need it.',
-    accentColor: Color(0xFFFF9500),
+    accentColor: Color(0xFF64B5F6),
   ),
   _TutorialSlide(
     icon: Icons.assignment_outlined,
@@ -43,7 +43,7 @@ const _slides = [
         'Answer 17 quick questions so HATI can understand your anxiety '
         'triggers. Your profile is completely private and used only to '
         'personalise your experience.',
-    accentColor: Color(0xFFFF9500),
+    accentColor: Color(0xFF64B5F6),
   ),
   _TutorialSlide(
     icon: Icons.extension_outlined,
@@ -53,7 +53,7 @@ const _slides = [
         'Choose from social scenarios tailored to your profile, like finding '
         'a seat in a crowded room or talking to strangers. HATI guides you '
         'step by step and adapts to how you feel.',
-    accentColor: Color(0xFFFF9500),
+    accentColor: Color(0xFF64B5F6),
   ),
   _TutorialSlide(
     icon: Icons.mic_outlined,
@@ -63,7 +63,7 @@ const _slides = [
         'Type or speak your responses. HATI analyses your text and optional '
         'voice input in real time to detect your emotional state and offer '
         'the right coping strategy at the right moment.',
-    accentColor: Color(0xFFFF9500),
+    accentColor: Color(0xFF64B5F6),
   ),
   _TutorialSlide(
     icon: Icons.trending_up_rounded,
@@ -73,7 +73,7 @@ const _slides = [
         'The Progress tab shows your completed scenarios, daily streak, '
         'emotion trends, and badges earned, giving you a clear picture of '
         'how far you\'ve come.',
-    accentColor: Color(0xFFFF9500),
+    accentColor: Color(0xFF64B5F6),
   ),
   _TutorialSlide(
     icon: Icons.favorite_outline_rounded,
@@ -83,7 +83,7 @@ const _slides = [
         'HATI supplements professional care, but it\'s not a replacement '
         'for it. If you ever feel overwhelmed, the app will guide you to '
         'counselling resources. Your well-being always comes first.',
-    accentColor: Color(0xFFFF9500),
+    accentColor: Color(0xFF64B5F6),
   ),
 ];
 
@@ -285,7 +285,7 @@ class _TutorialScreenState extends State<TutorialScreen>
                             style: TextStyle(
                               color: isLast
                                   ? Colors.white
-                                  : const Color(0xFFFF9500),
+                                  : const Color(0xFF0B28D9),
                               fontSize: 16,
                               fontWeight: FontWeight.w700,
                             ),

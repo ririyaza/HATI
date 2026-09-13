@@ -288,7 +288,21 @@ class _ScenarioDashboardScene extends StatelessWidget {
       _maybeShowBadgeUnlock(context, provider);
     });
 
-    return Scaffold(
+    return PopScope(
+      // Mirrors the "Close" button's onTap below — without this, leaving
+      // via the system back button (or the dashboard's own back-to-Home
+      // interception) never tells the backend this scenario finished, so
+      // current_step stays "scene7_dashboard" forever and
+      // get_unfinished_scenarios() keeps treating it as incomplete,
+      // resurfacing "Resume Scenario?" for a scenario the user already
+      // completed and closed out of.
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        provider.submitText('Close');
+        Navigator.pop(context);
+      },
+      child: Scaffold(
       body: Stack(
         children: [
           Container(
@@ -380,6 +394,7 @@ class _ScenarioDashboardScene extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }

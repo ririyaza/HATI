@@ -59,26 +59,31 @@ class DashboardUserData {
       image: 'assets/badges/first_step.png',
       label: 'First Step',
       earned: badgeProgress.earnedBadges.containsKey('first_step'),
+      description: 'Complete your first scenario.',
     ),
     BadgeData(
       image: 'assets/badges/streak.png',
       label: '5-Day\nStreak',
       earned: badgeProgress.earnedBadges.containsKey('five_day_streak'),
+      description: 'Complete a scenario 5 days in a row.',
     ),
     BadgeData(
       image: 'assets/badges/half_way.png',
       label: 'Half Way!',
       earned: badgeProgress.earnedBadges.containsKey('halfway'),
+      description: 'Complete at least half of all practice scenarios.',
     ),
     BadgeData(
       image: 'assets/badges/quick_thinker.png',
       label: 'Quick\nThinker',
       earned: badgeProgress.earnedBadges.containsKey('quick_thinker'),
+      description: 'Finish a scenario within its target time.',
     ),
     BadgeData(
       image: 'assets/badges/sharpshooter.png',
       label: 'Sharpshooter',
       earned: badgeProgress.earnedBadges.containsKey('sharpshooter'),
+      description: 'Complete 3 scenarios in a row successfully.',
     ),
   ];
 }
@@ -152,11 +157,13 @@ class BadgeData {
     required this.image,
     required this.label,
     required this.earned,
+    required this.description,
   });
 
   final String image;
   final String label;
   final bool earned;
+  final String description;
 }
 
 class DashboardDataService {
@@ -267,7 +274,7 @@ class DashboardUserDataParser {
   // "scenarios completed out of N" agrees with what unlocks Halfway.
   static const _knownModules = {
     'foa_supervisor': _ModuleDefinition(
-      title: "The Professor's Signature",
+      title: "The Professor's Request",
       subtitle: 'Fear of Authority - 1 scenario',
       icon: 'P',
       totalScenarios: 1,
