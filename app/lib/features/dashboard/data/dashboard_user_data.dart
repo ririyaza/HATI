@@ -83,7 +83,12 @@ class DashboardUserData {
       image: 'assets/badges/sharpshooter.png',
       label: 'Sharpshooter',
       earned: badgeProgress.earnedBadges.containsKey('sharpshooter'),
-      description: 'Complete 3 scenarios in a row successfully.',
+      // "Successfully" alone didn't say what actually counts — it's not
+      // about finishing the scenario, it's about how your response in the
+      // NPC interaction gets classified (confident vs. anxious/freeze/
+      // anger/leave — see _classify_outcome in scenario_engine.py).
+      description:
+          'Respond confidently during the NPC interaction, 3 scenarios in a row.',
     ),
   ];
 }
