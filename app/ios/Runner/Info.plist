@@ -26,6 +26,33 @@
 		<string>$(FLUTTER_BUILD_NUMBER)</string>
 		<key>LSRequiresIPhoneOS</key>
 		<true/>
+		<key>CFBundleURLTypes</key>
+		<array>
+			<dict>
+				<key>CFBundleURLSchemes</key>
+				<array>
+					<string>com.googleusercontent.apps.523234567617-mlj5pksd0kv9dhm8r2lki7nsils7pj7s</string>
+				</array>
+			</dict>
+			<dict>
+				<key>CFBundleURLSchemes</key>
+				<array>
+					<string>fb1782107466305005</string>
+				</array>
+			</dict>
+		</array>
+		<key>FacebookAppID</key>
+		<string>1782107466305005</string>
+		<key>FacebookClientToken</key>
+		<string>3890cc9d9cf552e6a5c654b99549645e</string>
+		<key>FacebookDisplayName</key>
+		<string>HATI</string>
+		<key>LSApplicationQueriesSchemes</key>
+		<array>
+			<string>fbapi</string>
+			<string>fbauth2</string>
+			<string>fbshareextension</string>
+		</array>
 		<key>NSPhotoLibraryUsageDescription</key>
 		<string>HATI lets you choose a profile picture from your photo library.</string>
 		<key>NSMicrophoneUsageDescription</key>

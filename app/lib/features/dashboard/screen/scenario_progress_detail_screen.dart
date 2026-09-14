@@ -19,14 +19,19 @@ class ScenarioProgressDetailScreen extends StatefulWidget {
 
   static const _blue = Color(0xFF0B28D9);
 
+  // PNG (not SVG): these are flattened raster exports of the Hati_emojis
+  // source art. flutter_svg doesn't reliably support the layered/masked
+  // SVG features the originals use (embedded raster fills clipped by
+  // vector paths), which renders as a blank/silhouette image — see the
+  // same tradeoff in scenario_models.dart's placeholderAsset.
   static const _emojis = {
-    'anxious': '😰',
-    'happy': '😊',
-    'neutral': '😐',
-    'sad': '😢',
-    'anger': '😠',
-    'disgust': '🤢',
-    'surprised': '😲',
+    'anxious': 'assets/Hati_emojis/hati_anxious.png',
+    'happy': 'assets/Hati_emojis/hati_happy.png',
+    'neutral': 'assets/Hati_emojis/hati_neutral.png',
+    'sad': 'assets/Hati_emojis/hati_sad.png',
+    'anger': 'assets/Hati_emojis/hati_mad.png',
+    'disgust': 'assets/Hati_emojis/hati_disgust.png',
+    'surprised': 'assets/Hati_emojis/hati_surprised.png',
   };
 
   @override
@@ -111,10 +116,12 @@ class _ScenarioProgressDetailScreenState
                   final dominant = total == 0
                       ? null
                       : scores.reduce((a, b) => b.value > a.value ? b : a);
-                  final emoji = dominant == null
-                      ? '🙂'
+                  const defaultEmojiAsset =
+                      'assets/Hati_emojis/hati_neutral.png';
+                  final emojiAsset = dominant == null
+                      ? defaultEmojiAsset
                       : (ScenarioProgressDetailScreen._emojis[dominant.key] ??
-                            '🙂');
+                            defaultEmojiAsset);
 
                   final String headline;
                   final String body;
@@ -141,7 +148,7 @@ class _ScenarioProgressDetailScreenState
                     padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
                     child: Column(
                       children: [
-                        _EmotionGlowCircle(emoji: emoji),
+                        _EmotionGlowCircle(emojiAsset: emojiAsset),
                         const SizedBox(height: 28),
                         Text(
                           headline,
@@ -214,9 +221,9 @@ class _EmotionScore {
 }
 
 class _EmotionGlowCircle extends StatelessWidget {
-  const _EmotionGlowCircle({required this.emoji});
+  const _EmotionGlowCircle({required this.emojiAsset});
 
-  final String emoji;
+  final String emojiAsset;
 
   @override
   Widget build(BuildContext context) {
@@ -247,7 +254,8 @@ class _EmotionGlowCircle extends StatelessWidget {
               color: Color(0xFF4C2E8F),
             ),
             alignment: Alignment.center,
-            child: Text(emoji, style: const TextStyle(fontSize: 56)),
+            padding: const EdgeInsets.all(20),
+            child: Image.asset(emojiAsset),
           ),
         ],
       ),
