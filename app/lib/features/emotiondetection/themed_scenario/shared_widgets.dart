@@ -17,6 +17,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:record/record.dart';
 import 'package:rive/rive.dart'
     show
         Factory,
@@ -310,16 +312,16 @@ class ScriptOptionCard extends StatelessWidget {
           margin: const EdgeInsets.only(bottom: 10),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: selected ? HatiColors.mossGreen : Colors.white,
+            color: selected ? const Color(0xFF0B28D9) : Colors.white,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: selected ? HatiColors.mossGreen : HatiColors.divider,
+              color: selected ? const Color(0xFF0B28D9) : HatiColors.divider,
               width: selected ? 2 : 1,
             ),
             boxShadow: selected
                 ? [
                     BoxShadow(
-                      color: HatiColors.mossGreen.withValues(alpha: 0.3),
+                      color: const Color(0xFF0B28D9).withValues(alpha: 0.3),
                       blurRadius: 8,
                       offset: const Offset(0, 3),
                     ),
@@ -344,7 +346,7 @@ class ScriptOptionCard extends StatelessWidget {
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       color: selected
-                          ? HatiColors.mossGreen
+                          ? const Color(0xFF0B28D9)
                           : HatiColors.textMedium,
                       fontSize: 13,
                     ),
@@ -389,7 +391,11 @@ class HatiButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bg = color ?? HatiColors.mossGreen;
+    // Brand blue default — every call site that doesn't explicitly
+    // override color() used to fall back to green, which is why so many
+    // buttons across the app stayed green even after the rest of the UI
+    // moved to blue.
+    final bg = color ?? const Color(0xFF0B28D9);
     Widget content = Row(
       mainAxisSize: fullWidth ? MainAxisSize.max : MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
@@ -465,7 +471,7 @@ class HatiOutlineButton extends StatelessWidget {
             color: Colors.transparent,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: borderColor ?? HatiColors.mossGreen,
+              color: borderColor ?? const Color(0xFF0B28D9),
               width: 1.5,
             ),
           ),
@@ -473,7 +479,7 @@ class HatiOutlineButton extends StatelessWidget {
             child: Text(
               label,
               style: HatiTextStyles.button.copyWith(
-                color: borderColor ?? HatiColors.mossGreen,
+                color: borderColor ?? const Color(0xFF0B28D9),
               ),
             ),
           ),
@@ -807,6 +813,15 @@ class TextResponseCard extends StatefulWidget {
   final int maxLines;
   final ValueChanged<String> onSubmit;
 
+  /// Called with the path to a just-recorded WAV file once the mic button
+  /// is tapped to stop recording — the caller owns actually submitting it
+  /// (typically `provider.submitAudio(path, userId: ...)`), since this
+  /// widget deliberately has no ScenarioProvider dependency of its own
+  /// (see the file header). Leaving this null hides the mic button
+  /// entirely, so existing callers that haven't wired it up yet keep their
+  /// current text-only behavior.
+  final Future<void> Function(String audioPath)? onSubmitAudio;
+
   const TextResponseCard({
     super.key,
     this.hintText = 'Type your response...',
@@ -814,6 +829,7 @@ class TextResponseCard extends StatefulWidget {
     this.isLoading = false,
     this.maxLines = 3,
     required this.onSubmit,
+    this.onSubmitAudio,
   });
 
   @override
@@ -822,54 +838,148 @@ class TextResponseCard extends StatefulWidget {
 
 class _TextResponseCardState extends State<TextResponseCard> {
   final TextEditingController _controller = TextEditingController();
+  final AudioRecorder _record = AudioRecorder();
+  bool _isRecording = false;
+  bool _isTranscribing = false;
+
+  Future<void> _startRecording() async {
+    if (await _record.hasPermission()) {
+      final dir = await getTemporaryDirectory();
+      final path = '${dir.path}/text_response_record.wav';
+      await _record.start(
+        const RecordConfig(
+          encoder: AudioEncoder.wav,
+          sampleRate: 16000,
+          numChannels: 1,
+          bitRate: 256000,
+        ),
+        path: path,
+      );
+      if (mounted) setState(() => _isRecording = true);
+    } else if (mounted) {
+      // Same wording as _ApproachInputBar's identical fallback in
+      // scene3_interaction.dart — denying mic access isn't a dead end,
+      // typing still works, just needs to say so.
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            "Microphone access is off, so voice input isn't available "
+            "right now — you can still type your response below. To use "
+            "voice, allow microphone access for HATI in your device's "
+            "Settings.",
+          ),
+          duration: Duration(seconds: 5),
+        ),
+      );
+    }
+  }
+
+  Future<void> _stopRecording() async {
+    final path = await _record.stop();
+    if (!mounted) return;
+    setState(() => _isRecording = false);
+    if (path == null || widget.onSubmitAudio == null) return;
+
+    setState(() => _isTranscribing = true);
+    try {
+      await widget.onSubmitAudio!(path);
+    } finally {
+      if (mounted) setState(() => _isTranscribing = false);
+    }
+  }
 
   @override
   void dispose() {
     _controller.dispose();
+    _record.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final canSubmit = !widget.isLoading && _controller.text.trim().isNotEmpty;
-    // Same rounded-pill shape as the NPC interaction's own text input
-    // (_ApproachInputBar in scene3_interaction.dart) — a light grey fill
-    // with the send arrow inline inside the field, rather than the old
-    // boxed outline + separate full-width button below it, so every
-    // "type a custom response" moment in the app looks like one
-    // consistent input, not two different designs.
-    return TextField(
-      controller: _controller,
-      maxLines: widget.maxLines,
-      minLines: 1,
-      enabled: !widget.isLoading,
-      onChanged: (_) => setState(() {}),
-      onSubmitted: (_) {
-        if (canSubmit) widget.onSubmit(_controller.text.trim());
-      },
-      decoration: InputDecoration(
-        hintText: widget.hintText,
-        hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 15),
-        filled: true,
-        fillColor: const Color(0xFFF0F0F0),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 12,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(24),
-          borderSide: BorderSide.none,
-        ),
-        suffixIcon: IconButton(
-          icon: Icon(
-            Icons.send_rounded,
-            color: canSubmit ? const Color(0xFF0B28D9) : Colors.grey,
+    final busy = widget.isLoading || _isRecording || _isTranscribing;
+    final canSubmit = !busy && _controller.text.trim().isNotEmpty;
+    const blue = Color(0xFF0B28D9);
+    // Mic button lives OUTSIDE the TextField (a Row sibling), not as a
+    // prefixIcon — this used to be a prefixIcon, but TextField(enabled:
+    // false) blocks taps on its own decoration icons, so the moment
+    // recording started (enabled flips to false via `busy`) the stop
+    // button became untappable and recording could never be stopped.
+    // _ApproachInputBar in scene3_interaction.dart already solved this
+    // the same way, which is what this now mirrors.
+    final micEnabled = !widget.isLoading && !_isTranscribing;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        if (widget.onSubmitAudio != null)
+          SizedBox(
+            width: 44,
+            height: 44,
+            child: _isTranscribing
+                ? const Center(
+                    child: SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2.4),
+                    ),
+                  )
+                : IconButton(
+                    icon: Icon(
+                      _isRecording
+                          ? Icons.stop_circle_rounded
+                          : Icons.mic_none_rounded,
+                      color: _isRecording
+                          ? Colors.red
+                          : (micEnabled ? blue : Colors.grey),
+                    ),
+                    // Stays tappable while recording even though the field
+                    // itself is "disabled" at that point — otherwise this
+                    // is the same untappable-stop-button bug all over again.
+                    onPressed: (micEnabled || _isRecording)
+                        ? (_isRecording ? _stopRecording : _startRecording)
+                        : null,
+                  ),
           ),
-          onPressed: canSubmit
-              ? () => widget.onSubmit(_controller.text.trim())
-              : null,
+        Expanded(
+          child: TextField(
+            controller: _controller,
+            maxLines: widget.maxLines,
+            minLines: 1,
+            enabled: !busy,
+            onChanged: (_) => setState(() {}),
+            onSubmitted: (_) {
+              if (canSubmit) widget.onSubmit(_controller.text.trim());
+            },
+            decoration: InputDecoration(
+              hintText: _isRecording
+                  ? 'Listening…'
+                  : (_isTranscribing
+                        ? 'Converting your voice…'
+                        : widget.hintText),
+              hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 15),
+              filled: true,
+              fillColor: const Color(0xFFF0F0F0),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(24),
+                borderSide: BorderSide.none,
+              ),
+              suffixIcon: IconButton(
+                icon: Icon(
+                  Icons.send_rounded,
+                  color: canSubmit ? blue : Colors.grey,
+                ),
+                onPressed: canSubmit
+                    ? () => widget.onSubmit(_controller.text.trim())
+                    : null,
+              ),
+            ),
+          ),
         ),
-      ),
+      ],
     );
   }
 }

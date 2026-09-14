@@ -11,6 +11,7 @@
 // chosen integer's string via submitText, exactly like every other turn.
 // ─────────────────────────────────────────────
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'scenario_models.dart';
@@ -97,6 +98,10 @@ class _Scene4DebriefState extends State<Scene4Debrief> {
         hintText: ui.placeholder ?? 'Type your response...',
         isLoading: provider.isLoading,
         onSubmit: provider.submitText,
+        onSubmitAudio: (path) => provider.submitAudio(
+          path,
+          userId: FirebaseAuth.instance.currentUser?.uid ?? '',
+        ),
       );
     }
 

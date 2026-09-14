@@ -457,7 +457,7 @@ class _Scene6ClosingState extends State<Scene6Closing> {
                       child: HatiButton(
                         label: finishLabel,
                         icon: Icons.check_rounded,
-                        color: HatiColors.leafGreen,
+                        color: const Color(0xFF0B28D9),
                         onTap: provider.isLoading
                             ? null
                             : () => provider.submitText(finishLabel),

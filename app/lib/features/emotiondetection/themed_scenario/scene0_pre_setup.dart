@@ -306,7 +306,17 @@ class _Scene0PreSetupState extends State<Scene0PreSetup>
                                       onTap: provider.isLoading
                                           ? null
                                           : () => provider.submitText(beginLabel),
-                                      color: HatiColors.leafGreen,
+                                      // Lighter accent blue — the brand
+                                      // blue (0xFF0B28D9) used everywhere
+                                      // else blended right into this
+                                      // screen's own blue gradient
+                                      // background, so it needs one that
+                                      // actually contrasts here. Same light
+                                      // blue already used for the "Let's
+                                      // Practice More" CTA on a similarly
+                                      // dark-blue background elsewhere in
+                                      // the app.
+                                      color: const Color(0xFF3DA9FC),
                                     ),
                                   )
                                 else

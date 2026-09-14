@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">app</string>
+    <string name="app_name">HATI</string>
 
     <!-- TODO: replace with the values from your Facebook Developer app
          (Settings > Basic) before Facebook login will work. -->
