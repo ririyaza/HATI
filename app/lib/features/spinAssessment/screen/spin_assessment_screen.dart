@@ -150,7 +150,7 @@ class _SpinAssessmentScreenState extends State<SpinAssessmentScreen> {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       final ref = FirebaseFirestore.instance.collection('users').doc(user.uid);
-      try {
+      final saved = await _saveWithRetryDialog(() async {
         await ref.collection('spinAssessments').doc('initial').set({
           'score': totalScore,
           'themeRawScores': themeRawScores,
@@ -164,13 +164,63 @@ class _SpinAssessmentScreenState extends State<SpinAssessmentScreen> {
           'initialSpinCompletedAt': FieldValue.serverTimestamp(),
           'accessBlocked': !spinQualifies(totalScore),
         }, SetOptions(merge: true));
-      } catch (_) {}
+      });
+      // A silently-swallowed failure here used to mean the result screen
+      // still showed normally, but initialSpinCompleted never got written —
+      // so _guardAgainstRetake() wouldn't find it on the next app launch and
+      // would silently force the user back through this whole mandatory
+      // assessment with no explanation. _saveWithRetryDialog already told
+      // them what happened and let them choose to skip; nothing more to do
+      // here besides continuing regardless of the outcome they picked.
+      if (!saved) {
+        debugPrint('SPIN assessment save failed or was skipped by the user.');
+      }
     }
     if (!mounted) return;
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (_) => SpinResultScreen(score: totalScore)),
     );
+  }
+
+  /// Retries [save] on failure via a blocking dialog that explains what
+  /// happened instead of failing silently — returns true once it actually
+  /// succeeds, or false if the user explicitly chooses to skip. Shared by
+  /// every Firestore write in this screen that previously used a bare
+  /// `catch (_) {}`.
+  Future<bool> _saveWithRetryDialog(Future<void> Function() save) async {
+    while (true) {
+      try {
+        await save();
+        return true;
+      } catch (e) {
+        if (!mounted) return false;
+        final action = await showDialog<String>(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => AlertDialog(
+            title: const Text("Couldn't Save Your Results"),
+            content: const Text(
+              "We couldn't save your assessment — please check your "
+              "internet connection. If you skip, your results won't be "
+              "remembered and you may be asked to complete this assessment "
+              "again next time you open the app.",
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, 'skip'),
+                child: const Text('Skip for now'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, 'retry'),
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        );
+        if (action != 'retry') return false;
+      }
+    }
   }
 
   @override

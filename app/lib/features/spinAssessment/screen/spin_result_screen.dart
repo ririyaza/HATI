@@ -64,11 +64,16 @@ class _SpinResultScreenState extends State<SpinResultScreen>
 
     if (user != null) {
       userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
-      try {
-        await userRef.set({
-          if (!_qualifies) 'accessBlocked': true,
-        }, SetOptions(merge: true));
-      } catch (_) {}
+      if (!_qualifies) {
+        // This flag is what actually keeps a low-scoring user out of the
+        // app on their next login (_guardAgainstRetake in
+        // spin_assessment_screen.dart checks it) — silently swallowing a
+        // failure here used to mean the access block just never took
+        // effect, with nothing telling anyone it hadn't saved.
+        await _saveWithRetryDialog(
+          () => userRef!.set({'accessBlocked': true}, SetOptions(merge: true)),
+        );
+      }
     }
 
     if (!mounted) return;
@@ -105,6 +110,42 @@ class _SpinResultScreenState extends State<SpinResultScreen>
             : TriggersAndCopingScreen(score: widget.score),
       ),
     );
+  }
+
+  /// Retries [save] on failure via a blocking dialog that explains what
+  /// happened instead of failing silently — returns true once it actually
+  /// succeeds, or false if the user explicitly chooses to skip.
+  Future<bool> _saveWithRetryDialog(Future<void> Function() save) async {
+    while (true) {
+      try {
+        await save();
+        return true;
+      } catch (e) {
+        if (!mounted) return false;
+        final action = await showDialog<String>(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => AlertDialog(
+            title: const Text("Couldn't Save Your Results"),
+            content: const Text(
+              "We couldn't save your assessment — please check your "
+              "internet connection and try again.",
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, 'skip'),
+                child: const Text('Skip for now'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, 'retry'),
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        );
+        if (action != 'retry') return false;
+      }
+    }
   }
 
   @override
