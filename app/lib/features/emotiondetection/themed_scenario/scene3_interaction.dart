@@ -241,249 +241,209 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
               const _ApproachTopBar(currentStep: 3, totalSteps: 7),
               const SceneSpeedToggleRow(),
               Expanded(
-                // LayoutBuilder just to learn how tall this area actually
-                // is, so Layer 2 below can be capped to a sane fraction of
-                // it — a safety net, not the primary fix (see
-                // isSingleNpcScenario/showSprite above for that): without
-                // any cap, a turn with an unusually long NPC/narrator
-                // exchange could still grow tall enough to crash into the
-                // player's echoed line and Hati beneath it.
-                child: LayoutBuilder(
-                  builder: (context, stackConstraints) {
-                    final npcContentMaxHeight =
-                        stackConstraints.maxHeight * 0.6;
-                    return Stack(
-                      fit: StackFit.expand,
-                      clipBehavior: Clip.none,
-                      // Explicit paint/priority order, back to front: (1)
-                      // the scenario's own background art, (2) the NPC's
-                      // dialogue this turn, (3) the player's own echoed
-                      // last message, (4) Hati himself. Each is its own
-                      // Positioned layer instead of one flex column, so
-                      // none of them are ever scrolled to be read — every
-                      // layer sizes to its own content and simply overlaps
-                      // a layer behind it on the rare turn where there
-                      // isn't room for both, which is fine given the paint
-                      // order above (whatever's in front stays legible).
-                      children: [
-                        // Layer 1 (back): background art.
-                        Image.asset(
-                          config.backgroundAsset,
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                          height: double.infinity,
-                        ),
-                        // Layer 2: the NPC's dialogue this turn — one
-                        // bubble + sprite (or every speaker's block, for
-                        // the 5 multi/single-NPC scenarios), pinned to the
-                        // top of the scene. Clipped (not scrolled) to
-                        // npcContentMaxHeight as a last-resort safety net —
-                        // OverflowBox lets the Column lay out at its real
-                        // (possibly taller) size instead of throwing a
-                        // RenderFlex overflow, and the ClipRect around it
-                        // is what actually crops the excess.
-                        Positioned(
-                          top: 12,
-                          left: 16,
-                          right: 16,
-                          child: SizedBox(
-                            height: npcContentMaxHeight,
-                            child: ClipRect(
-                              child: OverflowBox(
-                                alignment: Alignment.topCenter,
-                                maxHeight: double.infinity,
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: useMultiSpeakerLayout
-                                      ? [
-                                          // One visually distinct block per
-                                          // speaker run this turn: name
-                                          // label + bubble, plus that
-                                          // character's small mood sprite
-                                          // (see _SpeakerBlockWidget below)
-                                          // — so in e.g. the 5-professor
-                                          // panel it's always clear who
-                                          // said which line.
-                                          for (
-                                            var i = 0;
-                                            i < speakerBlocks.length;
-                                            i++
-                                          ) ...[
-                                            _SpeakerBlockWidget(
-                                              block: speakerBlocks[i],
-                                              avatarSize: npcAvatarSize,
-                                              stackVertically: matchesFoaLayout,
-                                              // Single-character scenarios
-                                              // (fsn_seat, phys_jeepney)
-                                              // only show her portrait on
-                                              // the LAST block this turn —
-                                              // see showSprite's doc.
-                                              showSprite:
-                                                  !isSingleNpcScenario ||
-                                                  i == speakerBlocks.length - 1,
-                                            ),
-                                            const SizedBox(height: 10),
-                                          ],
-                                          if (needsSingleNpcFallback)
-                                            Align(
-                                              alignment: Alignment.centerRight,
-                                              child:
-                                                  singleNpcCharacter
-                                                      .sprites
-                                                      .blink
-                                                      .endsWith('.riv')
-                                                  ? NpcRiveSprite(
-                                                      assetPath:
-                                                          singleNpcCharacter
-                                                              .sprites
-                                                              .blink,
-                                                      height: npcAvatarSize,
-                                                    )
-                                                  : Image.asset(
-                                                      singleNpcCharacter
-                                                          .sprites
-                                                          .blink,
-                                                      height: npcAvatarSize,
-                                                      fit: BoxFit.contain,
-                                                    ),
-                                            ),
-                                        ]
-                                      : [
-                                          if (profText.isNotEmpty)
-                                            _CharacterSpeechBubble(
-                                              text: profText,
-                                            ),
-                                          if (activeSpriteAsset != null) ...[
-                                            const SizedBox(height: 8),
-                                            // NPC art is either a static
-                                            // image or a Rive animation
-                                            // (.riv) — Image.asset can't
-                                            // decode Rive's binary format,
-                                            // so branch by extension. Keyed
-                                            // by asset path so switching
-                                            // between the default and angry
-                                            // sprite (different widget
-                                            // subtrees/state) rebuilds
-                                            // cleanly.
-                                            activeSpriteAsset.endsWith('.riv')
-                                                ? NpcRiveSprite(
-                                                    key: ValueKey(
-                                                      activeSpriteAsset,
-                                                    ),
-                                                    assetPath:
-                                                        activeSpriteAsset,
-                                                    height: sceneHeight * 0.34,
-                                                  )
-                                                : Image.asset(
-                                                    activeSpriteAsset,
-                                                    height: sceneHeight * 0.34,
-                                                    fit: BoxFit.contain,
-                                                  ),
-                                          ],
-                                        ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        // Layer 3: the player's own echoed last message — its
-                        // own layer above the NPC's, pinned to the opposite
-                        // (bottom-right) corner from Hati below so the two
-                        // never compete for the same spot.
-                        if (_lastSentText != null && _lastSentText!.isNotEmpty)
-                          Positioned(
-                            left: 96,
-                            right: 16,
-                            bottom: 16,
-                            child: Align(
-                              alignment: Alignment.centerRight,
-                              child: _CharacterSpeechBubble(
-                                text: _lastSentText!,
-                              ),
-                            ),
-                          ),
-                        // Layer 4 (front): Hati. Position and size are fixed —
-                        // he never scales down or shifts to make room for
-                        // anything else on screen. Only his speech bubble
-                        // (rendered above him, see _ApproachHatiLane) grows or
-                        // shrinks with whatever he's saying, and it's free to
-                        // overlap the art/NPC/echo layers behind it since it's
-                        // the frontmost thing in the scene and fades away on
-                        // its own a few seconds after it finishes typing
-                        // anyway (dissolveBubble/autoAdvance below).
-                        Positioned(
-                          left: 8,
-                          bottom: 4,
-                          child: _ApproachHatiLane(
-                            showBubble: hatiText.isNotEmpty,
-                            message: hatiText,
-                            bubbleKey: bubbleKey,
-                            frogSize: _kFrogSize,
-                            onSequenceComplete: () {
-                              if (mounted && !_dialogueComplete) {
-                                setState(() => _dialogueComplete = true);
-                              }
-                            },
-                          ),
-                        ),
-                        // Difficult Mode's branch points (e.g. "Sorry, I just
-                        // wanted to..." / "Never mind." / continue angrily /
-                        // custom) send several real choices, not one default
-                        // "Continue" — show every option instead of silently
-                        // only offering the first. A draggable sheet overlaying
-                        // the dialogue above (matching HatiSceneShell's own
-                        // header+choices sheet everywhere else) rather than a
-                        // fixed-size panel, so the header and the option cards
-                        // drag up together as one unit.
-                        if (dialogueReady &&
-                            !isTextInput &&
-                            !_useCustomResponse &&
-                            provider.ui.options.length > 1)
-                          PopIn(
-                            key: ValueKey(bubbleKey),
-                            child: DraggableChoiceSheet(
-                              header: const SectionHeader(
-                                title: 'Choose Your Response',
-                                subtitle: 'Select one or write your own',
-                              ),
-                              body: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  for (
-                                    var i = 0;
-                                    i < provider.ui.options.length;
-                                    i++
-                                  )
-                                    ScriptOptionCard(
-                                      label: String.fromCharCode(65 + i),
-                                      script: provider.ui.options[i],
-                                      selected: false,
-                                      enabled: !provider.isLoading,
-                                      onTap: provider.isLoading
-                                          ? () {}
-                                          : () => provider.submitText(
-                                              provider.ui.options[i],
-                                            ),
-                                    ),
-                                  // The sheet's own subtitle above promises
-                                  // "write your own" — this is that option:
-                                  // switches to the same textbox+voice bar the
-                                  // free-text turns use instead of submitting
-                                  // one of the pre-written options.
-                                  _CustomResponseCard(
-                                    enabled: !provider.isLoading,
-                                    onTap: () => setState(
-                                      () => _useCustomResponse = true,
-                                    ),
+                child: Stack(
+                  fit: StackFit.expand,
+                  clipBehavior: Clip.none,
+                  // Explicit paint/priority order, back to front: (1) the
+                  // scenario's own background art, (2) the NPC's dialogue
+                  // this turn, (3) the player's own echoed last message,
+                  // (4) Hati himself. Each is its own Positioned layer
+                  // instead of one flex column, so none of them are ever
+                  // scrolled to be read — every layer sizes to its own
+                  // content and simply overlaps a layer behind it on the
+                  // rare turn where there isn't room for both, which is
+                  // fine given the paint order above (whatever's in front
+                  // stays legible). Layer 2 is deliberately NOT height-
+                  // clipped — a 3-speaker turn (e.g. fne_stage's Precious/
+                  // Julia/Carlo) legitimately needs more room than any
+                  // fixed cap would allow, and clipping it silently
+                  // dropped the last speaker's line entirely, which is
+                  // worse than the rare cosmetic overlap letting it grow
+                  // freely can cause.
+                  children: [
+                    // Layer 1 (back): background art.
+                    Image.asset(
+                      config.backgroundAsset,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      height: double.infinity,
+                    ),
+                    // Layer 2: the NPC's dialogue this turn — one bubble +
+                    // sprite (or every speaker's block, for the 5
+                    // multi/single-NPC scenarios), pinned to the top of the
+                    // scene and sized to its own content.
+                    Positioned(
+                      top: 12,
+                      left: 16,
+                      right: 16,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: useMultiSpeakerLayout
+                            ? [
+                                // One visually distinct block per speaker
+                                // run this turn: name label + bubble, plus
+                                // that character's small mood sprite (see
+                                // _SpeakerBlockWidget below) — so in e.g.
+                                // the 5-professor panel it's always clear
+                                // who said which line.
+                                for (
+                                  var i = 0;
+                                  i < speakerBlocks.length;
+                                  i++
+                                ) ...[
+                                  _SpeakerBlockWidget(
+                                    block: speakerBlocks[i],
+                                    avatarSize: npcAvatarSize,
+                                    stackVertically: matchesFoaLayout,
+                                    // Single-character scenarios (fsn_seat,
+                                    // phys_jeepney) only show her portrait
+                                    // on the LAST block this turn — see
+                                    // showSprite's doc.
+                                    showSprite:
+                                        !isSingleNpcScenario ||
+                                        i == speakerBlocks.length - 1,
                                   ),
+                                  const SizedBox(height: 10),
                                 ],
-                              ),
-                            ),
+                                if (needsSingleNpcFallback)
+                                  Align(
+                                    alignment: Alignment.centerRight,
+                                    child:
+                                        singleNpcCharacter.sprites.blink
+                                            .endsWith('.riv')
+                                        ? NpcRiveSprite(
+                                            assetPath: singleNpcCharacter
+                                                .sprites
+                                                .blink,
+                                            height: npcAvatarSize,
+                                          )
+                                        : Image.asset(
+                                            singleNpcCharacter.sprites.blink,
+                                            height: npcAvatarSize,
+                                            fit: BoxFit.contain,
+                                          ),
+                                  ),
+                              ]
+                            : [
+                                if (profText.isNotEmpty)
+                                  _CharacterSpeechBubble(text: profText),
+                                if (activeSpriteAsset != null) ...[
+                                  const SizedBox(height: 8),
+                                  // NPC art is either a static image or a
+                                  // Rive animation (.riv) — Image.asset
+                                  // can't decode Rive's binary format, so
+                                  // branch by extension. Keyed by asset path
+                                  // so switching between the default and
+                                  // angry sprite (different widget
+                                  // subtrees/state) rebuilds cleanly.
+                                  activeSpriteAsset.endsWith('.riv')
+                                      ? NpcRiveSprite(
+                                          key: ValueKey(activeSpriteAsset),
+                                          assetPath: activeSpriteAsset,
+                                          height: sceneHeight * 0.34,
+                                        )
+                                      : Image.asset(
+                                          activeSpriteAsset,
+                                          height: sceneHeight * 0.34,
+                                          fit: BoxFit.contain,
+                                        ),
+                                ],
+                              ],
+                      ),
+                    ),
+                    // Layer 3: the player's own echoed last message — its
+                    // own layer above the NPC's, pinned to the opposite
+                    // (bottom-right) corner from Hati below so the two
+                    // never compete for the same spot.
+                    if (_lastSentText != null && _lastSentText!.isNotEmpty)
+                      Positioned(
+                        left: 96,
+                        right: 16,
+                        bottom: 16,
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: _CharacterSpeechBubble(text: _lastSentText!),
+                        ),
+                      ),
+                    // Layer 4 (front): Hati. Position and size are fixed —
+                    // he never scales down or shifts to make room for
+                    // anything else on screen. Only his speech bubble
+                    // (rendered above him, see _ApproachHatiLane) grows or
+                    // shrinks with whatever he's saying, and it's free to
+                    // overlap the art/NPC/echo layers behind it since it's
+                    // the frontmost thing in the scene and fades away on
+                    // its own a few seconds after it finishes typing
+                    // anyway (dissolveBubble/autoAdvance below).
+                    Positioned(
+                      left: 8,
+                      bottom: 4,
+                      child: _ApproachHatiLane(
+                        showBubble: hatiText.isNotEmpty,
+                        message: hatiText,
+                        bubbleKey: bubbleKey,
+                        frogSize: _kFrogSize,
+                        onSequenceComplete: () {
+                          if (mounted && !_dialogueComplete) {
+                            setState(() => _dialogueComplete = true);
+                          }
+                        },
+                      ),
+                    ),
+                    // Difficult Mode's branch points (e.g. "Sorry, I just
+                    // wanted to..." / "Never mind." / continue angrily /
+                    // custom) send several real choices, not one default
+                    // "Continue" — show every option instead of silently
+                    // only offering the first. A draggable sheet overlaying
+                    // the dialogue above (matching HatiSceneShell's own
+                    // header+choices sheet everywhere else) rather than a
+                    // fixed-size panel, so the header and the option cards
+                    // drag up together as one unit.
+                    if (dialogueReady &&
+                        !isTextInput &&
+                        !_useCustomResponse &&
+                        provider.ui.options.length > 1)
+                      PopIn(
+                        key: ValueKey(bubbleKey),
+                        child: DraggableChoiceSheet(
+                          header: const SectionHeader(
+                            title: 'Choose Your Response',
+                            subtitle: 'Select one or write your own',
                           ),
-                      ],
-                    );
-                  },
+                          body: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              for (
+                                var i = 0;
+                                i < provider.ui.options.length;
+                                i++
+                              )
+                                ScriptOptionCard(
+                                  label: String.fromCharCode(65 + i),
+                                  script: provider.ui.options[i],
+                                  selected: false,
+                                  enabled: !provider.isLoading,
+                                  onTap: provider.isLoading
+                                      ? () {}
+                                      : () => provider.submitText(
+                                          provider.ui.options[i],
+                                        ),
+                                ),
+                              // The sheet's own subtitle above promises
+                              // "write your own" — this is that option:
+                              // switches to the same textbox+voice bar the
+                              // free-text turns use instead of submitting
+                              // one of the pre-written options.
+                              _CustomResponseCard(
+                                enabled: !provider.isLoading,
+                                onTap: () =>
+                                    setState(() => _useCustomResponse = true),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ),
               // The input bar / single continue button stay out of the tree
@@ -949,7 +909,15 @@ class _SpeakerBlockWidget extends StatelessWidget {
   });
 
   static const double defaultAvatarSize = 130;
-  static const double _narratorAvatarSize = 56;
+  // Was 56 — sized on the assumption of several avatars shown side by side
+  // in a row, but _SequentialNarratorReveal only ever shows ONE at a time
+  // (it cycles through reactions instead of dumping them all on screen at
+  // once — see _SequentialNarratorReveal's own doc comment), so there was
+  // no crowding to avoid and the portrait just read as oddly tiny next to
+  // everything else in the scene. Close to defaultAvatarSize now, just
+  // slightly smaller so a reaction beat still reads as lighter-weight than
+  // an actual speaking turn.
+  static const double _narratorAvatarSize = 110;
 
   @override
   Widget build(BuildContext context) {
