@@ -3,16 +3,51 @@ import 'package:flutter/material.dart';
 import '../../dashboard/screen/dashboard_screen.dart';
 import '../../dashboard/screen/support_resources_screen.dart';
 import '../../dashboard/widgets/hati_sprite_animation.dart';
+import '../data/assessment_comparison.dart';
 
-/// Shown when the reassessment comparison is `noChange` or `worsened`:
-/// Hati acknowledges the result, followed by supportive, non-alarming copy
-/// and a path to the same resource list used elsewhere in the app
-/// (`SupportResourcesScreen`), reused as-is here rather than duplicating the
-/// hotline/guidance-center list.
+/// Shown for any [PostAssessmentCategory] whose suggested action encourages
+/// professional support (`category.isReferral`): categories 2, 4, 5, and 6
+/// of the thesis's post-assessment action table. Hati's dialogue reflects
+/// the specific category (SPIN worsened vs. GAD-7 elevated read very
+/// differently), followed by supportive, non-alarming copy and a path to
+/// the same resource list used elsewhere in the app
+/// (`SupportResourcesScreen`), reused as-is here rather than duplicating
+/// the hotline/guidance-center list.
 class ReferralScreen extends StatelessWidget {
-  const ReferralScreen({super.key});
+  const ReferralScreen({super.key, required this.category});
+
+  final PostAssessmentCategory category;
 
   static const _blue = Color(0xFF0B28D9);
+
+  String get _hatiMessage {
+    switch (category) {
+      case PostAssessmentCategory.improvedGad7Elevated:
+        return "Your SPIN score has improved, and that's real progress. "
+            "Your GAD-7 result today points to another area worth "
+            'attention, though — reaching out to a mental health '
+            'professional could help.';
+      case PostAssessmentCategory.noChangeGad7Elevated:
+        return "Your SPIN score hasn't changed much since last time, and "
+            'your GAD-7 result today is elevated. That takes courage to '
+            'see, and talking to a mental health professional could help.';
+      case PostAssessmentCategory.worsenedNotElevated:
+        return 'Your latest SPIN score has gone up since last time. '
+            "That's nothing to be ashamed of — reaching out to a mental "
+            "health professional could help, and I'm still here with you.";
+      case PostAssessmentCategory.worsenedGad7Elevated:
+        return 'Your SPIN score has gone up, and your GAD-7 result today '
+            "is elevated too. I'd strongly encourage reaching out to a "
+            'qualified mental health professional for support.';
+      case PostAssessmentCategory.improvedNoConcerns:
+      case PostAssessmentCategory.improvedStillSignificant:
+      case PostAssessmentCategory.noChangeNotElevated:
+        // Not reachable via `category.isReferral` — kept for exhaustiveness.
+        return 'Your check-in shows things have felt about the same or a '
+            "little harder lately. That's nothing to be ashamed of, and "
+            'support is available whenever you need it.';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,13 +69,9 @@ class ReferralScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              const HatiSpriteAnimation(
+              HatiSpriteAnimation(
                 size: 200,
-                message:
-                    'Your check-in shows things have felt about the same '
-                    "or a little harder lately. That takes courage to see. "
-                    "It doesn't mean you've done anything wrong, and "
-                    "I'm here with you.",
+                message: _hatiMessage,
                 startDelay: Duration.zero,
                 persistBubble: true,
               ),

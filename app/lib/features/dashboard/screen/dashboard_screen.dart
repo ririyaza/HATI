@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show SystemNavigator;
 
+import '../../notifications/first_login_notifications.dart';
 import '../../postAssessment/data/reassessment_notification_service.dart';
 import '../widgets/dashboard_tour_overlay.dart';
 import '../widgets/draggable_help_button.dart';
@@ -57,6 +58,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid != null) {
       ReassessmentNotificationService.sync(uid).catchError((_) {});
+      // First time this account ever reaches the dashboard: ask for the OS
+      // notification permission up front and, if granted, turn on every
+      // on-device reminder (daily nudge + the reassessment one above). No-
+      // ops on every later login.
+      FirstLoginNotifications.requestOnce(uid).catchError((_) {});
     }
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;

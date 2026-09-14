@@ -545,15 +545,15 @@ class _EmotionSummaryDialog extends StatelessWidget {
                       style: HatiTextStyles.bodyMedium,
                     )
                   : Column(
-                      children: sorted
-                          .map(
-                            (entry) => _EmotionBarRow(
-                              emotion: entry.key,
-                              count: entry.value,
-                              maxCount: maxCount,
-                            ),
-                          )
-                          .toList(),
+                      children: [
+                        for (final (index, entry) in sorted.indexed)
+                          _EmotionBarRow(
+                            emotion: entry.key,
+                            count: entry.value,
+                            maxCount: maxCount,
+                            index: index,
+                          ),
+                      ],
                     ),
             ),
             Padding(
@@ -762,11 +762,13 @@ class _EmotionBarRow extends StatelessWidget {
   final String emotion;
   final int count;
   final double maxCount;
+  final int index;
 
   const _EmotionBarRow({
     required this.emotion,
     required this.count,
     required this.maxCount,
+    required this.index,
   });
 
   @override
@@ -803,8 +805,20 @@ class _EmotionBarRow extends StatelessWidget {
                     borderRadius: BorderRadius.circular(11),
                   ),
                 ),
-                FractionallySizedBox(
-                  widthFactor: factor,
+                // Bars grow in on an ease-in curve rather than snapping
+                // straight to their final width, staggered per row (via
+                // index) so the list fills in top-to-bottom instead of
+                // all at once.
+                TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.0, end: factor),
+                  duration: Duration(milliseconds: 500 + index * 120),
+                  curve: Curves.easeIn,
+                  builder: (context, animatedFactor, child) {
+                    return FractionallySizedBox(
+                      widthFactor: animatedFactor,
+                      child: child,
+                    );
+                  },
                   child: Container(
                     height: 22,
                     decoration: BoxDecoration(

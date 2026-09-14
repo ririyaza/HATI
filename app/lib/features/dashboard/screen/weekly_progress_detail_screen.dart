@@ -575,7 +575,9 @@ class _TriggerPatternsPage extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 12),
+                const _TriggerSeverityLegend(),
+                const SizedBox(height: 16),
                 const _TriggerAxis(),
                 const SizedBox(height: 12),
                 if (triggers.isEmpty)
@@ -599,6 +601,61 @@ class _TriggerPatternsPage extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Three-tier severity coloring for a trigger's anxiety rate — validated
+/// (`validate_palette.js`, light mode) as a green/amber/red status trio
+/// distinguishable even under protan/deutan color vision, on the condition
+/// (met by [_TriggerSeverityLegend] plus each bar's own visible percentage)
+/// that color is never the only signal for which tier a bar is in.
+const Color _kLowTrigger = Color(0xFF16A34A);
+const Color _kModerateTrigger = Color(0xFFD97706);
+const Color _kHighTrigger = Color(0xFFB91C1C);
+
+Color _triggerSeverityColor(double value) {
+  if (value >= 67) return _kHighTrigger;
+  if (value >= 34) return _kModerateTrigger;
+  return _kLowTrigger;
+}
+
+class _TriggerSeverityLegend extends StatelessWidget {
+  const _TriggerSeverityLegend();
+
+  static const _tiers = [
+    ('Low', _kLowTrigger),
+    ('Moderate', _kModerateTrigger),
+    ('High', _kHighTrigger),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 14,
+      runSpacing: 6,
+      children: [
+        for (final tier in _tiers)
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 9,
+                height: 9,
+                decoration: BoxDecoration(color: tier.$2, shape: BoxShape.circle),
+              ),
+              const SizedBox(width: 5),
+              Text(
+                tier.$1,
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: Colors.black54,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+      ],
     );
   }
 }
@@ -636,6 +693,13 @@ class _TriggerBarRow extends StatelessWidget {
 
   final TriggerDatum datum;
 
+  /// Text sits *inside* the bar (right-aligned, white) once it's wide enough
+  /// to hold "100%" without crowding the fill's edge — this is also what
+  /// keeps a near-100% bar's label from being pushed past the track and
+  /// clipped, which is what happened when the label always rendered to the
+  /// bar's right.
+  static const _insideLabelThreshold = 0.22;
+
   @override
   Widget build(BuildContext context) {
     return Row(
@@ -643,13 +707,29 @@ class _TriggerBarRow extends StatelessWidget {
       children: [
         SizedBox(
           width: 120,
-          child: Text(
-            datum.label,
-            style: const TextStyle(
-              fontSize: 12.5,
-              color: Colors.black87,
-              fontWeight: FontWeight.w500,
-            ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                datum.label,
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  color: Colors.black87,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              Text(
+                datum.sampleSize == 1
+                    ? '1 log'
+                    : '${datum.sampleSize} logs',
+                style: const TextStyle(
+                  fontSize: 10.5,
+                  color: Colors.black38,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
           ),
         ),
         Expanded(
@@ -657,6 +737,10 @@ class _TriggerBarRow extends StatelessWidget {
             builder: (context, constraints) {
               final fraction = (datum.value / 100).clamp(0.0, 1.0);
               final barWidth = constraints.maxWidth * fraction;
+              final barColor = _triggerSeverityColor(datum.value);
+              final labelInside = fraction >= _insideLabelThreshold;
+              final valueText = '${datum.value.round()}%';
+
               return Stack(
                 alignment: Alignment.centerLeft,
                 children: [
@@ -667,25 +751,51 @@ class _TriggerBarRow extends StatelessWidget {
                       borderRadius: BorderRadius.circular(6),
                     ),
                   ),
+                  // Gridlines at 20/40/60/80% — same positions _TriggerAxis
+                  // labels sit above, so the numbers up top actually line up
+                  // with something down here instead of floating free.
+                  for (final mark in [0.2, 0.4, 0.6, 0.8])
+                    Positioned(
+                      left: constraints.maxWidth * mark,
+                      child: Container(width: 1, height: 22, color: Colors.black12),
+                    ),
                   Container(
                     width: barWidth,
                     height: 22,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFB7A6F2),
+                      color: barColor,
                       borderRadius: BorderRadius.circular(6),
                     ),
                   ),
-                  Positioned(
-                    left: barWidth + 6,
-                    child: Text(
-                      datum.value.toStringAsFixed(2),
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: Colors.black54,
-                        fontWeight: FontWeight.w600,
+                  if (labelInside)
+                    Positioned(
+                      left: 0,
+                      width: barWidth,
+                      child: Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: Text(
+                          valueText,
+                          textAlign: TextAlign.right,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    )
+                  else
+                    Positioned(
+                      left: barWidth + 6,
+                      child: Text(
+                        valueText,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Colors.black54,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
-                  ),
                 ],
               );
             },

@@ -1,9 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:timezone/data/latest_all.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 
+import '../../notifications/notification_core.dart';
 import 'post_assessment_repository.dart';
 
 /// On-device notification reminding the user their 2-week check-in is due
@@ -23,25 +22,6 @@ class ReassessmentNotificationService {
 
   static const _firestoreField = 'reassessmentNotificationsEnabled';
 
-  static final _plugin = FlutterLocalNotificationsPlugin();
-  static bool _initialized = false;
-
-  static Future<void> _ensureInitialized() async {
-    if (_initialized) return;
-    tz_data.initializeTimeZones();
-    await _plugin.initialize(
-      settings: const InitializationSettings(
-        android: AndroidInitializationSettings('@mipmap/ic_launcher'),
-        iOS: DarwinInitializationSettings(
-          requestAlertPermission: false,
-          requestBadgePermission: false,
-          requestSoundPermission: false,
-        ),
-      ),
-    );
-    _initialized = true;
-  }
-
   static Future<bool> isEnabled(String uid) async {
     final doc = await FirebaseFirestore.instance
         .collection('users')
@@ -58,7 +38,7 @@ class ReassessmentNotificationService {
   static Future<bool> setEnabled(String uid, bool enabled) async {
     var effective = enabled;
     if (enabled) {
-      effective = await requestPermission();
+      effective = await NotificationCore.requestPermission();
     }
     await FirebaseFirestore.instance.collection('users').doc(uid).set({
       _firestoreField: effective,
@@ -67,38 +47,14 @@ class ReassessmentNotificationService {
     return effective;
   }
 
-  /// Prompts for the OS notification permission (Android 13+ / iOS 10+).
-  /// Returns whether it's granted. Safe to call even if already granted —
-  /// the OS just returns the current state without re-prompting.
-  static Future<bool> requestPermission() async {
-    await _ensureInitialized();
-    if (defaultTargetPlatform == TargetPlatform.android) {
-      final granted = await _plugin
-          .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin
-          >()
-          ?.requestNotificationsPermission();
-      return granted ?? false;
-    }
-    if (defaultTargetPlatform == TargetPlatform.iOS) {
-      final granted = await _plugin
-          .resolvePlatformSpecificImplementation<
-            IOSFlutterLocalNotificationsPlugin
-          >()
-          ?.requestPermissions(alert: true, badge: true, sound: true);
-      return granted ?? false;
-    }
-    return true;
-  }
-
   /// Re-evaluates and (re)schedules the reminder for [uid] against their
   /// current due date, cancelling any pending one first: disabled, no
   /// baseline yet, or the due date has already passed (the in-app
   /// banner/profile card handle that case — this reminder is only useful
   /// for a due date still ahead). Doesn't prompt for permission itself —
-  /// call [requestPermission] (or [setEnabled]) for that — so this is safe
-  /// to call opportunistically (app start, after completing a check-in)
-  /// without risking a repeated OS permission prompt.
+  /// call [setEnabled] for that — so this is safe to call opportunistically
+  /// (app start, after completing a check-in) without risking a repeated
+  /// OS permission prompt.
   static Future<void> sync(String uid) async {
     final enabled = await isEnabled(uid);
     if (!enabled) {
@@ -113,9 +69,9 @@ class ReassessmentNotificationService {
       return;
     }
 
-    await _ensureInitialized();
+    await NotificationCore.ensureInitialized();
     final scheduled = tz.TZDateTime.from(dueDate.toUtc(), tz.UTC);
-    await _plugin.zonedSchedule(
+    await NotificationCore.plugin.zonedSchedule(
       id: _notificationId,
       title: "It's time for your 2-week check-in",
       body:
@@ -137,7 +93,7 @@ class ReassessmentNotificationService {
   }
 
   static Future<void> cancel() async {
-    await _ensureInitialized();
-    await _plugin.cancel(id: _notificationId);
+    await NotificationCore.ensureInitialized();
+    await NotificationCore.plugin.cancel(id: _notificationId);
   }
 }

@@ -273,7 +273,7 @@ String computeFeedbackMessage(ConfidenceAnxietySummary summary) {
 // ── Trigger Patterns page ───────────────────────────────────────────────
 
 class TriggerDatum {
-  const TriggerDatum(this.label, this.value);
+  const TriggerDatum(this.label, this.value, this.sampleSize);
   final String label;
 
   /// 0..100 — of this theme's P.I.E.S.+Interaction emotion logs, what % were
@@ -281,6 +281,11 @@ class TriggerDatum {
   /// anxious moments — the latter would just reflect how often a scenario
   /// was played, not how triggering it actually is.
   final double value;
+
+  /// How many P.I.E.S.+Interaction logs this theme's rate is computed from —
+  /// surfaced in the UI so a 100% rate from a single log doesn't read the
+  /// same as 100% across a dozen.
+  final int sampleSize;
 }
 
 /// scenario_engine.py's `_normalize_theme` canonical theme strings -> the
@@ -311,7 +316,11 @@ List<TriggerDatum> computeTriggerPatterns(List<EmotionLogEntry> logs) {
   final result = totalByTheme.entries.map((entry) {
     final anxiousCount = anxiousByTheme[entry.key] ?? 0;
     final pct = entry.value == 0 ? 0.0 : (anxiousCount / entry.value) * 100;
-    return TriggerDatum(_themeShortLabels[entry.key] ?? entry.key, pct);
+    return TriggerDatum(
+      _themeShortLabels[entry.key] ?? entry.key,
+      pct,
+      entry.value,
+    );
   }).toList()
     ..sort((a, b) => b.value.compareTo(a.value));
 

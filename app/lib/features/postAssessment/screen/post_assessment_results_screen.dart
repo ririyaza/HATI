@@ -125,18 +125,33 @@ class _PostAssessmentResultsScreenState
   }
 
   String get _summarySentence {
-    switch (_comparison!.overall) {
-      case InstrumentComparisonResult.improved:
+    switch (_comparison!.category) {
+      case PostAssessmentCategory.improvedNoConcerns:
         return "Great news, your scores show real improvement since your "
             'last check-in. Keep up the practice!';
-      case InstrumentComparisonResult.noChange:
+      case PostAssessmentCategory.improvedStillSignificant:
+        return 'Your SPIN score has improved. Your results still show '
+            'significant symptoms though, so keep at it.';
+      case PostAssessmentCategory.improvedGad7Elevated:
+        return 'Your SPIN score has improved, which is great progress. '
+            "Your GAD-7 result today points to another area worth "
+            'attention, though — reaching out to a mental health '
+            'professional could help.';
+      case PostAssessmentCategory.noChangeNotElevated:
         return "Your scores are about the same as last time. That's "
-            "completely okay. Progress isn't always a straight line, and "
-            'a little extra support can help.';
-      case InstrumentComparisonResult.worsened:
-        return 'Your scores show things have felt a bit harder lately. '
-            "That's nothing to be ashamed of, and support is available "
-            'whenever you need it.';
+            "completely okay. Progress isn't always a straight line.";
+      case PostAssessmentCategory.noChangeGad7Elevated:
+        return "Your SPIN score hasn't changed much since last time, and "
+            'your GAD-7 result today is elevated. It may help to talk to '
+            'a mental health professional.';
+      case PostAssessmentCategory.worsenedNotElevated:
+        return 'Your SPIN score has gone up since your last check-in. '
+            "That's nothing to be ashamed of, and reaching out to a "
+            'mental health professional could help.';
+      case PostAssessmentCategory.worsenedGad7Elevated:
+        return 'Your SPIN score has gone up, and your GAD-7 result today '
+            "is elevated too. We'd strongly encourage reaching out to a "
+            'qualified mental health professional for support.';
     }
   }
 
@@ -237,7 +252,7 @@ class _PostAssessmentResultsScreenState
                         ),
                       ),
                       const SizedBox(height: 12),
-                      Center(child: _OverallBadge(overall: comparison.overall)),
+                      Center(child: _OverallBadge(category: comparison.category)),
                       const SizedBox(height: 18),
                       Text(
                         _summarySentence,
@@ -333,26 +348,36 @@ class _BackgroundBlob extends StatelessWidget {
 }
 
 class _OverallBadge extends StatelessWidget {
-  const _OverallBadge({required this.overall});
+  const _OverallBadge({required this.category});
 
-  final InstrumentComparisonResult overall;
+  final PostAssessmentCategory category;
 
   @override
   Widget build(BuildContext context) {
     final String label;
     final Color color;
-    switch (overall) {
-      case InstrumentComparisonResult.improved:
+    switch (category) {
+      case PostAssessmentCategory.improvedNoConcerns:
+      case PostAssessmentCategory.improvedStillSignificant:
         label = 'Improved';
         color = const Color(0xFF0D9488);
         break;
-      case InstrumentComparisonResult.noChange:
+      case PostAssessmentCategory.improvedGad7Elevated:
+      case PostAssessmentCategory.noChangeGad7Elevated:
+        label = 'Needs Attention';
+        color = const Color(0xFFFF9500);
+        break;
+      case PostAssessmentCategory.noChangeNotElevated:
         label = 'No Change';
         color = const Color(0xFF2563EB);
         break;
-      case InstrumentComparisonResult.worsened:
+      case PostAssessmentCategory.worsenedNotElevated:
         label = 'Needs Extra Support';
         color = const Color(0xFF7C3AED);
+        break;
+      case PostAssessmentCategory.worsenedGad7Elevated:
+        label = 'Needs Extra Support';
+        color = const Color(0xFFDC2626);
         break;
     }
 
@@ -658,6 +683,6 @@ class _DeltaChip extends StatelessWidget {
 /// widget tree or mock Firebase.
 Widget nextScreenForComparison(AssessmentComparisonResult comparison) {
   return comparison.isReferral
-      ? const ReferralScreen()
-      : const ProgressUpdateScreen();
+      ? ReferralScreen(category: comparison.category)
+      : ProgressUpdateScreen(category: comparison.category);
 }

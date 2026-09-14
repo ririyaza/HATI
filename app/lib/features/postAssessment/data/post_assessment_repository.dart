@@ -167,7 +167,9 @@ class PostAssessmentRepository {
       'comparison': {
         'spinResult': comparison.spinResult.name,
         'gad7Result': comparison.gad7Result.name,
-        'overall': comparison.overall.name,
+        'gad7Elevated': comparison.gad7Elevated,
+        'spinStillSignificant': comparison.spinStillSignificant,
+        'category': comparison.category.name,
       },
       'routedTo': comparison.routedTo,
     });

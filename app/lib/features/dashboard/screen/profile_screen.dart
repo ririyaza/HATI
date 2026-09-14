@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../auth/screen/login_screen.dart';
 import '../../auth/session_persistence.dart';
+import '../../notifications/daily_login_reminder_service.dart';
 import '../../postAssessment/data/post_assessment_repository.dart';
 import '../../postAssessment/data/reassessment_notification_service.dart';
 import '../../postAssessment/screen/post_assessment_intro_screen.dart';
@@ -1137,11 +1138,13 @@ Future<void> _showNotificationSettingsSheet(
   );
 }
 
-/// Toggle for the on-device "2-week check-in due" reminder
-/// ([ReassessmentNotificationService]). Turning it on requests the OS
-/// notification permission; if that's denied, the switch snaps back off
-/// and a message explains why, rather than silently saving a setting that
-/// can't actually notify anyone.
+/// Toggles for the two on-device reminders: the "2-week check-in due" one
+/// ([ReassessmentNotificationService]) and the daily "come back to HATI"
+/// nudge ([DailyLoginReminderService], on by default after the first-login
+/// permission prompt). Turning either on requests the OS notification
+/// permission; if that's denied, the switch snaps back off and a message
+/// explains why, rather than silently saving a setting that can't actually
+/// notify anyone.
 class _NotificationSettingsSheet extends StatefulWidget {
   const _NotificationSettingsSheet({required this.uid});
 
@@ -1154,38 +1157,60 @@ class _NotificationSettingsSheet extends StatefulWidget {
 
 class _NotificationSettingsSheetState
     extends State<_NotificationSettingsSheet> {
-  bool? _enabled;
-  bool _busy = false;
+  bool? _checkInEnabled;
+  bool? _dailyEnabled;
+  bool _checkInBusy = false;
+  bool _dailyBusy = false;
 
   @override
   void initState() {
     super.initState();
     ReassessmentNotificationService.isEnabled(widget.uid).then((value) {
-      if (mounted) setState(() => _enabled = value);
+      if (mounted) setState(() => _checkInEnabled = value);
+    });
+    DailyLoginReminderService.isEnabled(widget.uid).then((value) {
+      if (mounted) setState(() => _dailyEnabled = value);
     });
   }
 
-  Future<void> _toggle(bool value) async {
-    setState(() => _busy = true);
+  void _explainIfBlocked(bool requested, bool effective) {
+    if (!requested || effective) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          "Notifications are blocked for HATI in your phone's settings. "
+          'Enable them there, then try again.',
+        ),
+      ),
+    );
+  }
+
+  Future<void> _toggleCheckIn(bool value) async {
+    setState(() => _checkInBusy = true);
     final effective = await ReassessmentNotificationService.setEnabled(
       widget.uid,
       value,
     );
     if (!mounted) return;
     setState(() {
-      _enabled = effective;
-      _busy = false;
+      _checkInEnabled = effective;
+      _checkInBusy = false;
     });
-    if (value && !effective) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            "Notifications are blocked for HATI in your phone's settings. "
-            'Enable them there, then try again.',
-          ),
-        ),
-      );
-    }
+    _explainIfBlocked(value, effective);
+  }
+
+  Future<void> _toggleDaily(bool value) async {
+    setState(() => _dailyBusy = true);
+    final effective = await DailyLoginReminderService.setEnabled(
+      widget.uid,
+      value,
+    );
+    if (!mounted) return;
+    setState(() {
+      _dailyEnabled = effective;
+      _dailyBusy = false;
+    });
+    _explainIfBlocked(value, effective);
   }
 
   @override
@@ -1208,8 +1233,7 @@ class _NotificationSettingsSheetState
             ),
             const SizedBox(height: 4),
             const Text(
-              'Get a reminder on your phone when your 2-week check-in is '
-              'ready.',
+              'Reminders sent to your phone, even while the app is closed.',
               style: TextStyle(
                 fontSize: 13,
                 color: Colors.black45,
@@ -1217,44 +1241,94 @@ class _NotificationSettingsSheetState
               ),
             ),
             const SizedBox(height: 18),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8F9FF),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFE2E6FF)),
-              ),
-              child: Row(
-                children: [
-                  const Expanded(
-                    child: Text(
-                      'Check-in reminders',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF1A1A2E),
-                      ),
-                    ),
-                  ),
-                  _enabled == null
-                      ? const Padding(
-                          padding: EdgeInsets.all(12),
-                          child: SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                        )
-                      : Switch(
-                          value: _enabled!,
-                          activeThumbColor: const Color(0xFF0B28D9),
-                          onChanged: _busy ? null : _toggle,
-                        ),
-                ],
-              ),
+            _NotificationToggleRow(
+              label: 'Daily reminder',
+              description: "A nudge to open HATI if you haven't that day.",
+              value: _dailyEnabled,
+              busy: _dailyBusy,
+              onChanged: _toggleDaily,
+            ),
+            const SizedBox(height: 10),
+            _NotificationToggleRow(
+              label: 'Check-in reminders',
+              description: 'When your 2-week check-in is ready.',
+              value: _checkInEnabled,
+              busy: _checkInBusy,
+              onChanged: _toggleCheckIn,
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _NotificationToggleRow extends StatelessWidget {
+  const _NotificationToggleRow({
+    required this.label,
+    required this.description,
+    required this.value,
+    required this.busy,
+    required this.onChanged,
+  });
+
+  final String label;
+  final String description;
+  final bool? value;
+  final bool busy;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F9FF),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E6FF)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1A1A2E),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  description,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Colors.black45,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          value == null
+              ? const Padding(
+                  padding: EdgeInsets.all(12),
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                )
+              : Switch(
+                  value: value!,
+                  activeThumbColor: const Color(0xFF0B28D9),
+                  onChanged: busy ? null : onChanged,
+                ),
+        ],
       ),
     );
   }
