@@ -489,44 +489,72 @@ class _BadgeTile extends StatelessWidget {
 
   final BadgeData badge;
 
+  void _showDescription(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(badge.label.replaceAll('\n', ' ')),
+        content: Text(
+          badge.earned
+              ? '${badge.description}\n\nYou\'ve earned this badge!'
+              : badge.description,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Got it'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Opacity(
-      opacity: badge.earned ? 1.0 : 0.35,
-      child: Container(
-        width: 80,
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
-        decoration: BoxDecoration(
-          color: badge.earned
-              ? const Color(0xFF0B28D9).withOpacity(0.07)
-              : const Color(0xFFF4F4F4),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
+    return GestureDetector(
+      onTap: () => _showDescription(context),
+      onLongPress: () => _showDescription(context),
+      child: Opacity(
+        opacity: badge.earned ? 1.0 : 0.35,
+        child: Container(
+          width: 80,
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+          decoration: BoxDecoration(
             color: badge.earned
-                ? const Color(0xFF0B28D9).withOpacity(0.2)
-                : const Color(0xFFE0E0E0),
+                ? const Color(0xFF0B28D9).withOpacity(0.07)
+                : const Color(0xFFF4F4F4),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: badge.earned
+                  ? const Color(0xFF0B28D9).withOpacity(0.2)
+                  : const Color(0xFFE0E0E0),
+            ),
           ),
-        ),
-        child: Column(
-          children: [
-            Image.asset(
-              badge.image,
-              width: 40,
-              height: 40,
-              fit: BoxFit.contain,
-            ),
-            const SizedBox(height: 6),
-            Text(
-              badge.label,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: badge.earned ? const Color(0xFF0B28D9) : Colors.black38,
-                height: 1.3,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Image.asset(
+                badge.image,
+                width: 40,
+                height: 40,
+                fit: BoxFit.contain,
               ),
-            ),
-          ],
+              const SizedBox(height: 6),
+              Text(
+                badge.label,
+                textAlign: TextAlign.center,
+                softWrap: true,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: badge.earned
+                      ? const Color(0xFF0B28D9)
+                      : Colors.black38,
+                  height: 1.3,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

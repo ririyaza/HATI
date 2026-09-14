@@ -597,8 +597,17 @@ class SceneProgressBar extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(sceneLabel, style: HatiTextStyles.caption),
-            Text('$currentStep / $totalSteps', style: HatiTextStyles.caption),
+            Text(
+              sceneLabel,
+              style: HatiTextStyles.caption.copyWith(color: Colors.white),
+            ),
+            Text(
+              '$currentStep / $totalSteps',
+              style: HatiTextStyles.caption.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 6),
@@ -606,8 +615,12 @@ class SceneProgressBar extends StatelessWidget {
           borderRadius: BorderRadius.circular(4),
           child: LinearProgressIndicator(
             value: currentStep / totalSteps,
-            backgroundColor: HatiColors.divider,
-            color: HatiColors.mossGreen,
+            // Same blue/cyan combination as the NPC interaction scene's own
+            // top bar (_kApproachBlue background + cyan fill in
+            // scene3_interaction.dart), so the progress bar reads the same
+            // across every scene instead of switching palettes mid-flow.
+            backgroundColor: Colors.white.withValues(alpha: 0.35),
+            color: const Color(0xFF00D4FF),
             minHeight: 6,
           ),
         ),
@@ -638,7 +651,10 @@ class SceneTopHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      color: HatiColors.deepForest,
+      // Same blue as the NPC interaction scene's top bar (_kApproachBlue
+      // in scene3_interaction.dart) — every scene in the flow now shares
+      // one header color instead of green here and blue there.
+      color: const Color(0xFF4A8FD4),
       padding: const EdgeInsets.fromLTRB(8, 0, 20, 12),
       child: SafeArea(
         bottom: false,
@@ -647,7 +663,7 @@ class SceneTopHeader extends StatelessWidget {
           children: [
             IconButton(
               onPressed: () => Navigator.maybePop(context),
-              icon: const Icon(Icons.arrow_back, color: HatiColors.warmCream),
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
               visualDensity: VisualDensity.compact,
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(),
@@ -669,9 +685,10 @@ class SceneTopHeader extends StatelessWidget {
 }
 
 // ── Scenario gradient background ────────────────────────────────────────────
-/// Same dark-green backdrop as the scenario's landing screen
-/// (Scene0PreSetup), reused so scenes that used to fall back to a plain
-/// white Scaffold background share that same look instead.
+/// Same blue backdrop as the NPC interaction scene's top bar (_kApproachBlue
+/// in scene3_interaction.dart) and the scenario's landing screen
+/// (Scene0PreSetup), reused so every scene in the flow shares one color
+/// scheme instead of some being green and others blue.
 class ScenarioGradientBackground extends StatelessWidget {
   final Widget child;
   // When set, renders the scenario's own themed art (scenario_background/)
@@ -694,7 +711,7 @@ class ScenarioGradientBackground extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [HatiColors.deepForest, Color(0xFF2A4A2A)],
+            colors: [Color(0xFF4A8FD4), Color(0xFF1E4E8C)],
           ),
         ),
         child: child,
@@ -704,7 +721,7 @@ class ScenarioGradientBackground extends StatelessWidget {
       fit: StackFit.expand,
       children: [
         Image.asset(asset, fit: BoxFit.cover),
-        // Same dark-green tone as the flat gradient it replaces, so header
+        // Same blue tone as the flat gradient it replaces, so header
         // text/icons and the coach bubble stay readable over busy art.
         Container(
           decoration: BoxDecoration(
@@ -712,8 +729,8 @@ class ScenarioGradientBackground extends StatelessWidget {
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                HatiColors.deepForest.withOpacity(0.72),
-                const Color(0xFF2A4A2A).withOpacity(0.72),
+                const Color(0xFF4A8FD4).withValues(alpha: 0.72),
+                const Color(0xFF1E4E8C).withValues(alpha: 0.72),
               ],
             ),
           ),
@@ -815,44 +832,44 @@ class _TextResponseCardState extends State<TextResponseCard> {
   @override
   Widget build(BuildContext context) {
     final canSubmit = !widget.isLoading && _controller.text.trim().isNotEmpty;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        TextField(
-          controller: _controller,
-          maxLines: widget.maxLines,
-          enabled: !widget.isLoading,
-          onChanged: (_) => setState(() {}),
-          onSubmitted: (_) {
-            if (canSubmit) widget.onSubmit(_controller.text.trim());
-          },
-          decoration: InputDecoration(
-            hintText: widget.hintText,
-            hintStyle: HatiTextStyles.bodyMedium,
-            filled: true,
-            fillColor: Colors.white,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: HatiColors.divider),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(
-                color: HatiColors.mossGreen,
-                width: 2,
-              ),
-            ),
-          ),
+    // Same rounded-pill shape as the NPC interaction's own text input
+    // (_ApproachInputBar in scene3_interaction.dart) — a light grey fill
+    // with the send arrow inline inside the field, rather than the old
+    // boxed outline + separate full-width button below it, so every
+    // "type a custom response" moment in the app looks like one
+    // consistent input, not two different designs.
+    return TextField(
+      controller: _controller,
+      maxLines: widget.maxLines,
+      minLines: 1,
+      enabled: !widget.isLoading,
+      onChanged: (_) => setState(() {}),
+      onSubmitted: (_) {
+        if (canSubmit) widget.onSubmit(_controller.text.trim());
+      },
+      decoration: InputDecoration(
+        hintText: widget.hintText,
+        hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 15),
+        filled: true,
+        fillColor: const Color(0xFFF0F0F0),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 12,
         ),
-        const SizedBox(height: 12),
-        HatiButton(
-          label: widget.buttonLabel,
-          icon: Icons.send_rounded,
-          onTap: canSubmit
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(24),
+          borderSide: BorderSide.none,
+        ),
+        suffixIcon: IconButton(
+          icon: Icon(
+            Icons.send_rounded,
+            color: canSubmit ? const Color(0xFF0B28D9) : Colors.grey,
+          ),
+          onPressed: canSubmit
               ? () => widget.onSubmit(_controller.text.trim())
               : null,
         ),
-      ],
+      ),
     );
   }
 }
@@ -2058,7 +2075,7 @@ class HatiSceneShell extends StatelessWidget {
 /// settles a partial drag to whichever end it's closer to, like every
 /// other bottom sheet on the platform, so a first-time (or non-technical)
 /// player never gets stuck at some in-between height.
-class DraggableChoiceSheet extends StatelessWidget {
+class DraggableChoiceSheet extends StatefulWidget {
   /// Shared with [HatiSceneShell], which needs to know how much of its
   /// stack the sheet covers at rest so it can center Hati in the space
   /// left above it, rather than guessing a matching fraction independently.
@@ -2080,18 +2097,51 @@ class DraggableChoiceSheet extends StatelessWidget {
   });
 
   @override
+  State<DraggableChoiceSheet> createState() => _DraggableChoiceSheetState();
+}
+
+class _DraggableChoiceSheetState extends State<DraggableChoiceSheet> {
+  // Whether the content actually overflows the sheet's collapsed size —
+  // e.g. a plain Yes/No choice never does. When it doesn't, "Swipe up to
+  // see more" is actively misleading (there's nothing more to see), so the
+  // hint (and the drag handle inviting the same gesture) only render once
+  // this is confirmed true post-layout, not unconditionally. Checked
+  // against the actual controller DraggableScrollableSheet hands the
+  // builder (not a separate one), since that's the one driving the
+  // SingleChildScrollView below.
+  bool _hasOverflow = false;
+  ScrollController? _attachedController;
+
+  void _attachOverflowCheck(ScrollController controller) {
+    if (identical(_attachedController, controller)) return;
+    _attachedController = controller;
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _checkOverflow(controller),
+    );
+  }
+
+  void _checkOverflow(ScrollController controller) {
+    if (!mounted || !controller.hasClients) return;
+    final overflow = controller.position.maxScrollExtent > 0;
+    if (overflow != _hasOverflow) setState(() => _hasOverflow = overflow);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    if (header == null && body == null) return const SizedBox.shrink();
+    if (widget.header == null && widget.body == null) {
+      return const SizedBox.shrink();
+    }
 
     return DraggableScrollableSheet(
-      initialChildSize: minChildSize,
-      minChildSize: minChildSize,
-      maxChildSize: maxChildSize,
+      initialChildSize: widget.minChildSize,
+      minChildSize: widget.minChildSize,
+      maxChildSize: widget.maxChildSize,
       snap: true,
       builder: (context, scrollController) {
+        _attachOverflowCheck(scrollController);
         return Container(
           decoration: BoxDecoration(
-            color: backgroundColor,
+            color: widget.backgroundColor,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
             boxShadow: [
               BoxShadow(
@@ -2105,29 +2155,33 @@ class DraggableChoiceSheet extends StatelessWidget {
             children: [
               // Grab handle + spelled-out hint, pinned above the scrollable
               // area (not part of it) so it's always visible as the thing
-              // to drag, never scrolled out of view.
+              // to drag, never scrolled out of view. Only shown once there's
+              // actually more content below the fold to drag up to.
               const Padding(
                 padding: EdgeInsets.only(top: 10, bottom: 2),
                 child: _SheetGrabHandle(),
               ),
-              const SizedBox(height: 2),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.keyboard_arrow_up_rounded,
-                    size: 16,
-                    color: HatiColors.textMedium,
-                  ),
-                  const SizedBox(width: 2),
-                  Text(
-                    'Swipe up to see more',
-                    style: HatiTextStyles.caption.copyWith(
+              if (_hasOverflow) ...[
+                const SizedBox(height: 2),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.keyboard_arrow_up_rounded,
+                      size: 16,
                       color: HatiColors.textMedium,
                     ),
-                  ),
-                ],
-              ),
+                    const SizedBox(width: 2),
+                    Text(
+                      'Swipe up to see more',
+                      style: HatiTextStyles.caption.copyWith(
+                        color: HatiColors.textMedium,
+                      ),
+                    ),
+                  ],
+                ),
+              ] else
+                const SizedBox(height: 8),
               Expanded(
                 child: SingleChildScrollView(
                   controller: scrollController,
@@ -2140,10 +2194,10 @@ class DraggableChoiceSheet extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      ?header,
-                      if (header != null && body != null)
+                      ?widget.header,
+                      if (widget.header != null && widget.body != null)
                         const SizedBox(height: 16),
-                      ?body,
+                      ?widget.body,
                     ],
                   ),
                 ),

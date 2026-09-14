@@ -8,6 +8,8 @@
 // a local goToScene() call.
 // ─────────────────────────────────────────────
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -45,6 +47,16 @@ class _Scene0PreSetupState extends State<Scene0PreSetup>
   // free to start talking.
   bool? _tutorialSeen;
 
+  // The backend scales to zero when idle, so the very first request after a
+  // gap can take a while (cold start: spin up the container, load the ML
+  // models). A plain spinner with no explanation looks identical to "the
+  // app is broken," which is exactly what was driving players to back out
+  // and reopen the scenario instead of just waiting it out. This starts
+  // showing an explanatory line only once the wait has gone on long enough
+  // to actually look wrong — not on every normal-speed load.
+  bool _showSlowStartHint = false;
+  Timer? _slowStartTimer;
+
   @override
   void initState() {
     super.initState();
@@ -58,6 +70,9 @@ class _Scene0PreSetupState extends State<Scene0PreSetup>
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
     _maybeShowTutorial();
+    _slowStartTimer = Timer(const Duration(seconds: 5), () {
+      if (mounted) setState(() => _showSlowStartHint = true);
+    });
   }
 
   Future<void> _maybeShowTutorial() async {
@@ -99,6 +114,7 @@ class _Scene0PreSetupState extends State<Scene0PreSetup>
 
   @override
   void dispose() {
+    _slowStartTimer?.cancel();
     _controller.dispose();
     super.dispose();
   }
@@ -228,10 +244,35 @@ class _Scene0PreSetupState extends State<Scene0PreSetup>
                                 const SizedBox(height: 16),
 
                                 if (parsed.isEmpty || _tutorialSeen == null)
-                                  const Padding(
-                                    padding: EdgeInsets.symmetric(vertical: 24),
-                                    child: CircularProgressIndicator(
-                                      color: HatiColors.mintFresh,
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 24,
+                                    ),
+                                    child: Column(
+                                      children: [
+                                        const CircularProgressIndicator(
+                                          color: HatiColors.mintFresh,
+                                        ),
+                                        // Only appears once the wait has
+                                        // gone on long enough to look
+                                        // broken rather than just loading
+                                        // — see _slowStartTimer.
+                                        if (_showSlowStartHint) ...[
+                                          const SizedBox(height: 16),
+                                          Text(
+                                            "Waking up the server — this can "
+                                            "take up to a minute the first "
+                                            "time. Hang tight, no need to "
+                                            "back out.",
+                                            textAlign: TextAlign.center,
+                                            style: HatiTextStyles.bodyMedium
+                                                .copyWith(
+                                                  color: HatiColors.warmCream
+                                                      .withValues(alpha: 0.75),
+                                                ),
+                                          ),
+                                        ],
+                                      ],
                                     ),
                                   )
                                 else if (_tutorialSeen == false)
@@ -335,10 +376,13 @@ class _ScenarioTutorialDialog extends StatelessWidget {
                 horizontal: 20,
               ),
               decoration: const BoxDecoration(
+                // Brand blue (0xFF0B28D9) — same header color as the
+                // Progress and Profile screens — rather than this dialog
+                // family's old green, matching the Badge/Resume dialogs.
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [HatiColors.deepForest, HatiColors.mossGreen],
+                  colors: [Color(0xFF0B28D9), Color(0xFF081F9E)],
                 ),
                 borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
               ),
@@ -401,7 +445,7 @@ class _ScenarioTutorialDialog extends StatelessWidget {
                 child: HatiButton(
                   label: 'Got it',
                   icon: Icons.check_rounded,
-                  color: HatiColors.mossGreen,
+                  color: const Color(0xFF0B28D9),
                   onTap: onGotIt,
                 ),
               ),
@@ -433,10 +477,10 @@ class _TutorialStepRow extends StatelessWidget {
           width: 34,
           height: 34,
           decoration: BoxDecoration(
-            color: HatiColors.mossGreen.withValues(alpha: 0.1),
+            color: const Color(0xFF0B28D9).withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
-          child: Icon(icon, size: 18, color: HatiColors.mossGreen),
+          child: Icon(icon, size: 18, color: const Color(0xFF0B28D9)),
         ),
         const SizedBox(width: 12),
         Expanded(

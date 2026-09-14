@@ -229,7 +229,7 @@ const Map<String, ScenarioConfig> kScenarioConfigs = {
   'foa_supervisor': ScenarioConfig(
     scenarioKey: 'foa_supervisor',
     theme: 'Fear of Authority',
-    title: "The Professor's Signature",
+    title: "The Professor's Request",
     backgroundAsset: 'assets/scenario_background/foa_supervisor_background.png',
     spriteAsset: 'assets/scenario_npcs/foa_supervisor/bald_blink.riv',
     spriteAssetAngry: 'assets/scenario_npcs/foa_supervisor/bald_annoyed.riv',
@@ -596,6 +596,21 @@ const Map<String, SceneId> kStepToScene = {
   'fsg_s2_proceed': SceneId.preparation,
   'fsg_s3_social': SceneId.interaction,
   'fsg_s3_reaction': SceneId.interaction,
+  // Path B ("quiet area") sub-steps — PDF's Quiet Area Branches B1
+  // (observe) / B2 (eye contact) / B3 (friend returns) / B4 (leave).
+  // Missing any of these here is the exact bug class already hit twice
+  // this session (pies_*_other, resume-mismatch): sceneForStep falls back
+  // to SceneId.preScene, silently bouncing the player back to the intro.
+  'fsg_b1_observe': SceneId.interaction,
+  'fsg_b1_action': SceneId.interaction,
+  'fsg_b2_ack': SceneId.interaction,
+  'fsg_b3_friend': SceneId.interaction,
+  'fsg_b3_intro_offer': SceneId.interaction,
+  'fsg_b3_intro_done': SceneId.interaction,
+  'fsg_b3_decline_ack': SceneId.interaction,
+  'fsg_b3_bridge_ack': SceneId.interaction,
+  'fsg_b4_leave_check': SceneId.interaction,
+  'fsg_b4_leave_ack': SceneId.interaction,
   'fsg_diff_s3_approach': SceneId.interaction,
   'fsg_diff_s3_reaction': SceneId.interaction,
 

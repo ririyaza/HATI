@@ -18,6 +18,21 @@ class _ModulesScreenState extends State<ModulesScreen> {
   final _searchController = TextEditingController();
   String _query = '';
 
+  // Created once (not inline in build()) so a rebuild triggered by
+  // something unrelated — typing in the search box, the dashboard tour,
+  // DraggableScrollableSheet drags elsewhere in the tree, anything that
+  // calls setState — doesn't tear down and recreate the Firestore stream.
+  // Recreating it on every rebuild made the "X% complete"/difficulty pill
+  // flash back to its FutureBuilder/StreamBuilder loading state and briefly
+  // show stale/no data each time, which read as the percentage "not
+  // updating in real time" even though the underlying data was live.
+  late final Future<Map<String, double>> _themeAveragesFuture =
+      _loadThemeAverages();
+  late final Stream<Map<String, _InProgressInfo>> _inProgressStream =
+      _watchInProgressScenarios();
+  late final Stream<Map<String, bool>> _difficultyStream =
+      _watchScenarioDifficulty();
+
   @override
   void dispose() {
     _searchController.dispose();
@@ -98,6 +113,14 @@ class _ModulesScreenState extends State<ModulesScreen> {
 
       final scene = sceneForStep(currentStep);
       if (scene == SceneId.dashboard) continue;
+      // ScenarioPlayPage.initState() calls provider.start() the instant a
+      // scenario's intro screen is opened — before "Begin Scenario" is
+      // ever tapped — which immediately persists a session sitting at
+      // scene0_greet (SceneId.preScene, ordinal 0). Counting that as "in
+      // progress" made every scenario a user had merely glanced at (then
+      // backed out of) show a stray "0% complete"/"Easy Mode" pill here,
+      // even though nothing was actually played yet.
+      if (scene == SceneId.preScene) continue;
 
       final difficulty = sessionData is Map
           ? sessionData['difficulty']?.toString()
@@ -130,6 +153,40 @@ class _ModulesScreenState extends State<ModulesScreen> {
         isDifficult: difficulty == 'difficult',
         updatedAt: updatedAt,
       );
+    }
+    return result;
+  }
+
+  /// Which difficulty mode a scenario_key's NEXT attempt would auto-run in,
+  /// per scenario_key — shown on every card regardless of whether the user
+  /// has ever opened that scenario, so "what mode is this currently in" is
+  /// visible up front rather than only appearing once a session exists.
+  /// Mirrors scenario_engine.py's `_decide_difficulty` exactly, reading the
+  /// same `users/{uid}/scenario_progress/{scenarioKey}` docs it writes via
+  /// `mark_scenario_difficulty_completed`: neither mode completed -> Easy;
+  /// Easy completed, Difficult not -> Difficult; both completed -> Easy
+  /// (matching the backend's picker-shown default).
+  Stream<Map<String, bool>> _watchScenarioDifficulty() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return Stream.value(const {});
+
+    return FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('scenario_progress')
+        .snapshots()
+        .map(_parseScenarioDifficulty);
+  }
+
+  Map<String, bool> _parseScenarioDifficulty(
+    QuerySnapshot<Map<String, dynamic>> snapshot,
+  ) {
+    final result = <String, bool>{};
+    for (final doc in snapshot.docs) {
+      final data = doc.data();
+      final easyDone = data['easy_completed'] == true;
+      final difficultDone = data['difficult_completed'] == true;
+      result[doc.id] = easyDone && !difficultDone;
     }
     return result;
   }
@@ -259,7 +316,7 @@ class _ModulesScreenState extends State<ModulesScreen> {
                     ),
                     const SizedBox(height: 12),
                     FutureBuilder<Map<String, double>>(
-                      future: _loadThemeAverages(),
+                      future: _themeAveragesFuture,
                       builder: (context, themeSnapshot) {
                         if (themeSnapshot.connectionState ==
                             ConnectionState.waiting) {
@@ -274,16 +331,24 @@ class _ModulesScreenState extends State<ModulesScreen> {
                         // the player advances a step, even while this
                         // screen stays mounted underneath ScenarioPlayPage.
                         return StreamBuilder<Map<String, _InProgressInfo>>(
-                          stream: _watchInProgressScenarios(),
+                          stream: _inProgressStream,
                           builder: (context, inProgressSnapshot) {
                             final inProgress =
                                 inProgressSnapshot.data ?? const {};
-                            return _scenarioGrid(
-                              context,
-                              themeAverages,
-                              inProgress,
-                              query: _query,
-                              firstCardKey: widget.gridKey,
+                            return StreamBuilder<Map<String, bool>>(
+                              stream: _difficultyStream,
+                              builder: (context, difficultySnapshot) {
+                                final difficulty =
+                                    difficultySnapshot.data ?? const {};
+                                return _scenarioGrid(
+                                  context,
+                                  themeAverages,
+                                  inProgress,
+                                  difficulty,
+                                  query: _query,
+                                  firstCardKey: widget.gridKey,
+                                );
+                              },
                             );
                           },
                         );
@@ -562,7 +627,7 @@ const List<_ScenarioTemplate> _kAllScenarioModules = [
   _ScenarioTemplate(
     theme: 'Fear of Authority',
     scenarioKey: 'foa_supervisor',
-    title: "The Professor's Signature",
+    title: "The Professor's Request",
   ),
   _ScenarioTemplate(
     theme: 'Fear of Strangers & New People',
@@ -620,7 +685,8 @@ bool _matchesQuery(_ScenarioTemplate template, String query) {
 Widget _scenarioGrid(
   BuildContext context,
   Map<String, double> themeAverages,
-  Map<String, _InProgressInfo> inProgress, {
+  Map<String, _InProgressInfo> inProgress,
+  Map<String, bool> difficulty, {
   String query = '',
   Key? firstCardKey,
 }) {
@@ -647,6 +713,11 @@ Widget _scenarioGrid(
       final template = templates[index];
       final score = _matchPercent(themeAverages, template.theme);
       final info = inProgress[template.scenarioKey];
+      // A genuinely in-progress session's own recorded difficulty wins
+      // (it's the mode that attempt is actually running in); otherwise
+      // fall back to the predicted next-attempt mode from scenario_progress.
+      final isDifficult =
+          info?.isDifficult ?? (difficulty[template.scenarioKey] ?? false);
       return Padding(
         key: index == 0 ? firstCardKey : null,
         padding: EdgeInsets.only(
@@ -729,29 +800,32 @@ Widget _scenarioGrid(
                           height: 1.3,
                         ),
                       ),
-                      // Only shown for a scenario the user started but
-                      // hasn't finished — real progress through the FSM's
-                      // shared 7-scene numbering (see sceneOrdinal), plus
-                      // which difficulty that attempt is in.
-                      if (info != null) ...[
-                        const SizedBox(height: 6),
-                        Wrap(
-                          spacing: 6,
-                          runSpacing: 4,
-                          children: [
+                      // The difficulty pill always shows — which mode a
+                      // fresh attempt would auto-run in (or, if a session
+                      // is genuinely in progress, that attempt's actual
+                      // difficulty instead) — so the user knows what mode
+                      // a scenario is currently in before ever opening it.
+                      // "% complete" only shows once a session is truly in
+                      // progress (real advancement past the FSM's shared
+                      // 7-scene numbering — see sceneOrdinal).
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        children: [
+                          if (info != null)
                             _InProgressPill(
                               label: '${(info.progress * 100).round()}% complete',
                               color: const Color(0xFF0B28D9),
                             ),
-                            _InProgressPill(
-                              label: info.isDifficult ? 'Hard Mode' : 'Easy Mode',
-                              color: info.isDifficult
-                                  ? const Color(0xFFC62828)
-                                  : const Color(0xFF2E7D32),
-                            ),
-                          ],
-                        ),
-                      ],
+                          _InProgressPill(
+                            label: isDifficult ? 'Hard Mode' : 'Easy Mode',
+                            color: isDifficult
+                                ? const Color(0xFFC62828)
+                                : const Color(0xFF2E7D32),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 ),

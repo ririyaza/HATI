@@ -216,7 +216,7 @@ class _EmotionPageState extends State<EmotionPage> {
   String? _titleForTheme(String theme) {
     switch (theme) {
       case 'Fear of Authority':
-        return "The Professor's Signature";
+        return "The Professor's Request";
       case 'Fear of Negative Evaluation & Embarrassment':
       case 'Fear of Negative Evaluation & Embarassment':
         return 'The Group Project: Defending Your Work';
