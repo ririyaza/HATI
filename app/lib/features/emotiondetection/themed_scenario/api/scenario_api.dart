@@ -12,6 +12,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 
 /// Thin HTTP client shared by every themed scenario. Talks to
@@ -46,6 +47,37 @@ class ScenarioApi {
     );
   }
 
+  /// A 429 means the backend's own rate limiter kicked in (see app.py's
+  /// _rate_limit) — extremely unlikely from normal gameplay pace, but
+  /// without this special case it fell through to the generic "Server
+  /// error: 429" message below, which reads like a bug rather than "you're
+  /// going a bit fast."
+  Never _throwServerError(int statusCode, [String body = '']) {
+    if (statusCode == 429) {
+      throw Exception(
+        "You're sending responses a little too fast — please wait a "
+        "moment and try again.",
+      );
+    }
+    throw Exception(
+      body.isEmpty ? "Server error: $statusCode" : "Server error: $statusCode $body",
+    );
+  }
+
+  /// The backend now verifies a real Firebase ID token on every
+  /// /scenario/* call instead of trusting the plain `user_id` field in the
+  /// request body (that let any caller substitute someone else's uid and
+  /// read/overwrite their scenario data). `getIdToken()` is cheap to call
+  /// on every request — the Firebase SDK caches the token locally and only
+  /// hits the network to refresh it once it's actually close to expiring.
+  Future<String> _authHeader() async {
+    final token = await FirebaseAuth.instance.currentUser?.getIdToken();
+    if (token == null || token.isEmpty) {
+      throw Exception("You're signed out — please log in again to continue.");
+    }
+    return "Bearer $token";
+  }
+
   Future<Map<String, dynamic>> start({
     required String scenarioKey,
     required String theme,
@@ -58,7 +90,10 @@ class ScenarioApi {
       response = await http
           .post(
             Uri.parse("$baseUrl/scenario/start"),
-            headers: {"Content-Type": "application/json"},
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": await _authHeader(),
+            },
             body: jsonEncode({
               "theme": theme,
               "scenario_key": scenarioKey,
@@ -76,7 +111,7 @@ class ScenarioApi {
     }
 
     if (response.statusCode != 200) {
-      throw Exception("Server error: ${response.statusCode}");
+      _throwServerError(response.statusCode);
     }
     return jsonDecode(response.body) as Map<String, dynamic>;
   }
@@ -92,7 +127,10 @@ class ScenarioApi {
       response = await http
           .post(
             Uri.parse("$baseUrl/scenario/step"),
-            headers: {"Content-Type": "application/json"},
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": await _authHeader(),
+            },
             body: jsonEncode({
               "session_id": sessionId,
               "text": text,
@@ -109,7 +147,7 @@ class ScenarioApi {
     }
 
     if (response.statusCode != 200) {
-      throw Exception("Server error: ${response.statusCode}");
+      _throwServerError(response.statusCode);
     }
     return jsonDecode(response.body) as Map<String, dynamic>;
   }
@@ -121,6 +159,7 @@ class ScenarioApi {
   }) async {
     final uri = Uri.parse("$baseUrl/scenario/step_audio");
     final request = http.MultipartRequest("POST", uri);
+    request.headers["Authorization"] = await _authHeader();
     request.fields["session_id"] = sessionId;
     request.fields["user_id"] = userId;
     request.files.add(
@@ -142,7 +181,7 @@ class ScenarioApi {
     }
 
     if (response.statusCode != 200) {
-      throw Exception("Server error: ${response.statusCode} ${response.body}");
+      _throwServerError(response.statusCode, response.body);
     }
     return jsonDecode(response.body) as Map<String, dynamic>;
   }

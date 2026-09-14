@@ -219,6 +219,17 @@ class _ResumeScenarioDialog extends StatelessWidget {
 }
 
 // ── Dashboard return screen ─────────────────────────────────────────────────
+
+/// Steps down from bodyMedium's base 14 as the closing summary gets longer —
+/// foa_supervisor's own scene6_closing dialogue runs long enough to need
+/// this even after the scrollable safety net above, since a huge wall of
+/// text at full size still looks wrong even though it no longer clips.
+double _summaryFontSize(String text) {
+  if (text.length > 260) return 12;
+  if (text.length > 160) return 13;
+  return 14;
+}
+
 class _ScenarioDashboardScene extends StatelessWidget {
   const _ScenarioDashboardScene({super.key});
 
@@ -327,70 +338,94 @@ class _ScenarioDashboardScene extends StatelessWidget {
             ),
           ),
           SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const HatiFrogAvatar(size: 160, mood: HatiMood.happy),
-                  const SizedBox(height: 20),
-                  Text(
-                    'Nice work!',
-                    style: HatiTextStyles.heading1.copyWith(
-                      color: HatiColors.warmCream,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                // Some themes' scene6_closing dialogue (foa_supervisor's in
+                // particular) runs noticeably longer than others', and this
+                // screen is shared by all of them — a plain fixed-size,
+                // non-scrollable Column here overflowed on smaller screens
+                // once the summary text got long enough. Scrolling is the
+                // safety net that guarantees it always fits; ConstrainedBox
+                // with minHeight keeps the short-summary case still
+                // vertically centered instead of hugging the top once it's
+                // wrapped in a scroll view.
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 28,
+                    vertical: 24,
+                  ),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const HatiFrogAvatar(size: 160, mood: HatiMood.happy),
+                        const SizedBox(height: 20),
+                        Text(
+                          'Nice work!',
+                          style: HatiTextStyles.heading1.copyWith(
+                            color: HatiColors.warmCream,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          summary.isNotEmpty
+                              ? summary
+                              : "I've logged your emotions. Over time, you'll see patterns.",
+                          textAlign: TextAlign.center,
+                          // Shrinks a couple points once the closing message
+                          // runs long (foa_supervisor's especially) rather
+                          // than keeping one fixed size that fits the
+                          // shortest theme's message and clips the longest.
+                          style: HatiTextStyles.bodyMedium.copyWith(
+                            fontSize: _summaryFontSize(summary),
+                            color: HatiColors.warmCream.withValues(alpha: 0.8),
+                          ),
+                        ),
+                        const SizedBox(height: 36),
+                        for (final opt in provider.ui.options)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: HatiButton(
+                              label: opt,
+                              icon: opt == 'Close'
+                                  ? Icons.close_rounded
+                                  : Icons.bar_chart_rounded,
+                              color: opt == 'Close'
+                                  ? HatiColors.mossGreen
+                                  : HatiColors.softGold,
+                              onTap: () async {
+                                if (opt == 'Close') {
+                                  // Tell the backend this scenario actually
+                                  // finished — without this, it never leaves
+                                  // step "scene7_dashboard" and stays in
+                                  // get_unfinished_scenarios() forever, so the
+                                  // "Resume Scenario?" dialog kept reappearing
+                                  // even for scenarios the user already
+                                  // completed. Fire-and-forget (not awaited) so
+                                  // the pop still happens immediately, client-
+                                  // side, without waiting on a network round
+                                  // trip — mirrors EmotionPage's exit.
+                                  provider.submitText(opt);
+                                  Navigator.pop(context);
+                                  return;
+                                }
+                                if (opt == 'Open Progress') {
+                                  await _showProgressDialog(context, provider.sessionId);
+                                  if (context.mounted) {
+                                    await provider.submitText(opt);
+                                  }
+                                  return;
+                                }
+                                await provider.submitText(opt);
+                              },
+                            ),
+                          ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 10),
-                  Text(
-                    summary.isNotEmpty
-                        ? summary
-                        : "I've logged your emotions. Over time, you'll see patterns.",
-                    textAlign: TextAlign.center,
-                    style: HatiTextStyles.bodyMedium.copyWith(
-                      color: HatiColors.warmCream.withValues(alpha: 0.8),
-                    ),
-                  ),
-                  const SizedBox(height: 36),
-                  for (final opt in provider.ui.options)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: HatiButton(
-                        label: opt,
-                        icon: opt == 'Close'
-                            ? Icons.close_rounded
-                            : Icons.bar_chart_rounded,
-                        color: opt == 'Close'
-                            ? HatiColors.mossGreen
-                            : HatiColors.softGold,
-                        onTap: () async {
-                          if (opt == 'Close') {
-                            // Tell the backend this scenario actually
-                            // finished — without this, it never leaves
-                            // step "scene7_dashboard" and stays in
-                            // get_unfinished_scenarios() forever, so the
-                            // "Resume Scenario?" dialog kept reappearing
-                            // even for scenarios the user already
-                            // completed. Fire-and-forget (not awaited) so
-                            // the pop still happens immediately, client-
-                            // side, without waiting on a network round
-                            // trip — mirrors EmotionPage's exit.
-                            provider.submitText(opt);
-                            Navigator.pop(context);
-                            return;
-                          }
-                          if (opt == 'Open Progress') {
-                            await _showProgressDialog(context, provider.sessionId);
-                            if (context.mounted) {
-                              await provider.submitText(opt);
-                            }
-                            return;
-                          }
-                          await provider.submitText(opt);
-                        },
-                      ),
-                    ),
-                ],
-              ),
+                );
+              },
             ),
           ),
         ],

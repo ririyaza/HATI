@@ -58,6 +58,14 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
   String? _trackedBubbleKey;
   bool _dialogueComplete = false;
 
+  // True once the player taps "Write your own response" on a multi-choice
+  // turn — swaps the DraggableChoiceSheet for the same textbox+voice input
+  // bar the free-text turns use, instead of only ever offering the backend's
+  // pre-written options. Reset alongside _dialogueComplete on every new turn
+  // (see the bubbleKey check below) so the next choice screen defaults back
+  // to showing the option cards.
+  bool _useCustomResponse = false;
+
   Future<void> _startRecording() async {
     if (await _record.hasPermission()) {
       final dir = await getTemporaryDirectory();
@@ -74,6 +82,22 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
       );
 
       if (mounted) setState(() => _isRecording = true);
+    } else if (mounted) {
+      // hasPermission() returned false with no further feedback — tapping
+      // the mic used to just do nothing here, with no way for the player
+      // to know why voice input wasn't working. They can still type their
+      // response instead, so this isn't a dead end, just needs to say so.
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            "Microphone access is off, so voice input isn't available "
+            "right now — you can still type your response below. To use "
+            "voice, allow microphone access for HATI in your device's "
+            "Settings.",
+          ),
+          duration: Duration(seconds: 5),
+        ),
+      );
     }
   }
 
@@ -184,6 +208,7 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
     if (bubbleKey != _trackedBubbleKey) {
       _trackedBubbleKey = bubbleKey;
       _dialogueComplete = false;
+      _useCustomResponse = false;
     }
     // No Hati line to wait for on this turn -> nothing blocks "Continue".
     final dialogueReady = hatiText.isEmpty || _dialogueComplete;
@@ -401,6 +426,7 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
                     // drag up together as one unit.
                     if (dialogueReady &&
                         !isTextInput &&
+                        !_useCustomResponse &&
                         provider.ui.options.length > 1)
                       PopIn(
                         key: ValueKey(bubbleKey),
@@ -428,6 +454,16 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
                                           provider.ui.options[i],
                                         ),
                                 ),
+                              // The sheet's own subtitle above promises
+                              // "write your own" — this is that option:
+                              // switches to the same textbox+voice bar the
+                              // free-text turns use instead of submitting
+                              // one of the pre-written options.
+                              _CustomResponseCard(
+                                enabled: !provider.isLoading,
+                                onTap: () =>
+                                    setState(() => _useCustomResponse = true),
+                              ),
                             ],
                           ),
                         ),
@@ -442,26 +478,55 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
               // overlay instead, not this fixed-height bottom slot.
               if (!dialogueReady)
                 const SizedBox.shrink()
-              else if (isTextInput)
+              else if (isTextInput || _useCustomResponse)
                 PopIn(
-                  key: ValueKey(bubbleKey),
-                  child: _ApproachInputBar(
-                    controller: _controller,
-                    enabled:
-                        !provider.isLoading &&
-                        !_isRecording &&
-                        !_isTranscribing,
-                    isRecording: _isRecording,
-                    isTranscribing: _isTranscribing,
-                    hintText: _isRecording
-                        ? 'Listening…'
-                        : (_isTranscribing
-                              ? 'Converting your voice…'
-                              : 'Type your response...'),
-                    onSend: () => _sendText(provider),
-                    onMicTap: () => _isRecording
-                        ? _stopRecording(provider)
-                        : _startRecording(),
+                  key: ValueKey('$bubbleKey:input'),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Only reachable via "Write your own response" on a
+                      // turn that actually had preset choices — a real
+                      // isTextInput turn has no choice sheet to go back to.
+                      if (_useCustomResponse && !isTextInput)
+                        Container(
+                          color: Colors.white,
+                          width: double.infinity,
+                          padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: TextButton.icon(
+                              onPressed: () =>
+                                  setState(() => _useCustomResponse = false),
+                              style: TextButton.styleFrom(
+                                foregroundColor: _kApproachBlue,
+                                padding: EdgeInsets.zero,
+                                minimumSize: Size.zero,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                              icon: const Icon(Icons.arrow_back_rounded, size: 16),
+                              label: const Text('Back to choices'),
+                            ),
+                          ),
+                        ),
+                      _ApproachInputBar(
+                        controller: _controller,
+                        enabled:
+                            !provider.isLoading &&
+                            !_isRecording &&
+                            !_isTranscribing,
+                        isRecording: _isRecording,
+                        isTranscribing: _isTranscribing,
+                        hintText: _isRecording
+                            ? 'Listening…'
+                            : (_isTranscribing
+                                  ? 'Converting your voice…'
+                                  : 'Type your response...'),
+                        onSend: () => _sendText(provider),
+                        onMicTap: () => _isRecording
+                            ? _stopRecording(provider)
+                            : _startRecording(),
+                      ),
+                    ],
                   ),
                 )
               else if (provider.ui.options.length <= 1)
@@ -1103,6 +1168,66 @@ class _CharacterSpeechBubble extends StatelessWidget {
 }
 
 // ── Bottom input bar ──────────────────────────────────────────────────────────
+
+/// The "write your own" option at the end of the choice sheet's option
+/// list — a lighter outlined style (pencil icon, no lettered badge) than
+/// the [ScriptOptionCard]s above it so it reads as "compose something new"
+/// rather than "option D".
+class _CustomResponseCard extends StatelessWidget {
+  final bool enabled;
+  final VoidCallback onTap;
+
+  const _CustomResponseCard({required this.enabled, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedOpacity(
+      duration: const Duration(milliseconds: 350),
+      opacity: enabled ? 1 : 0.4,
+      child: GestureDetector(
+        onTap: enabled ? onTap : null,
+        child: Container(
+          decoration: BoxDecoration(
+            color: _kApproachBlue.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: _kApproachBlue.withValues(alpha: 0.4)),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: _kApproachBlue.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.edit_rounded,
+                    size: 16,
+                    color: _kApproachBlue,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    'Write your own response',
+                    style: TextStyle(
+                      color: _kApproachBlue,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class _ApproachInputBar extends StatelessWidget {
   final TextEditingController controller;
