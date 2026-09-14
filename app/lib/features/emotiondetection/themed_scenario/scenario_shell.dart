@@ -198,7 +198,7 @@ class _ResumeScenarioDialog extends StatelessWidget {
                     child: HatiButton(
                       label: 'Continue',
                       icon: Icons.play_arrow_rounded,
-                      color: HatiColors.mossGreen,
+                      color: const Color(0xFF0B28D9),
                       onTap: () => Navigator.pop(context, true),
                     ),
                   ),
@@ -318,10 +318,14 @@ class _ScenarioDashboardScene extends StatelessWidget {
         children: [
           Container(
             decoration: const BoxDecoration(
+              // Brand blue, matching every other end-of-flow screen
+              // (scene6_closing, the badge/resume dialogs) — this was the
+              // last screen in the post-scenario path still on the old
+              // green palette.
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [HatiColors.deepForest, Color(0xFF2A4A2A)],
+                colors: [Color(0xFF0B28D9), Color(0xFF081F9E)],
               ),
             ),
           ),
@@ -333,7 +337,7 @@ class _ScenarioDashboardScene extends StatelessWidget {
               height: 200,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: HatiColors.leafGreen.withValues(alpha: 0.15),
+                color: Colors.white.withValues(alpha: 0.08),
               ),
             ),
           ),
@@ -392,7 +396,7 @@ class _ScenarioDashboardScene extends StatelessWidget {
                                   ? Icons.close_rounded
                                   : Icons.bar_chart_rounded,
                               color: opt == 'Close'
-                                  ? HatiColors.mossGreen
+                                  ? const Color(0xFF0B28D9)
                                   : HatiColors.softGold,
                               onTap: () async {
                                 if (opt == 'Close') {
@@ -503,10 +507,13 @@ class _EmotionSummaryDialog extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
               decoration: const BoxDecoration(
+                // Brand blue, matching every other popup in this file
+                // (badge unlock, resume scenario) — this dialog's header
+                // was the one still left on the old green.
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [HatiColors.deepForest, HatiColors.mossGreen],
+                  colors: [Color(0xFF0B28D9), Color(0xFF081F9E)],
                 ),
                 borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
               ),
@@ -562,7 +569,7 @@ class _EmotionSummaryDialog extends StatelessWidget {
                 width: double.infinity,
                 child: HatiButton(
                   label: 'Close',
-                  color: HatiColors.mossGreen,
+                  color: const Color(0xFF0B28D9),
                   onTap: () => Navigator.pop(context),
                 ),
               ),
@@ -614,7 +621,8 @@ const Map<String, _BadgeInfo> _kBadgeInfo = {
   ),
   'sharpshooter': _BadgeInfo(
     label: 'Sharpshooter',
-    description: 'You handled several scenarios well, back to back.',
+    description:
+        'You responded confidently in the NPC interaction, 3 scenarios in a row.',
     image: 'assets/badges/sharpshooter.png',
   ),
 };
@@ -746,7 +754,7 @@ class _BadgeUnlockDialog extends StatelessWidget {
                 width: double.infinity,
                 child: HatiButton(
                   label: 'Nice!',
-                  color: HatiColors.mossGreen,
+                  color: const Color(0xFF0B28D9),
                   onTap: () => Navigator.pop(context),
                 ),
               ),
