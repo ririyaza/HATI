@@ -121,6 +121,8 @@ class ModuleProgressData {
     required this.completedScenarios,
     required this.totalScenarios,
     required this.lastCompletedAt,
+    this.easyCompleted = false,
+    this.difficultCompleted = false,
   });
 
   final String id;
@@ -130,6 +132,15 @@ class ModuleProgressData {
   final int completedScenarios;
   final int totalScenarios;
   final DateTime? lastCompletedAt;
+
+  /// Completion HISTORY, not a "what mode runs next" prediction — read
+  /// straight off users/{uid}/scenario_progress/{scenarioKey}'s own
+  /// easy_completed/difficult_completed flags. Both can be true at once
+  /// (the player cleared both modes), in which case the Progress card
+  /// shows both pills rather than picking one — unlike modules_screen.dart's
+  /// pill, which deliberately shows the single next-attempt mode instead.
+  final bool easyCompleted;
+  final bool difficultCompleted;
 
   double get progress {
     if (totalScenarios <= 0) return 0;
@@ -193,16 +204,19 @@ class DashboardDataService {
     List<QueryDocumentSnapshot<Map<String, dynamic>>>? latestModuleDocs;
     List<QueryDocumentSnapshot<Map<String, dynamic>>>? latestAssessmentDocs;
     DocumentSnapshot<Map<String, dynamic>>? latestBadgeDoc;
+    List<QueryDocumentSnapshot<Map<String, dynamic>>>? latestDifficultyDocs;
 
     void emitIfReady() {
       final userDoc = latestUserDoc;
       final moduleDocs = latestModuleDocs;
       final assessmentDocs = latestAssessmentDocs;
       final badgeDoc = latestBadgeDoc;
+      final difficultyDocs = latestDifficultyDocs;
       if (userDoc == null ||
           moduleDocs == null ||
           assessmentDocs == null ||
-          badgeDoc == null) {
+          badgeDoc == null ||
+          difficultyDocs == null) {
         return;
       }
       controller.add(
@@ -212,6 +226,7 @@ class DashboardDataService {
           moduleDocs: moduleDocs,
           assessmentDocs: assessmentDocs,
           badgeDoc: badgeDoc,
+          difficultyDocs: difficultyDocs,
         ),
       );
     }
@@ -243,6 +258,14 @@ class DashboardDataService {
               .snapshots()
               .listen((doc) {
             latestBadgeDoc = doc;
+            emitIfReady();
+          }, onError: controller.addError),
+          // easy_completed/difficult_completed per scenario_key — same
+          // collection modules_screen.dart's own difficulty pill reads, so
+          // the Progress tab's pill and the Modules tab's pill can never
+          // disagree about which mode a scenario is currently in.
+          userRef.collection('scenario_progress').snapshots().listen((snap) {
+            latestDifficultyDocs = snap.docs;
             emitIfReady();
           }, onError: controller.addError),
         ];
@@ -331,9 +354,10 @@ class DashboardUserDataParser {
     required List<QueryDocumentSnapshot<Map<String, dynamic>>> moduleDocs,
     required List<QueryDocumentSnapshot<Map<String, dynamic>>> assessmentDocs,
     DocumentSnapshot<Map<String, dynamic>>? badgeDoc,
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> difficultyDocs = const [],
   }) {
     final data = userDoc.data() ?? {};
-    final modules = _parseModules(moduleDocs);
+    final modules = _parseModules(moduleDocs, difficultyDocs);
     final assessments = _parseAssessments(data, assessmentDocs);
     final copingPreferences = _parseCopingPreferences(data, assessmentDocs);
     final badgeProgress = _parseBadgeProgress(badgeDoc);
@@ -363,8 +387,21 @@ class DashboardUserDataParser {
 
   static List<ModuleProgressData> _parseModules(
     List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> difficultyDocs,
   ) {
     final byId = <String, ModuleProgressData>{};
+
+    // scenario_progress/{scenarioKey}'s own easy_completed/
+    // difficult_completed flags, read as completion HISTORY — both can be
+    // true (the player cleared both modes), unlike modules_screen.dart's
+    // pill which collapses this into a single "next attempt" mode.
+    final easyByKey = <String, bool>{};
+    final difficultByKey = <String, bool>{};
+    for (final doc in difficultyDocs) {
+      final data = doc.data();
+      easyByKey[doc.id] = data['easy_completed'] == true;
+      difficultByKey[doc.id] = data['difficult_completed'] == true;
+    }
 
     for (final entry in _knownModules.entries) {
       final definition = entry.value;
@@ -376,6 +413,8 @@ class DashboardUserDataParser {
         completedScenarios: 0,
         totalScenarios: definition.totalScenarios,
         lastCompletedAt: null,
+        easyCompleted: easyByKey[entry.key] ?? false,
+        difficultCompleted: difficultByKey[entry.key] ?? false,
       );
     }
 
@@ -402,6 +441,8 @@ class DashboardUserDataParser {
         completedScenarios: completed,
         totalScenarios: total,
         lastCompletedAt: _date(data['lastCompletedAt']),
+        easyCompleted: easyByKey[doc.id] ?? false,
+        difficultCompleted: difficultByKey[doc.id] ?? false,
       );
     }
 

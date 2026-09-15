@@ -445,21 +445,31 @@ class _ScenarioDashboardScene extends StatelessWidget {
 /// PIES-selection colors (HatiColors.anxious/calm/etc.) — those fail
 /// colorblind-safe separation as a group, so this is a validated palette
 /// (see dataviz skill) that keeps a similar hue per emotion where possible.
+///
+/// Keys must match the backend's actual emotion values verbatim (see
+/// _EMOTION_LABELS in app.py: happy/sad/anxious/anger/disgust/surprised/
+/// neutral) — this used to key on 'angry'/'calm'/'scared', none of which
+/// the backend ever actually produces, so those 3 cases silently fell
+/// back to gray no matter what was logged.
 const Map<String, Color> _emotionChartColors = {
+  'happy': Color(0xFFFFC107),
+  'sad': Color(0xFF2196F3),
   'anxious': Color(0xFFEF6C00),
-  'calm': Color(0xFF00897B),
-  'neutral': Color(0xFF3949AB),
-  'scared': Color(0xFFAB47BC),
-  'angry': Color(0xFFC62828),
+  'anger': Color(0xFFC62828),
+  'disgust': Color(0xFF228B22),
+  'surprised': Color(0xFFAB47BC),
+  'neutral': Color(0xFF9E9E9E),
 };
 const Color _emotionChartFallbackColor = Color(0xFF78909C);
 
 const Map<String, String> _emotionChartLabels = {
+  'happy': 'Happy',
+  'sad': 'Sad',
   'anxious': 'Anxious',
-  'calm': 'Calm',
+  'anger': 'Angry',
+  'disgust': 'Disgust',
+  'surprised': 'Surprised',
   'neutral': 'Neutral',
-  'scared': 'Scared',
-  'angry': 'Angry',
 };
 
 String _emotionLabelFor(String key) {

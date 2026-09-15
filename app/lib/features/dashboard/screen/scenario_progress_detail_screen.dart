@@ -24,7 +24,7 @@ class ScenarioProgressDetailScreen extends StatefulWidget {
   // SVG features the originals use (embedded raster fills clipped by
   // vector paths), which renders as a blank/silhouette image — see the
   // same tradeoff in scenario_models.dart's placeholderAsset.
-  static const _emojis = {
+  static const _emotionAssets = {
     'anxious': 'assets/Hati_emojis/hati_anxious.png',
     'happy': 'assets/Hati_emojis/hati_happy.png',
     'neutral': 'assets/Hati_emojis/hati_neutral.png',
@@ -39,15 +39,50 @@ class ScenarioProgressDetailScreen extends StatefulWidget {
       _ScenarioProgressDetailScreenState();
 }
 
+/// Which sessions count toward the chart — 'all' combines Easy + Hard
+/// (the only option that existed before this filter), 'easy'/'difficult'
+/// scope to just that mode's own logs. Logs written before scenario_engine.py
+/// started tagging difficulty default to 'easy' (see EmotionLogEntry) — a
+/// guess for old data, not a fact, so a "difficult" filter is only reliable
+/// for sessions played after that change shipped.
+enum _DifficultyFilter {
+  all('All Modes'),
+  easy('Easy Mode'),
+  difficult('Hard Mode');
+
+  const _DifficultyFilter(this.label);
+  final String label;
+}
+
 class _ScenarioProgressDetailScreenState
     extends State<ScenarioProgressDetailScreen> {
   late final Future<List<EmotionLogEntry>> _logsFuture = fetchAllEmotionLogs();
+  _DifficultyFilter _difficultyFilter = _DifficultyFilter.all;
 
-  static const _trackedEmotions = ['anxious', 'happy', 'neutral', 'sad'];
+  // All 7 canonical emotions (same set/order as weekly_progress_data.dart's
+  // Emotion Trends chart) — this used to track only 4 of them. _scoresFrom
+  // below still counted EVERY relevant log (any of the 7) into `total`,
+  // just never showed anger/disgust/surprised as their own bar — so those
+  // logs silently deflated all 4 displayed percentages (denominator too
+  // big for what was actually shown, never summing to 100%) instead of
+  // just being absent.
+  static const _trackedEmotions = [
+    'happy',
+    'sad',
+    'anxious',
+    'anger',
+    'disgust',
+    'surprised',
+    'neutral',
+  ];
 
   List<_EmotionScore> _scoresFrom(List<EmotionLogEntry> allLogs) {
     final relevant = allLogs.where(
-      (e) => e.scenarioKey == widget.scenarioKey && e.isPiesOrInteraction,
+      (e) =>
+          e.scenarioKey == widget.scenarioKey &&
+          e.isPiesOrInteraction &&
+          (_difficultyFilter == _DifficultyFilter.all ||
+              e.difficulty == _difficultyFilter.name),
     );
     final counts = <String, int>{};
     var total = 0;
@@ -95,7 +130,46 @@ class _ScenarioProgressDetailScreenState
                       ),
                     ),
                   ),
-                  const SizedBox(width: 44),
+                  // Scopes the whole screen below (dominant mood + bars) to
+                  // just one mode's logs, or both combined — see
+                  // _DifficultyFilter.
+                  PopupMenuButton<_DifficultyFilter>(
+                    initialValue: _difficultyFilter,
+                    onSelected: (v) => setState(() => _difficultyFilter = v),
+                    color: const Color(0xFF13308F),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    icon: const Icon(
+                      Icons.filter_alt_outlined,
+                      color: Colors.white,
+                      size: 22,
+                    ),
+                    itemBuilder: (context) => [
+                      for (final f in _DifficultyFilter.values)
+                        PopupMenuItem(
+                          value: f,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                f.label,
+                                style: const TextStyle(color: Colors.white),
+                              ),
+                              if (f == _difficultyFilter)
+                                const Padding(
+                                  padding: EdgeInsets.only(left: 12),
+                                  child: Icon(
+                                    Icons.check_rounded,
+                                    color: Colors.white,
+                                    size: 18,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -116,21 +190,35 @@ class _ScenarioProgressDetailScreenState
                   final dominant = total == 0
                       ? null
                       : scores.reduce((a, b) => b.value > a.value ? b : a);
-                  const defaultEmojiAsset =
-                      'assets/Hati_emojis/hati_neutral.png';
-                  final emojiAsset = dominant == null
-                      ? defaultEmojiAsset
-                      : (ScenarioProgressDetailScreen._emojis[dominant.key] ??
-                            defaultEmojiAsset);
+                  // No dominant emotion yet (never played) falls back to
+                  // the neutral mood art rather than a made-up default.
+                  final emotionAsset = dominant == null
+                      ? ScenarioProgressDetailScreen._emotionAssets['neutral']!
+                      : (ScenarioProgressDetailScreen
+                                ._emotionAssets[dominant.key] ??
+                            ScenarioProgressDetailScreen
+                                ._emotionAssets['neutral']!);
 
                   final String headline;
                   final String body;
                   if (total == 0) {
-                    headline = "You haven't practiced this scenario yet";
-                    body =
-                        "Play through it once and I'll start tracking how "
-                        "you feel during the P.I.E.S. check-in and the "
-                        "conversation itself.";
+                    // Distinguishes "never played at all" from "played,
+                    // just not in the currently-selected mode" — otherwise
+                    // filtering to Hard Mode on a scenario you've only ever
+                    // played Easy falsely reads as never having touched it.
+                    if (_difficultyFilter == _DifficultyFilter.all) {
+                      headline = "You haven't practiced this scenario yet";
+                      body =
+                          "Play through it once and I'll start tracking how "
+                          "you feel during the P.I.E.S. check-in and the "
+                          "conversation itself.";
+                    } else {
+                      headline = "No ${_difficultyFilter.label} logs yet";
+                      body =
+                          "You haven't played this scenario in "
+                          "${_difficultyFilter.label} yet — switch the "
+                          "filter above or give it a try.";
+                    }
                   } else if (dominant?.key == 'anxious') {
                     headline = 'Take things one step at a time';
                     body =
@@ -148,7 +236,7 @@ class _ScenarioProgressDetailScreenState
                     padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
                     child: Column(
                       children: [
-                        _EmotionGlowCircle(emojiAsset: emojiAsset),
+                        _EmotionGlowCircle(assetPath: emotionAsset),
                         const SizedBox(height: 28),
                         Text(
                           headline,
@@ -194,11 +282,26 @@ class _ScenarioProgressDetailScreenState
                           ),
                         ),
                         const SizedBox(height: 36),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: scores
-                              .map((s) => _EmotionBar(score: s))
-                              .toList(),
+                        // 7 bars (previously 4, which fit fine in one row)
+                        // are wide enough to overflow a narrow phone screen
+                        // — wraps onto additional rows (typically 4 then 3)
+                        // instead of scrolling sideways, so every bar is
+                        // visible at once without a swipe. Emotions never
+                        // logged for this scenario (0%) are skipped
+                        // entirely rather than shown as an empty bar.
+                        Wrap(
+                          alignment: WrapAlignment.center,
+                          runSpacing: 16,
+                          children: [
+                            for (final s in scores)
+                              if (s.value > 0)
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                  ),
+                                  child: _EmotionBar(score: s),
+                                ),
+                          ],
                         ),
                       ],
                     ),
@@ -221,9 +324,9 @@ class _EmotionScore {
 }
 
 class _EmotionGlowCircle extends StatelessWidget {
-  const _EmotionGlowCircle({required this.emojiAsset});
+  const _EmotionGlowCircle({required this.assetPath});
 
-  final String emojiAsset;
+  final String assetPath;
 
   @override
   Widget build(BuildContext context) {
@@ -246,16 +349,30 @@ class _EmotionGlowCircle extends StatelessWidget {
               ),
             ),
           ),
-          Container(
-            width: 140,
-            height: 140,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              color: Color(0xFF4C2E8F),
+          ClipOval(
+            child: Container(
+              width: 140,
+              height: 140,
+              color: const Color(0xFF4C2E8F),
+              alignment: Alignment.center,
+              // BoxFit.cover + a matching-size ClipOval so the art fills
+              // the entire circle edge-to-edge (cropping to fit) instead
+              // of sitting as a smaller inset square with the purple
+              // background showing around it.
+              child: Image.asset(
+                assetPath,
+                width: 140,
+                height: 140,
+                fit: BoxFit.cover,
+                // A swapped-in file that fails to decode shouldn't crash
+                // this screen — falls back to a plain icon instead.
+                errorBuilder: (context, error, stackTrace) => const Icon(
+                  Icons.emoji_emotions_outlined,
+                  color: Colors.white,
+                  size: 56,
+                ),
+              ),
             ),
-            alignment: Alignment.center,
-            padding: const EdgeInsets.all(20),
-            child: Image.asset(emojiAsset),
           ),
         ],
       ),
@@ -281,7 +398,13 @@ class _EmotionBar extends StatelessWidget {
     return Column(
       children: [
         Text(
-          score.value.toStringAsFixed(0),
+          // score.value is this emotion's SHARE of this scenario's own
+          // logs (see _scoresFrom), not a raw occurrence count — displaying
+          // it bare (no "%") made it look like an absolute count, which
+          // reads as wildly inconsistent next to Weekly Progress's Emotion
+          // Trends chart (a true all-scenario, all-time raw count) even
+          // though neither number is actually wrong.
+          '${score.value.toStringAsFixed(0)}%',
           style: const TextStyle(
             color: Colors.white,
             fontSize: 16,

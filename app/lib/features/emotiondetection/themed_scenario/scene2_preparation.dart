@@ -19,12 +19,21 @@
 // this step "Choose Your Script".
 // ─────────────────────────────────────────────
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'app_theme.dart';
 import 'scenario_models.dart';
 import 'scenario_provider.dart';
 import 'shared_widgets.dart';
+
+/// Picks the choice-sheet header for Scene 2's generic multi-option buttons
+/// branch — see the `else` branch below for why one fixed "Choose Your
+/// Script" was wrong for goal/path steps specifically.
+String _prepChoiceTitle(String? step) {
+  if (step == 'fsg_s2_path') return 'Choose Your Approach';
+  if (step != null && step.contains('goal')) return 'Choose Your Goal';
+  return 'Choose Your Script';
+}
 
 class Scene2Preparation extends StatefulWidget {
   const Scene2Preparation({super.key});
@@ -63,7 +72,7 @@ class _Scene2PreparationState extends State<Scene2Preparation> {
         bottomBar = HatiButton(
           label: ui.options.first,
           icon: Icons.directions_walk_rounded,
-          color: HatiColors.leafGreen,
+          color: const Color(0xFF0B28D9),
           onTap: provider.isLoading
               ? null
               : () => provider.submitText(ui.options.first),
@@ -98,9 +107,19 @@ class _Scene2PreparationState extends State<Scene2Preparation> {
         // white behind the whole section (not just a card) so none of the
         // green background shows through on the sides or below a short
         // list of options.
+        //
+        // This branch also catches every OTHER multi-option buttons step
+        // in Scene 2 across all 6 themes — not just literal scripts.
+        // *_goal steps (e.g. foa_s2_goal: "Say my opening line clearly." /
+        // "Make eye contact briefly." / ...) are personal behavioral
+        // intentions, not a line to say to the NPC, and fsg_s2_path
+        // ("Path A: Approach the group" / "Path B: Take the quiet area")
+        // is a route/action choice — "Choose Your Script" read wrong for
+        // both. Everything else here (opening lines, excuses, practice
+        // lines) genuinely is a script choice, so that stays the default.
         contentBackgroundColor = Colors.white;
-        fixedHeader = const SectionHeader(
-          title: 'Choose Your Script',
+        fixedHeader = SectionHeader(
+          title: _prepChoiceTitle(step),
           subtitle: 'Select one or write your own',
         );
         body = _ScriptChoiceList(
@@ -121,6 +140,10 @@ class _Scene2PreparationState extends State<Scene2Preparation> {
         hintText: ui.placeholder ?? 'Type your response...',
         isLoading: provider.isLoading,
         onSubmit: provider.submitText,
+        onSubmitAudio: (path) => provider.submitAudio(
+          path,
+          userId: FirebaseAuth.instance.currentUser?.uid ?? '',
+        ),
       );
     }
 

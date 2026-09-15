@@ -11,9 +11,10 @@ import 'weekly_progress_data.dart';
 ///
 /// Confidence/Anxiety (Summary page) are scoped to the current week, matching
 /// this screen's own name and its "This Week" entry point on the Progress
-/// screen. Trigger Patterns and Emotion Trends are all-time, since they're
-/// about overall patterns across every scenario play, not a single week's
-/// snapshot.
+/// screen. Trigger Patterns is all-time, since it's about overall patterns
+/// across every scenario play, not a single week's snapshot. Emotion Trends
+/// defaults to all-time too, but its own filter (Daily/This week/All time —
+/// see [EmotionTrendsRange]) lets the user narrow it down.
 class WeeklyProgressDetailScreen extends StatefulWidget {
   const WeeklyProgressDetailScreen({super.key});
 
@@ -30,6 +31,7 @@ class _WeeklyProgressDetailScreenState
   int _page = 0;
   DateTime _displayedMonth =
       DateTime(DateTime.now().year, DateTime.now().month);
+  EmotionTrendsRange _emotionTrendsRange = EmotionTrendsRange.allTime;
   late Future<List<EmotionLogEntry>> _logsFuture;
 
   @override
@@ -180,7 +182,10 @@ class _WeeklyProgressDetailScreenState
                       computeConfidenceAnxiety(logs, DateTime.now());
                   final activeDays = activeDaysInMonth(logs, _displayedMonth);
                   final triggers = computeTriggerPatterns(logs);
-                  final emotions = computeEmotionTrends(logs);
+                  final emotions = computeEmotionTrends(
+                    logs,
+                    range: _emotionTrendsRange,
+                  );
 
                   return PageView(
                     controller: _pageController,
@@ -193,7 +198,12 @@ class _WeeklyProgressDetailScreenState
                         onTapMonth: _pickMonth,
                       ),
                       _TriggerPatternsPage(triggers: triggers),
-                      _EmotionTrendsPage(emotions: emotions),
+                      _EmotionTrendsPage(
+                        emotions: emotions,
+                        range: _emotionTrendsRange,
+                        onRangeChanged: (r) =>
+                            setState(() => _emotionTrendsRange = r),
+                      ),
                     ],
                   );
                 },
@@ -807,9 +817,15 @@ class _TriggerBarRow extends StatelessWidget {
 }
 
 class _EmotionTrendsPage extends StatelessWidget {
-  const _EmotionTrendsPage({required this.emotions});
+  const _EmotionTrendsPage({
+    required this.emotions,
+    required this.range,
+    required this.onRangeChanged,
+  });
 
   final List<EmotionDatum> emotions;
+  final EmotionTrendsRange range;
+  final ValueChanged<EmotionTrendsRange> onRangeChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -836,34 +852,80 @@ class _EmotionTrendsPage extends StatelessWidget {
             ),
             child: Column(
               children: [
-                const Row(
-                  children: [
-                    Icon(
-                      Icons.filter_alt_outlined,
-                      color: Colors.white,
-                      size: 14,
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: PopupMenuButton<EmotionTrendsRange>(
+                    initialValue: range,
+                    onSelected: onRangeChanged,
+                    color: const Color(0xFF13308F),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    SizedBox(width: 6),
-                    Text(
-                      'All time',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        decoration: TextDecoration.underline,
-                      ),
+                    itemBuilder: (context) => [
+                      for (final r in EmotionTrendsRange.values)
+                        PopupMenuItem(
+                          value: r,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                r.label,
+                                style: const TextStyle(color: Colors.white),
+                              ),
+                              if (r == range)
+                                const Padding(
+                                  padding: EdgeInsets.only(left: 12),
+                                  child: Icon(
+                                    Icons.check_rounded,
+                                    color: Colors.white,
+                                    size: 18,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                    ],
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.filter_alt_outlined,
+                          color: Colors.white,
+                          size: 14,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          range.label,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
                 const SizedBox(height: 12),
                 emotions.every((e) => e.value <= 0)
-                    ? const SizedBox(
+                    ? SizedBox(
                         height: 260,
                         child: Center(
                           child: Text(
-                            'Finish a few scenarios to see your emotion trends here.',
+                            switch (range) {
+                              EmotionTrendsRange.daily =>
+                                "No emotions logged today yet — play a scenario to see today's trends.",
+                              EmotionTrendsRange.weekly =>
+                                "No emotions logged this week yet — play a scenario to see this week's trends.",
+                              EmotionTrendsRange.allTime =>
+                                'Finish a few scenarios to see your emotion trends here.',
+                            },
                             textAlign: TextAlign.center,
-                            style: TextStyle(color: Colors.white70, fontSize: 12.5),
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12.5,
+                            ),
                           ),
                         ),
                       )

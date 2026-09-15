@@ -7,7 +7,7 @@ import '../../emotiondetection/themed_scenario/scenario_models.dart'
 
 /// One flattened row from `users/{uid}/scenarios/{sessionId}/emotionLogs`,
 /// combining the fields `_log_emotion` (scenario_engine.py) actually writes:
-/// emotion, step, theme, scenario_key, timestamp (ISO string).
+/// emotion, step, theme, scenario_key, difficulty, timestamp (ISO string).
 class EmotionLogEntry {
   const EmotionLogEntry({
     required this.emotion,
@@ -15,6 +15,7 @@ class EmotionLogEntry {
     required this.theme,
     required this.scenarioKey,
     required this.timestamp,
+    this.difficulty = 'easy',
   });
 
   /// Already normalized to one of the 7 canonical keys (see
@@ -24,6 +25,13 @@ class EmotionLogEntry {
   final String theme;
   final String scenarioKey;
   final DateTime timestamp;
+
+  /// 'easy' or 'difficult' — added to _log_emotion after logs had already
+  /// been recorded for a while, so anything logged before that defaults
+  /// here to 'easy'. That default is a guess for old data, not a fact —
+  /// only logs written after the backend started tagging this are actually
+  /// known to be correct.
+  final String difficulty;
 
   /// True only for a step rendered by Scene 1 (P.I.E.S.) or Scene 3
   /// (Interaction) — Trigger Patterns and Emotion Trends only count the
@@ -93,6 +101,7 @@ Future<List<EmotionLogEntry>> fetchAllEmotionLogs() async {
         theme: (data['theme'] ?? '').toString(),
         scenarioKey: (data['scenario_key'] ?? '').toString(),
         timestamp: timestamp,
+        difficulty: (data['difficulty'] ?? 'easy').toString(),
       ));
     }
   }
@@ -349,14 +358,47 @@ const _emotionDisplay = [
   ('anger', 'Angry', Color(0xFF8B5CF6)),
 ];
 
+/// Which window Emotion Trends is scoped to — backs the screen's "All
+/// time"/Daily/Weekly filter. `label` is what the filter row displays.
+enum EmotionTrendsRange {
+  daily('Today'),
+  weekly('This week'),
+  allTime('All time');
+
+  const EmotionTrendsRange(this.label);
+  final String label;
+}
+
 /// Counts of each of the 7 emotions across every P.I.E.S./Interaction log
-/// the user has ever had, across all scenarios — an all-time trend, not
-/// scoped to a week (Trigger Patterns is the same way), unlike the
-/// Confidence/Anxiety cards which this "Weekly Progress" screen scopes to
-/// the current week.
-List<EmotionDatum> computeEmotionTrends(List<EmotionLogEntry> logs) {
+/// in [range] — defaults to all-time (every log the user has ever had,
+/// across every scenario), same as this used to be unconditionally. Daily
+/// scopes to logs from today only; Weekly to the current Sun-Sat week
+/// (same week boundary [startOfWeek] uses for the Summary page's
+/// Confidence/Anxiety cards), both relative to [now] (defaults to
+/// DateTime.now(), overridable for tests).
+List<EmotionDatum> computeEmotionTrends(
+  List<EmotionLogEntry> logs, {
+  EmotionTrendsRange range = EmotionTrendsRange.allTime,
+  DateTime? now,
+}) {
+  final effectiveNow = now ?? DateTime.now();
+  Iterable<EmotionLogEntry> scoped;
+  switch (range) {
+    case EmotionTrendsRange.daily:
+      scoped = logs.where((e) => _isSameDate(e.timestamp, effectiveNow));
+    case EmotionTrendsRange.weekly:
+      final weekStart = startOfWeek(effectiveNow);
+      final weekEnd = weekStart.add(const Duration(days: 7));
+      scoped = logs.where(
+        (e) =>
+            !e.timestamp.isBefore(weekStart) && e.timestamp.isBefore(weekEnd),
+      );
+    case EmotionTrendsRange.allTime:
+      scoped = logs;
+  }
+
   final counts = {for (final e in _emotionDisplay) e.$1: 0};
-  for (final e in logs) {
+  for (final e in scoped) {
     if (!e.isPiesOrInteraction) continue;
     if (counts.containsKey(e.emotion)) {
       counts[e.emotion] = counts[e.emotion]! + 1;

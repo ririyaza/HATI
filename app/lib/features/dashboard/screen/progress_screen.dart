@@ -431,6 +431,30 @@ class _ModuleProgressCard extends StatelessWidget {
                     fontWeight: FontWeight.w500,
                   ),
                 ),
+                if (module.easyCompleted || module.difficultCompleted) ...[
+                  const SizedBox(height: 6),
+                  // Completion HISTORY, not a "next attempt" prediction —
+                  // shows a pill per mode actually cleared, so beating both
+                  // Easy and Hard shows both instead of collapsing down to
+                  // just one (unlike the Modules tab's own pill, which
+                  // intentionally shows only the single next-attempt mode).
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    children: [
+                      if (module.easyCompleted)
+                        const _DifficultyPill(
+                          label: 'Easy Mode',
+                          color: Color(0xFF2E7D32),
+                        ),
+                      if (module.difficultCompleted)
+                        const _DifficultyPill(
+                          label: 'Hard Mode',
+                          color: Color(0xFFC62828),
+                        ),
+                    ],
+                  ),
+                ],
                 const SizedBox(height: 10),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(6),
@@ -456,6 +480,32 @@ class _ModuleProgressCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _DifficultyPill extends StatelessWidget {
+  const _DifficultyPill({required this.label, required this.color});
+
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          color: color,
+        ),
       ),
     );
   }
@@ -504,7 +554,13 @@ class _BadgeTile extends StatelessWidget {
       child: Opacity(
         opacity: badge.earned ? 1.0 : 0.35,
         child: Container(
-          width: 80,
+          // Was 80 — just wide enough for "Sharpshooter" (the one label
+          // with no natural word-break point, unlike "5-Day\nStreak" /
+          // "Quick\nThinker" which pick their own line break) to wrap
+          // mid-word instead of fitting on one line. This is in a
+          // horizontally-scrolling row, so widening every tile a bit costs
+          // nothing layout-wise.
+          width: 90,
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
           decoration: BoxDecoration(
             color: badge.earned
@@ -532,7 +588,7 @@ class _BadgeTile extends StatelessWidget {
                 textAlign: TextAlign.center,
                 softWrap: true,
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: 10,
                   fontWeight: FontWeight.w600,
                   color: badge.earned
                       ? const Color(0xFF0B28D9)

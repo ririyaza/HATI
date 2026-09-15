@@ -10,6 +10,7 @@
 // exact backend-provided option string immediately via submitText.
 // ─────────────────────────────────────────────
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'app_theme.dart';
@@ -159,6 +160,10 @@ class _Scene1OfficePiesState extends State<Scene1OfficePies> {
                           hintText: provider.ui.placeholder ?? 'Tell me more...',
                           isLoading: provider.isLoading,
                           onSubmit: provider.submitText,
+                          onSubmitAudio: (path) => provider.submitAudio(
+                            path,
+                            userId: FirebaseAuth.instance.currentUser?.uid ?? '',
+                          ),
                         ),
                       ),
                 // Only paints the white content panel once the chips are
