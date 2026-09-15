@@ -293,6 +293,17 @@ class _PracticeWalkthroughState extends State<_PracticeWalkthrough> {
 // screens/scene6_closing.dart
 // ─────────────────────────────────────────────
 
+/// Steps down from bodyLarge's base 16 as the "What to remember" insight
+/// gets longer — a single short sentence reads fine at full size, but a
+/// multi-sentence insight the same size ran noticeably large inside its
+/// fixed-width card. Same length-based approach scenario_shell.dart's own
+/// _summaryFontSize already uses for the closing dialogue text.
+double _insightFontSize(String text) {
+  if (text.length > 260) return 13;
+  if (text.length > 160) return 14;
+  return 16;
+}
+
 class Scene6Closing extends StatefulWidget {
   const Scene6Closing({super.key});
 
@@ -428,6 +439,7 @@ class _Scene6ClosingState extends State<Scene6Closing> {
                                   style: HatiTextStyles.bodyLarge.copyWith(
                                     color: HatiColors.warmCream,
                                     height: 1.7,
+                                    fontSize: _insightFontSize(insight),
                                   ),
                                 ),
                               ],
@@ -457,7 +469,12 @@ class _Scene6ClosingState extends State<Scene6Closing> {
                       child: HatiButton(
                         label: finishLabel,
                         icon: Icons.check_rounded,
-                        color: const Color(0xFF0B28D9),
+                        // Was the same 0xFF0B28D9 as this screen's own
+                        // background container above — the button
+                        // effectively had no visible fill against it. The
+                        // lighter accent blue (same one Scene0's "Begin"
+                        // button uses) actually shows up.
+                        color: const Color(0xFF3DA9FC),
                         onTap: provider.isLoading
                             ? null
                             : () => provider.submitText(finishLabel),

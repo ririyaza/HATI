@@ -537,44 +537,87 @@ class _SliderQuestionState extends State<SliderQuestion> {
     _value = widget.initial.toDouble();
   }
 
+  static const _blue = Color(0xFF0B28D9);
+
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(widget.question, style: HatiTextStyles.bodyLarge),
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
         Row(
           children: [
-            Text('0', style: HatiTextStyles.caption),
-            Expanded(
-              child: Slider(
-                value: _value,
-                min: 0,
-                max: 10,
-                divisions: 10,
-                label: _value.toInt().toString(),
-                onChanged: (v) {
-                  setState(() => _value = v);
-                  widget.onChanged(v.toInt());
-                },
+            Text(
+              '0',
+              style: HatiTextStyles.caption.copyWith(
+                color: HatiColors.textLight,
+                fontWeight: FontWeight.w600,
               ),
             ),
-            Text('10', style: HatiTextStyles.caption),
+            Expanded(
+              // Was a bare default Material Slider — thin track, purple
+              // theme-color thumb, no relation to the app's own blue brand.
+              // This SliderTheme override is scoped to just this widget
+              // (doesn't touch the app's global theme) — bigger touch
+              // target, thicker track, tick marks at each whole point so
+              // the scale reads at a glance instead of just two end labels.
+              child: SliderTheme(
+                data: SliderTheme.of(context).copyWith(
+                  trackHeight: 6,
+                  activeTrackColor: _blue,
+                  inactiveTrackColor: _blue.withValues(alpha: 0.15),
+                  thumbColor: _blue,
+                  thumbShape: const RoundSliderThumbShape(
+                    enabledThumbRadius: 12,
+                    elevation: 3,
+                  ),
+                  overlayColor: _blue.withValues(alpha: 0.15),
+                  overlayShape: const RoundSliderOverlayShape(
+                    overlayRadius: 22,
+                  ),
+                  activeTickMarkColor: Colors.white.withValues(alpha: 0.7),
+                  inactiveTickMarkColor: _blue.withValues(alpha: 0.3),
+                  valueIndicatorColor: _blue,
+                  valueIndicatorTextStyle: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                child: Slider(
+                  value: _value,
+                  min: 0,
+                  max: 10,
+                  divisions: 10,
+                  label: _value.toInt().toString(),
+                  onChanged: (v) {
+                    setState(() => _value = v);
+                    widget.onChanged(v.toInt());
+                  },
+                ),
+              ),
+            ),
+            Text(
+              '10',
+              style: HatiTextStyles.caption.copyWith(
+                color: HatiColors.textLight,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ],
         ),
+        const SizedBox(height: 4),
         Center(
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
             decoration: BoxDecoration(
-              color: HatiColors.mossGreen.withValues(alpha: 0.1),
+              color: _blue.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: _blue.withValues(alpha: 0.25)),
             ),
             child: Text(
               '${_value.toInt()} / 10',
-              style: HatiTextStyles.heading3.copyWith(
-                color: HatiColors.mossGreen,
-              ),
+              style: HatiTextStyles.heading3.copyWith(color: _blue),
             ),
           ),
         ),
@@ -967,17 +1010,25 @@ class _TextResponseCardState extends State<TextResponseCard> {
                 borderRadius: BorderRadius.circular(24),
                 borderSide: BorderSide.none,
               ),
-              suffixIcon: IconButton(
-                icon: Icon(
-                  Icons.send_rounded,
-                  color: canSubmit ? blue : Colors.grey,
-                ),
-                onPressed: canSubmit
-                    ? () => widget.onSubmit(_controller.text.trim())
-                    : null,
-              ),
             ),
           ),
+        ),
+        // Send used to live as this TextField's own suffixIcon — but
+        // during recording it needs to double as the stop button, and a
+        // suffixIcon inside a TextField(enabled: false) is untappable, the
+        // exact bug already fixed for the mic button above (see its own
+        // comment). Living outside the TextField as its own sibling avoids
+        // that regardless of the field's enabled state.
+        IconButton(
+          icon: Icon(
+            _isRecording ? Icons.stop_circle_rounded : Icons.send_rounded,
+            color: _isRecording ? Colors.red : (canSubmit ? blue : Colors.grey),
+          ),
+          onPressed: _isRecording
+              ? _stopRecording
+              : (canSubmit
+                    ? () => widget.onSubmit(_controller.text.trim())
+                    : null),
         ),
       ],
     );

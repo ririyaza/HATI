@@ -219,17 +219,44 @@ class _ScenarioProgressDetailScreenState
                           "${_difficultyFilter.label} yet — switch the "
                           "filter above or give it a try.";
                     }
-                  } else if (dominant?.key == 'anxious') {
-                    headline = 'Take things one step at a time';
-                    body =
-                        'Your logs for this scenario show more anxious '
-                        'moments than calm ones. Try to slow down, breathe, '
-                        'and focus on small improvements.';
                   } else {
-                    headline = "You're handling this one well";
-                    body =
-                        'Your logs for this scenario lean toward steadier '
-                        'emotions. Keep practicing to build on that.';
+                    // Used to only special-case 'anxious' — every other
+                    // dominant emotion, sad/anger/disgust included, fell
+                    // through to the same "handling this one well" message,
+                    // which read as tone-deaf when the logs were actually
+                    // dominated by a different negative emotion.
+                    switch (dominant?.key) {
+                      case 'anxious':
+                        headline = 'Take things one step at a time';
+                        body =
+                            'Your logs for this scenario show more anxious '
+                            'moments than calm ones. Try to slow down, '
+                            'breathe, and focus on small improvements.';
+                      case 'sad':
+                        headline = "It's okay to feel this way";
+                        body =
+                            'Your logs for this scenario lean toward sadder '
+                            "moments. Be gentle with yourself — progress "
+                            "isn't always a straight line.";
+                      case 'anger':
+                        headline = "Notice what's triggering this";
+                        body =
+                            'Your logs for this scenario show more '
+                            'frustration than ease. Try pausing to breathe '
+                            'before reacting next time.';
+                      case 'disgust':
+                        headline = "It's okay to feel uneasy";
+                        body =
+                            'Your logs for this scenario lean toward '
+                            'discomfort. Recognizing that reaction is the '
+                            'first step to managing it.';
+                      default:
+                        headline = "You're handling this one well";
+                        body =
+                            'Your logs for this scenario lean toward '
+                            'steadier emotions. Keep practicing to build on '
+                            'that.';
+                    }
                   }
 
                   return SingleChildScrollView(
