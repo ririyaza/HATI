@@ -214,8 +214,29 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
     // single-character scenarios; fbop_spotlight/fne_stage (real
     // multi-character panels) still show every distinct speaker's sprite.
     final isSingleNpcScenario = config.npcCharacters.length == 1;
+    // True only when this turn actually has more than one DIFFERENT
+    // character speaking (fbop_spotlight's professors, fne_stage's
+    // students, etc.) — not just one character's own dialogue split into
+    // several blocks by a narrator interruption (isSingleNpcScenario's
+    // case above). Those genuinely-multi-speaker turns used to render
+    // every speaker's block stacked in one Column simultaneously, which
+    // cramped the scene and made it hard to tell whose line was whose at a
+    // glance — see _SequentialSpeakerReveal below.
+    final hasMultipleDistinctSpeakers =
+        speakerBlocks.map((b) => b.key).toSet().length > 1;
     final hatiText = hatiLines.join('\n\n');
     final isTextInput = provider.ui.type == ScenarioUIType.textInput;
+    // Some steps' own choice list already includes a free-text escape
+    // hatch ("Custom", "Custom response", "Custom goal", "Custom opening")
+    // that the backend turns into its own text_input follow-up when
+    // tapped (see e.g. scenario_engine.py's foa_r_phase handling) — same
+    // end result as this scene's own "Write your own response" card below.
+    // Showing both offered the player two visually different buttons that
+    // did the same thing; only add the app's own card when the backend
+    // didn't already provide one.
+    final hasBackendCustomOption = provider.ui.options.any(
+      (o) => o.toLowerCase().contains('custom'),
+    );
 
     final bubbleKey = '$step:$hatiText';
     if (bubbleKey != _trackedBubbleKey) {
@@ -241,209 +262,272 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
               const _ApproachTopBar(currentStep: 3, totalSteps: 7),
               const SceneSpeedToggleRow(),
               Expanded(
-                child: Stack(
-                  fit: StackFit.expand,
-                  clipBehavior: Clip.none,
-                  // Explicit paint/priority order, back to front: (1) the
-                  // scenario's own background art, (2) the NPC's dialogue
-                  // this turn, (3) the player's own echoed last message,
-                  // (4) Hati himself. Each is its own Positioned layer
-                  // instead of one flex column, so none of them are ever
-                  // scrolled to be read — every layer sizes to its own
-                  // content and simply overlaps a layer behind it on the
-                  // rare turn where there isn't room for both, which is
-                  // fine given the paint order above (whatever's in front
-                  // stays legible). Layer 2 is deliberately NOT height-
-                  // clipped — a 3-speaker turn (e.g. fne_stage's Precious/
-                  // Julia/Carlo) legitimately needs more room than any
-                  // fixed cap would allow, and clipping it silently
-                  // dropped the last speaker's line entirely, which is
-                  // worse than the rare cosmetic overlap letting it grow
-                  // freely can cause.
-                  children: [
-                    // Layer 1 (back): background art.
-                    Image.asset(
-                      config.backgroundAsset,
-                      fit: BoxFit.cover,
-                      width: double.infinity,
-                      height: double.infinity,
-                    ),
-                    // Layer 2: the NPC's dialogue this turn — one bubble +
-                    // sprite (or every speaker's block, for the 5
-                    // multi/single-NPC scenarios), pinned to the top of the
-                    // scene and sized to its own content.
-                    Positioned(
-                      top: 12,
-                      left: 16,
-                      right: 16,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: useMultiSpeakerLayout
-                            ? [
-                                // One visually distinct block per speaker
-                                // run this turn: name label + bubble, plus
-                                // that character's small mood sprite (see
-                                // _SpeakerBlockWidget below) — so in e.g.
-                                // the 5-professor panel it's always clear
-                                // who said which line.
-                                for (
-                                  var i = 0;
-                                  i < speakerBlocks.length;
-                                  i++
-                                ) ...[
-                                  _SpeakerBlockWidget(
-                                    block: speakerBlocks[i],
-                                    avatarSize: npcAvatarSize,
-                                    stackVertically: matchesFoaLayout,
-                                    // Single-character scenarios (fsn_seat,
-                                    // phys_jeepney) only show her portrait
-                                    // on the LAST block this turn — see
-                                    // showSprite's doc.
-                                    showSprite:
-                                        !isSingleNpcScenario ||
-                                        i == speakerBlocks.length - 1,
-                                  ),
-                                  const SizedBox(height: 10),
-                                ],
-                                if (needsSingleNpcFallback)
-                                  Align(
-                                    alignment: Alignment.centerRight,
-                                    child:
-                                        singleNpcCharacter.sprites.blink
-                                            .endsWith('.riv')
-                                        ? NpcRiveSprite(
-                                            assetPath: singleNpcCharacter
-                                                .sprites
-                                                .blink,
-                                            height: npcAvatarSize,
-                                          )
-                                        : Image.asset(
-                                            singleNpcCharacter.sprites.blink,
-                                            height: npcAvatarSize,
-                                            fit: BoxFit.contain,
-                                          ),
-                                  ),
-                              ]
-                            : [
-                                if (profText.isNotEmpty)
-                                  _CharacterSpeechBubble(text: profText),
-                                if (activeSpriteAsset != null) ...[
-                                  const SizedBox(height: 8),
-                                  // NPC art is either a static image or a
-                                  // Rive animation (.riv) — Image.asset
-                                  // can't decode Rive's binary format, so
-                                  // branch by extension. Keyed by asset path
-                                  // so switching between the default and
-                                  // angry sprite (different widget
-                                  // subtrees/state) rebuilds cleanly.
-                                  activeSpriteAsset.endsWith('.riv')
-                                      ? NpcRiveSprite(
-                                          key: ValueKey(activeSpriteAsset),
-                                          assetPath: activeSpriteAsset,
-                                          height: sceneHeight * 0.34,
-                                        )
-                                      : Image.asset(
-                                          activeSpriteAsset,
-                                          height: sceneHeight * 0.34,
-                                          fit: BoxFit.contain,
-                                        ),
-                                ],
-                              ],
-                      ),
-                    ),
-                    // Layer 3: the player's own echoed last message — its
-                    // own layer above the NPC's, pinned to the opposite
-                    // (bottom-right) corner from Hati below so the two
-                    // never compete for the same spot.
-                    if (_lastSentText != null && _lastSentText!.isNotEmpty)
-                      Positioned(
-                        left: 96,
-                        right: 16,
-                        bottom: 16,
-                        child: Align(
-                          alignment: Alignment.centerRight,
-                          child: _CharacterSpeechBubble(text: _lastSentText!),
+                // LayoutBuilder just to learn how tall this area actually
+                // is, so Layer 2 below can be capped to a sane fraction of
+                // it — a safety net, not the primary fix (see
+                // isSingleNpcScenario/showSprite above for that): without
+                // any cap, a turn with an unusually long NPC/narrator
+                // exchange could still grow tall enough to crash into the
+                // player's echoed line and Hati beneath it.
+                child: LayoutBuilder(
+                  builder: (context, stackConstraints) {
+                    final npcContentMaxHeight =
+                        stackConstraints.maxHeight * 0.6;
+                    return Stack(
+                      fit: StackFit.expand,
+                      clipBehavior: Clip.none,
+                      // Explicit paint/priority order, back to front: (1)
+                      // the scenario's own background art, (2) the NPC's
+                      // dialogue this turn, (3) the player's own echoed
+                      // last message, (4) Hati himself. Each is its own
+                      // Positioned layer instead of one flex column, so
+                      // none of them are ever scrolled to be read — every
+                      // layer sizes to its own content and simply overlaps
+                      // a layer behind it on the rare turn where there
+                      // isn't room for both, which is fine given the paint
+                      // order above (whatever's in front stays legible).
+                      children: [
+                        // Layer 1 (back): background art.
+                        Image.asset(
+                          config.backgroundAsset,
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          height: double.infinity,
                         ),
-                      ),
-                    // Layer 4 (front): Hati. Position and size are fixed —
-                    // he never scales down or shifts to make room for
-                    // anything else on screen. Only his speech bubble
-                    // (rendered above him, see _ApproachHatiLane) grows or
-                    // shrinks with whatever he's saying, and it's free to
-                    // overlap the art/NPC/echo layers behind it since it's
-                    // the frontmost thing in the scene and fades away on
-                    // its own a few seconds after it finishes typing
-                    // anyway (dissolveBubble/autoAdvance below).
-                    Positioned(
-                      left: 8,
-                      bottom: 4,
-                      child: _ApproachHatiLane(
-                        showBubble: hatiText.isNotEmpty,
-                        message: hatiText,
-                        bubbleKey: bubbleKey,
-                        frogSize: _kFrogSize,
-                        onSequenceComplete: () {
-                          if (mounted && !_dialogueComplete) {
-                            setState(() => _dialogueComplete = true);
-                          }
-                        },
-                      ),
-                    ),
-                    // Difficult Mode's branch points (e.g. "Sorry, I just
-                    // wanted to..." / "Never mind." / continue angrily /
-                    // custom) send several real choices, not one default
-                    // "Continue" — show every option instead of silently
-                    // only offering the first. A draggable sheet overlaying
-                    // the dialogue above (matching HatiSceneShell's own
-                    // header+choices sheet everywhere else) rather than a
-                    // fixed-size panel, so the header and the option cards
-                    // drag up together as one unit.
-                    if (dialogueReady &&
-                        !isTextInput &&
-                        !_useCustomResponse &&
-                        provider.ui.options.length > 1)
-                      PopIn(
-                        key: ValueKey(bubbleKey),
-                        child: DraggableChoiceSheet(
-                          header: const SectionHeader(
-                            title: 'Choose Your Response',
-                            subtitle: 'Select one or write your own',
-                          ),
-                          body: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              for (
-                                var i = 0;
-                                i < provider.ui.options.length;
-                                i++
-                              )
-                                ScriptOptionCard(
-                                  label: String.fromCharCode(65 + i),
-                                  script: provider.ui.options[i],
-                                  selected: false,
-                                  enabled: !provider.isLoading,
-                                  onTap: provider.isLoading
-                                      ? () {}
-                                      : () => provider.submitText(
-                                          provider.ui.options[i],
-                                        ),
+                        // Layer 2: the NPC's dialogue this turn — one
+                        // bubble + sprite (or every speaker's block, for
+                        // the 5 multi/single-NPC scenarios), pinned to the
+                        // top of the scene. Clipped (not scrolled) to
+                        // npcContentMaxHeight as a last-resort safety net —
+                        // OverflowBox lets the Column lay out at its real
+                        // (possibly taller) size instead of throwing a
+                        // RenderFlex overflow, and the ClipRect around it
+                        // is what actually crops the excess.
+                        Positioned(
+                          top: 12,
+                          left: 16,
+                          right: 16,
+                          child: SizedBox(
+                            height: npcContentMaxHeight,
+                            child: ClipRect(
+                              child: OverflowBox(
+                                alignment: Alignment.topCenter,
+                                maxHeight: double.infinity,
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: useMultiSpeakerLayout
+                                      ? [
+                                          // Genuinely different characters
+                                          // speaking this turn (the
+                                          // 5-professor panel, fne_stage's
+                                          // students, etc.) reveal one at a
+                                          // time instead of all stacking at
+                                          // once — see
+                                          // _SequentialSpeakerReveal. A
+                                          // single character's own turn
+                                          // split by a narrator interruption
+                                          // (isSingleNpcScenario) still
+                                          // renders as one continuous
+                                          // Column below — it's the same
+                                          // person, not several to cycle
+                                          // through.
+                                          if (hasMultipleDistinctSpeakers)
+                                            _SequentialSpeakerReveal(
+                                              blocks: speakerBlocks,
+                                              avatarSize: npcAvatarSize,
+                                              stackVertically:
+                                                  matchesFoaLayout,
+                                            )
+                                          else
+                                            for (
+                                              var i = 0;
+                                              i < speakerBlocks.length;
+                                              i++
+                                            ) ...[
+                                              _SpeakerBlockWidget(
+                                                block: speakerBlocks[i],
+                                                avatarSize: npcAvatarSize,
+                                                stackVertically:
+                                                    matchesFoaLayout,
+                                                // Single-character scenarios
+                                                // (fsn_seat, phys_jeepney)
+                                                // only show her portrait on
+                                                // the LAST block this turn —
+                                                // see showSprite's doc.
+                                                showSprite:
+                                                    !isSingleNpcScenario ||
+                                                    i ==
+                                                        speakerBlocks.length -
+                                                            1,
+                                              ),
+                                              const SizedBox(height: 10),
+                                            ],
+                                          if (needsSingleNpcFallback)
+                                            Align(
+                                              alignment: Alignment.centerRight,
+                                              child:
+                                                  singleNpcCharacter
+                                                      .sprites
+                                                      .blink
+                                                      .endsWith('.riv')
+                                                  ? NpcRiveSprite(
+                                                      assetPath:
+                                                          singleNpcCharacter
+                                                              .sprites
+                                                              .blink,
+                                                      height: npcAvatarSize,
+                                                    )
+                                                  : Image.asset(
+                                                      singleNpcCharacter
+                                                          .sprites
+                                                          .blink,
+                                                      height: npcAvatarSize,
+                                                      fit: BoxFit.contain,
+                                                    ),
+                                            ),
+                                        ]
+                                      : [
+                                          if (profText.isNotEmpty)
+                                            _CharacterSpeechBubble(
+                                              text: profText,
+                                            ),
+                                          if (activeSpriteAsset != null) ...[
+                                            const SizedBox(height: 8),
+                                            // NPC art is either a static
+                                            // image or a Rive animation
+                                            // (.riv) — Image.asset can't
+                                            // decode Rive's binary format,
+                                            // so branch by extension. Keyed
+                                            // by asset path so switching
+                                            // between the default and angry
+                                            // sprite (different widget
+                                            // subtrees/state) rebuilds
+                                            // cleanly.
+                                            activeSpriteAsset.endsWith('.riv')
+                                                ? NpcRiveSprite(
+                                                    key: ValueKey(
+                                                      activeSpriteAsset,
+                                                    ),
+                                                    assetPath:
+                                                        activeSpriteAsset,
+                                                    height: sceneHeight * 0.34,
+                                                  )
+                                                : Image.asset(
+                                                    activeSpriteAsset,
+                                                    height: sceneHeight * 0.34,
+                                                    fit: BoxFit.contain,
+                                                  ),
+                                          ],
+                                        ],
                                 ),
-                              // The sheet's own subtitle above promises
-                              // "write your own" — this is that option:
-                              // switches to the same textbox+voice bar the
-                              // free-text turns use instead of submitting
-                              // one of the pre-written options.
-                              _CustomResponseCard(
-                                enabled: !provider.isLoading,
-                                onTap: () =>
-                                    setState(() => _useCustomResponse = true),
                               ),
-                            ],
+                            ),
                           ),
                         ),
-                      ),
-                  ],
+                        // Layer 3: the player's own echoed last message — its
+                        // own layer above the NPC's, pinned to the opposite
+                        // (bottom-right) corner from Hati below so the two
+                        // never compete for the same spot.
+                        if (_lastSentText != null && _lastSentText!.isNotEmpty)
+                          Positioned(
+                            left: 96,
+                            right: 16,
+                            bottom: 16,
+                            child: Align(
+                              alignment: Alignment.centerRight,
+                              child: _CharacterSpeechBubble(
+                                text: _lastSentText!,
+                              ),
+                            ),
+                          ),
+                        // Layer 4 (front): Hati. Position and size are fixed —
+                        // he never scales down or shifts to make room for
+                        // anything else on screen. Only his speech bubble
+                        // (rendered above him, see _ApproachHatiLane) grows or
+                        // shrinks with whatever he's saying, and it's free to
+                        // overlap the art/NPC/echo layers behind it since it's
+                        // the frontmost thing in the scene and fades away on
+                        // its own a few seconds after it finishes typing
+                        // anyway (dissolveBubble/autoAdvance below).
+                        Positioned(
+                          left: 8,
+                          bottom: 4,
+                          child: _ApproachHatiLane(
+                            showBubble: hatiText.isNotEmpty,
+                            message: hatiText,
+                            bubbleKey: bubbleKey,
+                            frogSize: _kFrogSize,
+                            onSequenceComplete: () {
+                              if (mounted && !_dialogueComplete) {
+                                setState(() => _dialogueComplete = true);
+                              }
+                            },
+                          ),
+                        ),
+                        // Difficult Mode's branch points (e.g. "Sorry, I just
+                        // wanted to..." / "Never mind." / continue angrily /
+                        // custom) send several real choices, not one default
+                        // "Continue" — show every option instead of silently
+                        // only offering the first. A draggable sheet overlaying
+                        // the dialogue above (matching HatiSceneShell's own
+                        // header+choices sheet everywhere else) rather than a
+                        // fixed-size panel, so the header and the option cards
+                        // drag up together as one unit.
+                        if (dialogueReady &&
+                            !isTextInput &&
+                            !_useCustomResponse &&
+                            provider.ui.options.length > 1)
+                          PopIn(
+                            key: ValueKey(bubbleKey),
+                            child: DraggableChoiceSheet(
+                              header: SectionHeader(
+                                title: 'Choose Your Response',
+                                subtitle: hasBackendCustomOption
+                                    ? 'Select one'
+                                    : 'Select one or write your own',
+                              ),
+                              body: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  for (
+                                    var i = 0;
+                                    i < provider.ui.options.length;
+                                    i++
+                                  )
+                                    ScriptOptionCard(
+                                      label: String.fromCharCode(65 + i),
+                                      script: provider.ui.options[i],
+                                      selected: false,
+                                      enabled: !provider.isLoading,
+                                      onTap: provider.isLoading
+                                          ? () {}
+                                          : () => provider.submitText(
+                                              provider.ui.options[i],
+                                            ),
+                                    ),
+                                  // The sheet's own subtitle above promises
+                                  // "write your own" — this is that option:
+                                  // switches to the same textbox+voice bar the
+                                  // free-text turns use instead of submitting
+                                  // one of the pre-written options. Skipped
+                                  // when the backend's own options already
+                                  // include a "Custom..." entry — see
+                                  // hasBackendCustomOption above.
+                                  if (!hasBackendCustomOption)
+                                    _CustomResponseCard(
+                                      enabled: !provider.isLoading,
+                                      onTap: () => setState(
+                                        () => _useCustomResponse = true,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                      ],
+                    );
+                  },
                 ),
               ),
               // The input bar / single continue button stay out of the tree
@@ -456,55 +540,73 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
               else if (isTextInput || _useCustomResponse)
                 PopIn(
                   key: ValueKey('$bubbleKey:input'),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Only reachable via "Write your own response" on a
-                      // turn that actually had preset choices — a real
-                      // isTextInput turn has no choice sheet to go back to.
-                      if (_useCustomResponse && !isTextInput)
-                        Container(
-                          color: Colors.white,
-                          width: double.infinity,
-                          padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-                          child: Align(
-                            alignment: Alignment.centerLeft,
-                            child: TextButton.icon(
-                              onPressed: () =>
-                                  setState(() => _useCustomResponse = false),
-                              style: TextButton.styleFrom(
-                                foregroundColor: _kApproachBlue,
-                                padding: EdgeInsets.zero,
-                                minimumSize: Size.zero,
-                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  // SingleChildScrollView as a fallback, not the normal
+                  // path — same reasoning as HatiFixedBottomBar (which this
+                  // scene doesn't use, since it isn't built on
+                  // HatiSceneShell): on most screens the Expanded region
+                  // above simply shrinks to make room and this never
+                  // scrolls. On a short screen where the on-screen keyboard
+                  // eats more height than the Expanded region can give up,
+                  // this bar's own fixed content (back-to-choices link +
+                  // input row) no longer has anywhere to shrink to, which
+                  // hard-overflowed instead of scrolling.
+                  child: SafeArea(
+                    top: false,
+                    child: SingleChildScrollView(
+                      reverse: true,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Only reachable via "Write your own response" on a
+                          // turn that actually had preset choices — a real
+                          // isTextInput turn has no choice sheet to go back to.
+                          if (_useCustomResponse && !isTextInput)
+                            Container(
+                              color: Colors.white,
+                              width: double.infinity,
+                              padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: TextButton.icon(
+                                  onPressed: () => setState(
+                                    () => _useCustomResponse = false,
+                                  ),
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: _kApproachBlue,
+                                    padding: EdgeInsets.zero,
+                                    minimumSize: Size.zero,
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                  icon: const Icon(
+                                    Icons.arrow_back_rounded,
+                                    size: 16,
+                                  ),
+                                  label: const Text('Back to choices'),
+                                ),
                               ),
-                              icon: const Icon(
-                                Icons.arrow_back_rounded,
-                                size: 16,
-                              ),
-                              label: const Text('Back to choices'),
                             ),
+                          _ApproachInputBar(
+                            controller: _controller,
+                            enabled:
+                                !provider.isLoading &&
+                                !_isRecording &&
+                                !_isTranscribing,
+                            isRecording: _isRecording,
+                            isTranscribing: _isTranscribing,
+                            hintText: _isRecording
+                                ? 'Listening…'
+                                : (_isTranscribing
+                                      ? 'Converting your voice…'
+                                      : 'Type your response...'),
+                            onSend: () => _sendText(provider),
+                            onMicTap: () => _isRecording
+                                ? _stopRecording(provider)
+                                : _startRecording(),
                           ),
-                        ),
-                      _ApproachInputBar(
-                        controller: _controller,
-                        enabled:
-                            !provider.isLoading &&
-                            !_isRecording &&
-                            !_isTranscribing,
-                        isRecording: _isRecording,
-                        isTranscribing: _isTranscribing,
-                        hintText: _isRecording
-                            ? 'Listening…'
-                            : (_isTranscribing
-                                  ? 'Converting your voice…'
-                                  : 'Type your response...'),
-                        onSend: () => _sendText(provider),
-                        onMicTap: () => _isRecording
-                            ? _stopRecording(provider)
-                            : _startRecording(),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 )
               else if (provider.ui.options.length <= 1)
@@ -1083,6 +1185,93 @@ class _SequentialNarratorRevealState extends State<_SequentialNarratorReveal> {
   }
 }
 
+/// Multiple different NPCs actually speaking within the same turn (the
+/// 5-professor panel, fne_stage's students, etc.) used to all render
+/// stacked in one Column at once — cramped, and made it hard to tell whose
+/// line was whose at a glance. Reveals one speaker's full block (bubble +
+/// name label + sprite, via _SpeakerBlockWidget) at a time instead — fades
+/// in, holds for a reading-time-scaled duration, fades out, the next
+/// speaker takes its place — same pattern as _SequentialNarratorReveal.
+/// Doesn't loop: stays on the last speaker's block once the sequence
+/// finishes, so there's still something on screen to read afterward.
+class _SequentialSpeakerReveal extends StatefulWidget {
+  final List<_SpeakerBlock> blocks;
+  final double avatarSize;
+  final bool stackVertically;
+
+  const _SequentialSpeakerReveal({
+    required this.blocks,
+    required this.avatarSize,
+    required this.stackVertically,
+  });
+
+  @override
+  State<_SequentialSpeakerReveal> createState() =>
+      _SequentialSpeakerRevealState();
+}
+
+class _SequentialSpeakerRevealState extends State<_SequentialSpeakerReveal> {
+  int _index = 0;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _scheduleNext();
+  }
+
+  @override
+  void didUpdateWidget(covariant _SequentialSpeakerReveal oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.blocks != oldWidget.blocks) {
+      _index = 0;
+      _scheduleNext();
+    }
+  }
+
+  void _scheduleNext() {
+    _timer?.cancel();
+    if (_index >= widget.blocks.length - 1) return;
+    // Roughly reading-time-scaled (base + per-character), same formula as
+    // _SequentialNarratorReveal, clamped to a sane range so a short "Yes."
+    // and a full paragraph both get an appropriate hold before advancing.
+    final text = widget.blocks[_index].lines.join('\n');
+    final baseMs = 1400 + text.length * 35;
+    final clampedMs = baseMs.clamp(1800, 4200);
+    final ms = HatiSpeechSpeedController.isFast.value
+        ? clampedMs ~/ 2
+        : clampedMs;
+    _timer = Timer(Duration(milliseconds: ms), () {
+      if (!mounted) return;
+      setState(() => _index++);
+      _scheduleNext();
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.blocks.isEmpty) return const SizedBox.shrink();
+    final index = _index.clamp(0, widget.blocks.length - 1);
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 350),
+      child: KeyedSubtree(
+        key: ValueKey(index),
+        child: _SpeakerBlockWidget(
+          block: widget.blocks[index],
+          avatarSize: widget.avatarSize,
+          stackVertically: widget.stackVertically,
+        ),
+      ),
+    );
+  }
+}
+
 // ── Character speech bubble (prof / user) ─────────────────────────────────────
 
 class _CharacterSpeechBubble extends StatelessWidget {
@@ -1299,12 +1488,23 @@ class _ApproachInputBar extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 4),
+              // While recording, this becomes the stop control too — not
+              // just the mic button on the left. Users kept not realizing
+              // the mic was still running or that tapping it again was
+              // what stopped it; putting a second, obvious stop affordance
+              // where they'd naturally look next (the button they'd
+              // otherwise tap to send) fixes that without removing the
+              // mic button's own toggle behavior.
               IconButton(
                 icon: Icon(
-                  Icons.send_rounded,
-                  color: enabled ? _kApproachBlue : Colors.grey,
+                  isRecording ? Icons.stop_circle_rounded : Icons.send_rounded,
+                  color: isRecording
+                      ? Colors.red
+                      : (enabled ? _kApproachBlue : Colors.grey),
                 ),
-                onPressed: enabled ? onSend : null,
+                onPressed: isRecording
+                    ? onMicTap
+                    : (enabled ? onSend : null),
               ),
             ],
           ),

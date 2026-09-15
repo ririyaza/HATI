@@ -132,7 +132,6 @@ class _Scene4DebriefState extends State<Scene4Debrief> {
               child: HatiSceneShell(
                 showCoach: true,
                 persistentMessage: hatiText,
-                frogWidthScale: 1.08,
                 mood: HatiMood.encourage,
                 onSequenceComplete: () {
                   if (mounted && !_dialogueComplete) {
