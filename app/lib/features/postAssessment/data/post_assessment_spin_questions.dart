@@ -21,4 +21,5 @@ const spinOptions = [
   'Extremely',
 ];
 
-const spinPrompt = 'Over the past week, how much did the following describe you?';
+const spinPrompt =
+    'Over the past week, how much did this statement describe you?';

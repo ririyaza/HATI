@@ -516,12 +516,16 @@ class SliderQuestion extends StatefulWidget {
   final String question;
   final ValueChanged<int> onChanged;
   final int initial;
+  final int min;
+  final int max;
 
   const SliderQuestion({
     super.key,
     required this.question,
     required this.onChanged,
     this.initial = 5,
+    this.min = 0,
+    this.max = 10,
   });
 
   @override
@@ -549,7 +553,7 @@ class _SliderQuestionState extends State<SliderQuestion> {
         Row(
           children: [
             Text(
-              '0',
+              '${widget.min}',
               style: HatiTextStyles.caption.copyWith(
                 color: HatiColors.textLight,
                 fontWeight: FontWeight.w600,
@@ -586,9 +590,9 @@ class _SliderQuestionState extends State<SliderQuestion> {
                 ),
                 child: Slider(
                   value: _value,
-                  min: 0,
-                  max: 10,
-                  divisions: 10,
+                  min: widget.min.toDouble(),
+                  max: widget.max.toDouble(),
+                  divisions: widget.max - widget.min,
                   label: _value.toInt().toString(),
                   onChanged: (v) {
                     setState(() => _value = v);
@@ -598,7 +602,7 @@ class _SliderQuestionState extends State<SliderQuestion> {
               ),
             ),
             Text(
-              '10',
+              '${widget.max}',
               style: HatiTextStyles.caption.copyWith(
                 color: HatiColors.textLight,
                 fontWeight: FontWeight.w600,
@@ -616,12 +620,96 @@ class _SliderQuestionState extends State<SliderQuestion> {
               border: Border.all(color: _blue.withValues(alpha: 0.25)),
             ),
             child: Text(
-              '${_value.toInt()} / 10',
+              '${_value.toInt()} / ${widget.max}',
               style: HatiTextStyles.heading3.copyWith(color: _blue),
             ),
           ),
         ),
       ],
+    );
+  }
+}
+
+/// True when [options] look like a numeric rating scale (e.g. a SUDS-style
+/// "0".."10" distress check) rather than real multiple-choice text — every
+/// entry parses as an integer, there are at least 4 of them, and they're
+/// consecutive. A backend turn shaped like this reads far better as one
+/// slider than as a wall of individual number buttons the player has to
+/// scroll through — see [ScaleChoiceCard].
+bool looksLikeNumericScale(List<String> options) {
+  if (options.length < 4) return false;
+  final values = <int>[];
+  for (final o in options) {
+    final v = int.tryParse(o.trim());
+    if (v == null) return false;
+    values.add(v);
+  }
+  values.sort();
+  for (var i = 1; i < values.length; i++) {
+    if (values[i] != values[i - 1] + 1) return false;
+  }
+  return true;
+}
+
+/// Renders a numeric rating scale (see [looksLikeNumericScale]) as one
+/// [SliderQuestion] + submit button instead of stacking one outline button
+/// per number — the generic fallback for `buttons`-type turns whose
+/// options are plain digits, so any such step (a mid-scene SUDS check, not
+/// just the ones a scene special-cases by name) gets the same slider UX.
+class ScaleChoiceCard extends StatefulWidget {
+  final List<String> options;
+  final String question;
+  final bool isLoading;
+  final ValueChanged<String> onSubmit;
+
+  const ScaleChoiceCard({
+    super.key,
+    required this.options,
+    required this.onSubmit,
+    this.question = 'Drag to rate, then continue.',
+    this.isLoading = false,
+  });
+
+  @override
+  State<ScaleChoiceCard> createState() => _ScaleChoiceCardState();
+}
+
+class _ScaleChoiceCardState extends State<ScaleChoiceCard> {
+  late List<int> _sortedValues;
+  late int _value;
+
+  @override
+  void initState() {
+    super.initState();
+    _sortedValues = widget.options.map((o) => int.parse(o.trim())).toList()
+      ..sort();
+    _value = _sortedValues[_sortedValues.length ~/ 2];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SliderQuestion(
+            question: widget.question,
+            initial: _value,
+            min: _sortedValues.first,
+            max: _sortedValues.last,
+            onChanged: (v) => _value = v,
+          ),
+          const SizedBox(height: 10),
+          HatiButton(
+            label: 'Next',
+            icon: Icons.arrow_forward_rounded,
+            onTap: widget.isLoading
+                ? null
+                : () => widget.onSubmit(_value.toString()),
+          ),
+        ],
+      ),
     );
   }
 }

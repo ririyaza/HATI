@@ -20,7 +20,7 @@ class LikertAssessmentFlow extends StatefulWidget {
     required this.questions,
     required this.options,
     required this.promptSentence,
-    required this.instructionLine,
+    this.instructionLine,
     required this.startIndex,
     required this.totalInFlow,
     required this.onComplete,
@@ -36,8 +36,10 @@ class LikertAssessmentFlow extends StatefulWidget {
   /// you?".
   final String promptSentence;
 
-  /// Label above the option list, e.g. "HOW MUCH DOES THIS DESCRIBE YOU?".
-  final String instructionLine;
+  /// Label above the option list, e.g. "HOW OFTEN HAS THIS BOTHERED YOU?".
+  /// Null omits it entirely (the pre-test SPIN screen this flow was
+  /// extracted from no longer shows one).
+  final String? instructionLine;
 
   /// Offset of this flow's first question within the combined progress
   /// count (0 for SPIN, 17 for GAD-7 in a 17+7 flow).
@@ -176,15 +178,16 @@ class _LikertAssessmentFlowState extends State<LikertAssessmentFlow> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  Text(
-                    widget.instructionLine,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.black38,
-                      letterSpacing: 1,
+                  if (widget.instructionLine != null)
+                    Text(
+                      widget.instructionLine!,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.black38,
+                        letterSpacing: 1,
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),

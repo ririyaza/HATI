@@ -22,7 +22,6 @@ class PostGad7AssessmentScreen extends StatelessWidget {
       questions: questions,
       options: gad7Options,
       promptSentence: gad7Prompt,
-      instructionLine: 'HOW OFTEN HAS THIS BOTHERED YOU?',
       startIndex: _spinQuestionCount,
       totalInFlow: _totalInFlow,
       onBackFromFirst: () => Navigator.pop(context),

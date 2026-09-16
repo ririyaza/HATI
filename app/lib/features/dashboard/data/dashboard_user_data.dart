@@ -44,7 +44,15 @@ class DashboardUserData {
 
   int get level => (scenariosCompleted ~/ 5) + 1;
 
-  int get currentStreak => _streakFromModules(modules);
+  // Backend-maintained (users/{uid}/badge_progress/summary's
+  // currentDayStreak, kept by scenario_engine.py's update_badge_progress)
+  // rather than recomputed from modules' lastCompletedAt here — that
+  // recomputation only looked at each module's single most recent
+  // completion date and reset to 0 on any day nothing had been completed
+  // *yet*, so a real multi-day streak still in progress showed as 0 until
+  // that day's scenario was done. The backend counter doesn't have either
+  // problem since it's updated incrementally off the full completion log.
+  int get currentStreak => badgeProgress.currentDayStreak;
 
   List<bool> get weeklyActivity => _weeklyActivityFromModules(modules);
 
@@ -585,23 +593,4 @@ List<bool> _weeklyActivityFromModules(List<ModuleProgressData> modules) {
   }
 
   return week;
-}
-
-int _streakFromModules(List<ModuleProgressData> modules) {
-  final completedDays = modules
-      .map((module) => module.lastCompletedAt)
-      .whereType<DateTime>()
-      .map((date) => DateTime(date.year, date.month, date.day))
-      .toSet();
-
-  var streak = 0;
-  var cursor = DateTime.now();
-  cursor = DateTime(cursor.year, cursor.month, cursor.day);
-
-  while (completedDays.contains(cursor)) {
-    streak++;
-    cursor = cursor.subtract(const Duration(days: 1));
-  }
-
-  return streak;
 }

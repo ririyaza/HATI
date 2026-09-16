@@ -22,7 +22,6 @@ class PostSpinAssessmentScreen extends StatelessWidget {
       questions: questions,
       options: spinOptions,
       promptSentence: spinPrompt,
-      instructionLine: 'HOW MUCH DOES THIS DESCRIBE YOU?',
       startIndex: 0,
       totalInFlow: _totalInFlow,
       onComplete: (scores) {

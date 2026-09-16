@@ -80,6 +80,18 @@ class _Scene4DebriefState extends State<Scene4Debrief> {
               ? null
               : () => provider.submitText(ui.options.first),
         );
+      } else if (looksLikeNumericScale(ui.options)) {
+        // Any other numeric rating turn the backend sends (a mid-flow
+        // SUDS-style check not covered by the three named steps above) —
+        // same slider treatment instead of falling through to a wall of
+        // individual number buttons.
+        contentBackgroundColor = Colors.white;
+        body = ScaleChoiceCard(
+          key: ValueKey(step),
+          options: ui.options,
+          isLoading: provider.isLoading,
+          onSubmit: provider.submitText,
+        );
       } else {
         contentBackgroundColor = Colors.white;
         body = _DebriefChoiceCard(

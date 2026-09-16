@@ -237,6 +237,10 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
     final hasBackendCustomOption = provider.ui.options.any(
       (o) => o.toLowerCase().contains('custom'),
     );
+    // A mid-scene numeric rating turn (e.g. a SUDS-style "0".."10" distress
+    // check) reads far better as one slider than as a stack of lettered
+    // script cards for every single number — see looksLikeNumericScale.
+    final isNumericScale = looksLikeNumericScale(provider.ui.options);
 
     final bubbleKey = '$step:$hatiText';
     if (bubbleKey != _trackedBubbleKey) {
@@ -477,6 +481,7 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
                         if (dialogueReady &&
                             !isTextInput &&
                             !_useCustomResponse &&
+                            !isNumericScale &&
                             provider.ui.options.length > 1)
                           PopIn(
                             key: ValueKey(bubbleKey),
@@ -605,6 +610,26 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
                                 : _startRecording(),
                           ),
                         ],
+                      ),
+                    ),
+                  ),
+                )
+              else if (isNumericScale)
+                // A mid-scene numeric rating turn (e.g. a SUDS-style
+                // "0".."10" distress check) — one slider + submit button
+                // pinned here instead of the lettered-script overlay sheet
+                // above, which isn't shown for this case (see isNumericScale
+                // in that condition).
+                PopIn(
+                  key: ValueKey(bubbleKey),
+                  child: Container(
+                    color: Colors.white,
+                    child: SafeArea(
+                      top: false,
+                      child: ScaleChoiceCard(
+                        options: provider.ui.options,
+                        isLoading: provider.isLoading,
+                        onSubmit: provider.submitText,
                       ),
                     ),
                   ),
