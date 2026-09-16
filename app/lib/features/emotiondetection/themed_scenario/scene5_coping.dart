@@ -209,13 +209,16 @@ class _PracticeWalkthrough extends StatefulWidget {
 }
 
 class _PracticeWalkthroughState extends State<_PracticeWalkthrough> {
+  // Every coping tool `_scene5_coping` (scenario_engine.py) hands back is a
+  // single, complete instruction — there's no real "step 2" per the script.
+  // This used to always append 3 more generic breathing/rehearsal steps
+  // regardless of which tool was actually assigned, so e.g. "Pause and
+  // Label" or "Repair Message" would show correct step-1 text and then
+  // silently switch to a grounding-style script for steps 2-4.
   late final List<String> _steps = [
     widget.strategy.isNotEmpty
         ? widget.strategy
         : 'Take a moment to settle in with the strategy Hati just gave you.',
-    'Take a slow breath in for 4 counts... hold for 2... out for 6.',
-    'Now say your first line silently in your head three times.',
-    "Good. That's the skill—carry it with you.",
   ];
 
   int _step = 0;
