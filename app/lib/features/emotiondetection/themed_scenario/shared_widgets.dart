@@ -30,6 +30,7 @@ import 'package:rive/rive.dart'
         RiveWidget,
         RiveWidgetBuilder;
 import 'app_theme.dart';
+import 'scenario_models.dart';
 
 // ── Hati Dialogue Bubble ─────────────────────────────────────────────────────
 class HatiBubble extends StatefulWidget {
@@ -1054,21 +1055,22 @@ class _TextResponseCardState extends State<TextResponseCard> {
                       child: CircularProgressIndicator(strokeWidth: 2.4),
                     ),
                   )
-                : IconButton(
-                    icon: Icon(
-                      _isRecording
-                          ? Icons.stop_circle_rounded
-                          : Icons.mic_none_rounded,
-                      color: _isRecording
-                          ? Colors.red
-                          : (micEnabled ? blue : Colors.grey),
+                // While recording, the send-slot button below is the one
+                // stop control — dim and disable this one instead of also
+                // wiring it to _stopRecording, so there's only one active
+                // stop affordance on screen at a time.
+                : IgnorePointer(
+                    ignoring: _isRecording,
+                    child: Opacity(
+                      opacity: _isRecording ? 0.35 : 1.0,
+                      child: IconButton(
+                        icon: Icon(
+                          Icons.mic_none_rounded,
+                          color: micEnabled ? blue : Colors.grey,
+                        ),
+                        onPressed: micEnabled ? _startRecording : null,
+                      ),
                     ),
-                    // Stays tappable while recording even though the field
-                    // itself is "disabled" at that point — otherwise this
-                    // is the same untappable-stop-button bug all over again.
-                    onPressed: (micEnabled || _isRecording)
-                        ? (_isRecording ? _stopRecording : _startRecording)
-                        : null,
                   ),
           ),
         Expanded(
@@ -2533,6 +2535,220 @@ class _HatiFrogAvatarState extends State<HatiFrogAvatar> {
           RiveFailed() => const SizedBox.shrink(),
         },
       ),
+    );
+  }
+}
+
+// ── Multi-character narration reveal ──────────────────────────────────────
+// Moved here from scene3_interaction.dart (renamed from the private
+// _splitNarratorBeats/_CharacterSpeechBubble/_SequentialNarratorReveal) so
+// [Scene1OfficePies]'s panel/group-introduction lines (e.g. fbop_spotlight
+// naming all 5 professors, fne_stage naming Carlo/Julia/Precious, in one
+// paragraph) can reuse the exact same one-at-a-time reveal Scene 3 already
+// uses for a multi-character Narrator reaction beat, instead of leaving
+// every named character invisible until Scene 3 actually starts.
+
+/// Splits a multi-character line like "Sir Reyes nods. Sir Santos smiles
+/// slightly." (or fbop_spotlight's "Sir Reyes – neutral expression... Sir
+/// Cruz – serious expression...") into one (sprite, sentence) pair per
+/// character mentioned. A sentence matching no known character is folded
+/// into the previous beat's text (same sprite) instead of being dropped or
+/// shown with nobody pictured.
+List<(String, String)> splitNarratorBeats(
+  String text,
+  List<NpcCharacter> npcCharacters,
+) {
+  final sentences = text
+      .split(RegExp(r'(?<=[.!?])\s+'))
+      .map((s) => s.trim())
+      .where((s) => s.isNotEmpty)
+      .toList();
+
+  final beats = <(String, String)>[];
+  for (final sentence in sentences) {
+    NpcCharacter? match;
+    for (final ch in npcCharacters) {
+      if (ch.matches(sentence)) {
+        match = ch;
+        break;
+      }
+    }
+    if (match != null) {
+      beats.add((match.sprites.blink, sentence));
+    } else if (beats.isNotEmpty) {
+      final last = beats.removeLast();
+      beats.add((last.$1, '${last.$2} $sentence'));
+    }
+  }
+  return beats;
+}
+
+class CharacterSpeechBubble extends StatelessWidget {
+  final String text;
+  final String? nameLabel;
+  final bool italic;
+
+  const CharacterSpeechBubble({
+    super.key,
+    required this.text,
+    this.nameLabel,
+    this.italic = false,
+  });
+
+  // Same blue as scene3_interaction.dart's own _kApproachBlue — kept as a
+  // separate literal here rather than a shared cross-file constant since
+  // this is the only other place that needs it.
+  static const _bubbleAccentBlue = Color(0xFF4A8FD4);
+
+  @override
+  Widget build(BuildContext context) {
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxWidth: MediaQuery.sizeOf(context).width * 0.55,
+      ),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.12),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            if (nameLabel != null && nameLabel!.isNotEmpty) ...[
+              Text(
+                nameLabel!,
+                textAlign: TextAlign.right,
+                style: const TextStyle(
+                  color: _bubbleAccentBlue,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.2,
+                ),
+              ),
+              const SizedBox(height: 4),
+            ],
+            Text(
+              text,
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                color: Colors.black,
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+                fontStyle: italic ? FontStyle.italic : FontStyle.normal,
+                height: 1.35,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Auto-advances through a multi-character narration one (sprite, sentence)
+/// pair at a time — each shown for a few seconds, faded out, replaced by
+/// the next — instead of dumping every character and the whole combined
+/// paragraph on screen together. Stops on the last beat (stays visible)
+/// rather than disappearing once the cycle finishes, so there's still
+/// something to read afterward. Respects the scene's existing 2x speed
+/// toggle, same as Hati's own typewriter effect.
+class SequentialNarratorReveal extends StatefulWidget {
+  final List<(String, String)> beats;
+  final double avatarSize;
+
+  const SequentialNarratorReveal({
+    super.key,
+    required this.beats,
+    required this.avatarSize,
+  });
+
+  @override
+  State<SequentialNarratorReveal> createState() =>
+      _SequentialNarratorRevealState();
+}
+
+class _SequentialNarratorRevealState extends State<SequentialNarratorReveal> {
+  int _index = 0;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _scheduleNext();
+  }
+
+  @override
+  void didUpdateWidget(covariant SequentialNarratorReveal oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.beats != oldWidget.beats) {
+      _index = 0;
+      _scheduleNext();
+    }
+  }
+
+  void _scheduleNext() {
+    _timer?.cancel();
+    if (_index >= widget.beats.length - 1) return;
+    final sentence = widget.beats[_index].$2;
+    // Roughly reading-time-scaled (base + per-character), clamped to a
+    // sane range so a short "Sir Cruz nods." and a longer sentence both
+    // get an appropriate hold before advancing.
+    final baseMs = 1400 + sentence.length * 35;
+    final clampedMs = baseMs.clamp(1800, 4200);
+    final ms = HatiSpeechSpeedController.isFast.value
+        ? clampedMs ~/ 2
+        : clampedMs;
+    _timer = Timer(Duration(milliseconds: ms), () {
+      if (!mounted) return;
+      setState(() => _index++);
+      _scheduleNext();
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.beats.isEmpty) return const SizedBox.shrink();
+    final (sprite, sentence) = widget.beats[_index];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 350),
+          child: KeyedSubtree(
+            key: ValueKey(_index),
+            child: sprite.endsWith('.riv')
+                ? NpcRiveSprite(assetPath: sprite, height: widget.avatarSize)
+                : Image.asset(
+                    sprite,
+                    height: widget.avatarSize,
+                    fit: BoxFit.contain,
+                  ),
+          ),
+        ),
+        const SizedBox(height: 6),
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 350),
+          child: KeyedSubtree(
+            key: ValueKey(_index),
+            child: CharacterSpeechBubble(text: sentence, italic: true),
+          ),
+        ),
+      ],
     );
   }
 }

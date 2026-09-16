@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'dashboard_screen.dart';
 import 'weekly_progress_data.dart';
 
 /// Detail view opened by tapping a Scenario Module card on the Progress
@@ -297,7 +298,13 @@ class _ScenarioProgressDetailScreenState
                                 borderRadius: BorderRadius.circular(24),
                               ),
                             ),
-                            onPressed: () => Navigator.pop(context),
+                            onPressed: () => Navigator.of(context).pushAndRemoveUntil(
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    const DashboardScreen(initialIndex: 1),
+                              ),
+                              (route) => false,
+                            ),
                             child: const Text(
                               "Let's Practice More",
                               style: TextStyle(

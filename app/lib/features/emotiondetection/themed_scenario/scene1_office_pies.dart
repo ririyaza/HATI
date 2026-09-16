@@ -74,6 +74,24 @@ class _Scene1OfficePiesState extends State<Scene1OfficePies> {
     final hatiText = joinMessageText(provider.messages);
     final isPies = provider.ui.type == ScenarioUIType.buttons;
 
+    // Some scenarios' opening setup names several NPCs in one paragraph
+    // (fbop_spotlight's 5-professor panel, fne_stage's Carlo/Julia/Precious)
+    // with nobody pictured — Scene 3 already reveals a multi-character line
+    // one face at a time via SequentialNarratorReveal; this finds whichever
+    // one of this step's messages is that introduction (the first one
+    // naming 2+ of config.npcCharacters) and reuses the same reveal here.
+    List<(String, String)> introBeats = const [];
+    if (config.npcCharacters.length > 1) {
+      for (final raw in provider.messages) {
+        final text = parseSpeakerMessage(raw).text;
+        final beats = splitNarratorBeats(text, config.npcCharacters);
+        if (beats.length > 1) {
+          introBeats = beats;
+          break;
+        }
+      }
+    }
+
     return Scaffold(
       body: ScenarioGradientBackground(
         backgroundAsset: config.backgroundAsset,
@@ -101,10 +119,28 @@ class _Scene1OfficePiesState extends State<Scene1OfficePies> {
                 // even though today's nesting happens to avoid a collision.
                 fixedHeader: isPies
                     ? popInIfReady(
-                        _PiesHeader(
-                          label: labels[index],
-                          emoji: emojis[index],
-                          stepSubtitle: subtitles[index],
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            if (introBeats.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  20,
+                                  20,
+                                  20,
+                                  0,
+                                ),
+                                child: SequentialNarratorReveal(
+                                  beats: introBeats,
+                                  avatarSize: 110,
+                                ),
+                              ),
+                            _PiesHeader(
+                              label: labels[index],
+                              emoji: emojis[index],
+                              stepSubtitle: subtitles[index],
+                            ),
+                          ],
                         ),
                         ready: _dialogueComplete,
                         stepKey: 'header:${step ?? index}',
