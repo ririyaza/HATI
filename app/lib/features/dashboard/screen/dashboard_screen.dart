@@ -12,7 +12,13 @@ import 'profile_screen.dart';
 import 'progress_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({super.key});
+  const DashboardScreen({super.key, this.initialIndex = 0});
+
+  /// Which bottom-nav tab to land on (0=Home, 1=Modules, 2=Progress,
+  /// 3=Profile). Lets callers like the scenario progress detail screen's
+  /// "Let's Practice More" button land straight on Modules instead of
+  /// always resetting to Home.
+  final int initialIndex;
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -25,7 +31,7 @@ class DashboardScreen extends StatefulWidget {
 const _profileTabIndex = 3;
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  int _selectedIndex = 0;
+  late int _selectedIndex = widget.initialIndex;
   bool _tourActive = false;
   final _tourKeys = DashboardTourKeys();
 

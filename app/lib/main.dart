@@ -24,17 +24,28 @@ void main() async {
   // yet for these Firebase App Distribution test builds, so every
   // attestation call 403s with "App attestation failed" regardless of
   // kDebugMode/build type. Forcing the debug provider here too (not just
-  // for kDebugMode builds) unblocks that: each tester's device still needs
-  // its printed debug token added in Firebase Console > App Check > Manage
-  // debug tokens, but that doesn't depend on Play Console at all.
+  // for kDebugMode builds) unblocks that.
+  //
+  // A fixed, hardcoded debugToken (rather than leaving it unset) means
+  // every install of this build — this device, a teammate's, a fresh
+  // reinstall — presents the exact same token instead of the provider
+  // generating a new random one per install that would need pulling from
+  // logcat and registering individually each time. Register this one
+  // value once in Firebase Console > App Check > (app) > Manage debug
+  // tokens and every install is covered.
+  //
+  // Shared across every install, so treat it like a secret embedded in
+  // the APK (because it is one) — fine for a closed testing group, but
+  // revoke it in the Console rather than reusing it for a public release.
   //
   // TODO: once the app is linked in Play Console (see Option B — SHA
   // fingerprint + Play Integrity API enabled) and/or actually ships via
   // Play/App Store, restore this to `kDebugMode ? debug : real provider`
   // so release builds get real attestation instead of the debug provider.
+  const testDebugToken = '07961f34-b957-4e91-9360-f26ed72acab3';
   await FirebaseAppCheck.instance.activate(
-    providerAndroid: const AndroidDebugProvider(),
-    providerApple: const AppleDebugProvider(),
+    providerAndroid: const AndroidDebugProvider(debugToken: testDebugToken),
+    providerApple: const AppleDebugProvider(debugToken: testDebugToken),
   );
   runApp(const MyApp());
 }
