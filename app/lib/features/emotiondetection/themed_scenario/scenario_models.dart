@@ -499,6 +499,16 @@ const Map<String, SceneId> kStepToScene = {
   'scene4_debrief_intro': SceneId.debrief,
   'scene4_predicted': SceneId.debrief,
   'scene4_actual': SceneId.debrief,
+  // foa_supervisor/fsn_seat-only debrief steps (their scripts' "which part
+  // was hardest" / "did you achieve your goal" questions, plus fsn_seat's
+  // own "expectation vs reality" pair and outcome-severity slider) —
+  // missing from this map means sceneForStep falls through to its
+  // preScene default, same trap as the pies_*_other steps noted below.
+  'scene4_difficulty_part': SceneId.debrief,
+  'scene4_expect_before': SceneId.debrief,
+  'scene4_expect_after': SceneId.debrief,
+  'scene4_outcome_severity': SceneId.debrief,
+  'scene4_goal_check': SceneId.debrief,
   'scene4_bad': SceneId.debrief,
   'scene4_bad_detail': SceneId.debrief,
   'scene4_credit': SceneId.debrief,
@@ -520,13 +530,22 @@ const Map<String, SceneId> kStepToScene = {
 
   // ── fsg_party-only debrief sub-steps ───────────────────────────────────
   'scene4_fsg_cause': SceneId.debrief,
+  'scene4_fsg_expected_match': SceneId.debrief,
   'scene4_fsg_badness': SceneId.debrief,
+  'scene4_fsg_insulted': SceneId.debrief,
+  'scene4_fsg_said_did': SceneId.debrief,
   'scene4_fsg_goal_done': SceneId.debrief,
 
   // ── fne_stage-only debrief sub-steps ───────────────────────────────────
   'scene4_fne_observe': SceneId.debrief,
+  'scene4_fne_expected_bad': SceneId.debrief,
   'scene4_fne_severity': SceneId.debrief,
   'scene4_fne_goal_done': SceneId.debrief,
+
+  // ── phys_jeepney-only debrief sub-steps ─────────────────────────────────
+  'scene4_phys_expect_before': SceneId.debrief,
+  'scene4_phys_expect_after': SceneId.debrief,
+  'scene4_phys_reaction_type': SceneId.debrief,
 
   // ── foa_supervisor preparation/interaction ─────────────────────────────
   'foa_s2_script': SceneId.preparation,

@@ -93,7 +93,16 @@ Future<List<EmotionLogEntry>> fetchAllEmotionLogs() async {
       final data = doc.data();
       final emotion = normalizeEmotionLabel(data['emotion']);
       if (emotion == null) continue;
-      final timestamp = DateTime.tryParse(data['timestamp']?.toString() ?? '');
+      // .toLocal() matters here: scenario_engine.py stamps this with an
+      // explicit UTC offset, which DateTime.tryParse would otherwise
+      // silently treat as if it were already this device's local time —
+      // an up-to-8-hour skew for any "today"/"this week" boundary check
+      // below, not just a cosmetic display issue. Old logs written before
+      // that backend fix are still naive and parse as local either way, so
+      // this is a no-op for them.
+      final timestamp = DateTime.tryParse(
+        data['timestamp']?.toString() ?? '',
+      )?.toLocal();
       if (timestamp == null) continue;
       entries.add(EmotionLogEntry(
         emotion: emotion,
