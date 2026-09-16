@@ -395,7 +395,7 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
                                         ]
                                       : [
                                           if (profText.isNotEmpty)
-                                            CharacterSpeechBubble(
+                                            _CharacterSpeechBubble(
                                               text: profText,
                                             ),
                                           if (activeSpriteAsset != null) ...[
@@ -470,7 +470,7 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
                             bottom: 16,
                             child: Align(
                               alignment: Alignment.centerRight,
-                              child: CharacterSpeechBubble(
+                              child: _CharacterSpeechBubble(
                                 text: _lastSentText!,
                               ),
                             ),
@@ -881,6 +881,40 @@ class _SpeakerBlock {
        narratorBeats = narratorBeats ?? [];
 }
 
+/// Splits a multi-character Narrator line like "Sir Reyes nods. Sir Santos
+/// smiles slightly." into one (sprite, sentence) pair per character
+/// mentioned. A sentence matching no known character is folded into the
+/// previous beat's text (same sprite) instead of being dropped or shown
+/// with nobody pictured.
+List<(String, String)> _splitNarratorBeats(
+  String text,
+  List<NpcCharacter> npcCharacters,
+) {
+  final sentences = text
+      .split(RegExp(r'(?<=[.!?])\s+'))
+      .map((s) => s.trim())
+      .where((s) => s.isNotEmpty)
+      .toList();
+
+  final beats = <(String, String)>[];
+  for (final sentence in sentences) {
+    NpcCharacter? match;
+    for (final ch in npcCharacters) {
+      if (ch.matches(sentence)) {
+        match = ch;
+        break;
+      }
+    }
+    if (match != null) {
+      beats.add((match.sprites.blink, sentence));
+    } else if (beats.isNotEmpty) {
+      final last = beats.removeLast();
+      beats.add((last.$1, '${last.$2} $sentence'));
+    }
+  }
+  return beats;
+}
+
 /// "User (impulse):" / "User:" lines (a couple of fsg_party/fne_stage
 /// branches echo back the player's own scripted line this way) and any
 /// other speaker that isn't a known NpcCharacter and isn't Narrator still
@@ -949,7 +983,7 @@ List<_SpeakerBlock> _buildSpeakerBlocks(
         for (final ch in config.npcCharacters)
           if (ch.matches(text) && seenIds.add(ch.id)) ch.sprites.blink,
       ];
-      beats = splitNarratorBeats(text, config.npcCharacters);
+      beats = _splitNarratorBeats(text, config.npcCharacters);
     }
 
     if (key == currentKey && current != null) {
@@ -1017,9 +1051,9 @@ class _SpeakerBlockWidget extends StatelessWidget {
 
   static const double defaultAvatarSize = 130;
   // Was 56 — sized on the assumption of several avatars shown side by side
-  // in a row, but SequentialNarratorReveal only ever shows ONE at a time
+  // in a row, but _SequentialNarratorReveal only ever shows ONE at a time
   // (it cycles through reactions instead of dumping them all on screen at
-  // once — see SequentialNarratorReveal's own doc comment), so there was
+  // once — see _SequentialNarratorReveal's own doc comment), so there was
   // no crowding to avoid and the portrait just read as oddly tiny next to
   // everything else in the scene. Close to defaultAvatarSize now, just
   // slightly smaller so a reaction beat still reads as lighter-weight than
@@ -1039,14 +1073,14 @@ class _SpeakerBlockWidget extends StatelessWidget {
       // which already shows their avatar — an avatar here too would just
       // be a confusing duplicate of the same character right below it.
       if (block.narratorSprites.length <= 1) {
-        return CharacterSpeechBubble(text: text, italic: true);
+        return _CharacterSpeechBubble(text: text, italic: true);
       }
       // Several characters react in the same narration beat (e.g. a
       // 5-professor panel) — reveal one at a time (sprite fades in, holds,
       // fades out, next one takes its place) instead of showing every
       // sprite and the whole combined paragraph at once, which cramped the
       // scene and made it unclear which line belonged to which reaction.
-      return SequentialNarratorReveal(
+      return _SequentialNarratorReveal(
         beats: block.narratorBeats.isNotEmpty
             ? block.narratorBeats
             : [for (final s in block.narratorSprites) (s, text)],
@@ -1054,7 +1088,7 @@ class _SpeakerBlockWidget extends StatelessWidget {
       );
     }
     final spriteAsset = showSprite ? block.spriteAsset : null;
-    final bubble = CharacterSpeechBubble(
+    final bubble = _CharacterSpeechBubble(
       text: text,
       nameLabel: block.displayName.isNotEmpty ? block.displayName : null,
     );
@@ -1092,14 +1126,111 @@ class _SpeakerBlockWidget extends StatelessWidget {
   }
 }
 
+/// Auto-advances through a multi-character narration one (sprite, sentence)
+/// pair at a time — each shown for a few seconds, faded out, replaced by
+/// the next — instead of dumping every character and the whole combined
+/// paragraph on screen together. Stops on the last beat (stays visible)
+/// rather than disappearing once the cycle finishes, so there's still
+/// something to read afterward. Respects the scene's existing 2x speed
+/// toggle, same as Hati's own typewriter effect.
+class _SequentialNarratorReveal extends StatefulWidget {
+  final List<(String, String)> beats;
+  final double avatarSize;
+
+  const _SequentialNarratorReveal({
+    required this.beats,
+    required this.avatarSize,
+  });
+
+  @override
+  State<_SequentialNarratorReveal> createState() =>
+      _SequentialNarratorRevealState();
+}
+
+class _SequentialNarratorRevealState extends State<_SequentialNarratorReveal> {
+  int _index = 0;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _scheduleNext();
+  }
+
+  @override
+  void didUpdateWidget(covariant _SequentialNarratorReveal oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.beats != oldWidget.beats) {
+      _index = 0;
+      _scheduleNext();
+    }
+  }
+
+  void _scheduleNext() {
+    _timer?.cancel();
+    if (_index >= widget.beats.length - 1) return;
+    final sentence = widget.beats[_index].$2;
+    // Roughly reading-time-scaled (base + per-character), clamped to a
+    // sane range so a short "Sir Cruz nods." and a longer sentence both
+    // get an appropriate hold before advancing.
+    final baseMs = 1400 + sentence.length * 35;
+    final clampedMs = baseMs.clamp(1800, 4200);
+    final ms = HatiSpeechSpeedController.isFast.value
+        ? clampedMs ~/ 2
+        : clampedMs;
+    _timer = Timer(Duration(milliseconds: ms), () {
+      if (!mounted) return;
+      setState(() => _index++);
+      _scheduleNext();
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.beats.isEmpty) return const SizedBox.shrink();
+    final (sprite, sentence) = widget.beats[_index];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 350),
+          child: KeyedSubtree(
+            key: ValueKey(_index),
+            child: sprite.endsWith('.riv')
+                ? NpcRiveSprite(assetPath: sprite, height: widget.avatarSize)
+                : Image.asset(
+                    sprite,
+                    height: widget.avatarSize,
+                    fit: BoxFit.contain,
+                  ),
+          ),
+        ),
+        const SizedBox(height: 6),
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 350),
+          child: KeyedSubtree(
+            key: ValueKey(_index),
+            child: _CharacterSpeechBubble(text: sentence, italic: true),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 /// Multiple different NPCs actually speaking within the same turn (the
 /// 5-professor panel, fne_stage's students, etc.) used to all render
 /// stacked in one Column at once — cramped, and made it hard to tell whose
 /// line was whose at a glance. Reveals one speaker's full block (bubble +
 /// name label + sprite, via _SpeakerBlockWidget) at a time instead — fades
 /// in, holds for a reading-time-scaled duration, fades out, the next
-/// speaker takes its place — same pattern as SequentialNarratorReveal
-/// (shared_widgets.dart).
+/// speaker takes its place — same pattern as _SequentialNarratorReveal.
 /// Doesn't loop: stays on the last speaker's block once the sequence
 /// finishes, so there's still something on screen to read afterward.
 class _SequentialSpeakerReveal extends StatefulWidget {
@@ -1141,7 +1272,7 @@ class _SequentialSpeakerRevealState extends State<_SequentialSpeakerReveal> {
     _timer?.cancel();
     if (_index >= widget.blocks.length - 1) return;
     // Roughly reading-time-scaled (base + per-character), same formula as
-    // SequentialNarratorReveal, clamped to a sane range so a short "Yes."
+    // _SequentialNarratorReveal, clamped to a sane range so a short "Yes."
     // and a full paragraph both get an appropriate hold before advancing.
     final text = widget.blocks[_index].lines.join('\n');
     final baseMs = 1400 + text.length * 35;
@@ -1174,6 +1305,73 @@ class _SequentialSpeakerRevealState extends State<_SequentialSpeakerReveal> {
           block: widget.blocks[index],
           avatarSize: widget.avatarSize,
           stackVertically: widget.stackVertically,
+        ),
+      ),
+    );
+  }
+}
+
+// ── Character speech bubble (prof / user) ─────────────────────────────────────
+
+class _CharacterSpeechBubble extends StatelessWidget {
+  final String text;
+  final String? nameLabel;
+  final bool italic;
+
+  const _CharacterSpeechBubble({
+    required this.text,
+    this.nameLabel,
+    this.italic = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxWidth: MediaQuery.sizeOf(context).width * 0.55,
+      ),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.12),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            if (nameLabel != null && nameLabel!.isNotEmpty) ...[
+              Text(
+                nameLabel!,
+                textAlign: TextAlign.right,
+                style: const TextStyle(
+                  color: _kApproachBlue,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.2,
+                ),
+              ),
+              const SizedBox(height: 4),
+            ],
+            Text(
+              text,
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                color: Colors.black,
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+                fontStyle: italic ? FontStyle.italic : FontStyle.normal,
+                height: 1.35,
+              ),
+            ),
+          ],
         ),
       ),
     );
