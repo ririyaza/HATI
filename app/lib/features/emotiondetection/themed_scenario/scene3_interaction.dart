@@ -282,14 +282,16 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
                       clipBehavior: Clip.none,
                       // Explicit paint/priority order, back to front: (1)
                       // the scenario's own background art, (2) the NPC's
-                      // dialogue this turn, (3) the player's own echoed
-                      // last message, (4) Hati himself. Each is its own
+                      // dialogue this turn, (3) Hati himself, (4) the
+                      // player's own echoed last message. Each is its own
                       // Positioned layer instead of one flex column, so
                       // none of them are ever scrolled to be read — every
                       // layer sizes to its own content and simply overlaps
                       // a layer behind it on the rare turn where there
-                      // isn't room for both, which is fine given the paint
-                      // order above (whatever's in front stays legible).
+                      // isn't room for both. The echoed message is
+                      // deliberately last/frontmost so Hati's own bubble
+                      // (which can still overlap the art/NPC layers behind
+                      // it) never covers what the player actually said.
                       children: [
                         // Layer 1 (back): background art.
                         Image.asset(
@@ -429,31 +431,17 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
                             ),
                           ),
                         ),
-                        // Layer 3: the player's own echoed last message — its
-                        // own layer above the NPC's, pinned to the opposite
-                        // (bottom-right) corner from Hati below so the two
-                        // never compete for the same spot.
-                        if (_lastSentText != null && _lastSentText!.isNotEmpty)
-                          Positioned(
-                            left: 96,
-                            right: 16,
-                            bottom: 16,
-                            child: Align(
-                              alignment: Alignment.centerRight,
-                              child: _CharacterSpeechBubble(
-                                text: _lastSentText!,
-                              ),
-                            ),
-                          ),
-                        // Layer 4 (front): Hati. Position and size are fixed —
-                        // he never scales down or shifts to make room for
-                        // anything else on screen. Only his speech bubble
-                        // (rendered above him, see _ApproachHatiLane) grows or
-                        // shrinks with whatever he's saying, and it's free to
-                        // overlap the art/NPC/echo layers behind it since it's
-                        // the frontmost thing in the scene and fades away on
-                        // its own a few seconds after it finishes typing
-                        // anyway (dissolveBubble/autoAdvance below).
+                        // Layer 3: Hati. Position and size are fixed — left:8/
+                        // bottom:4 every turn, and (as of the alignment fix
+                        // in _ApproachHatiLane) the frog itself no longer
+                        // shifts to re-center under his own bubble. Painted
+                        // *before* the player's echoed message below so his
+                        // bubble — which can still grow wide with a long
+                        // line — never covers the transcript of what the
+                        // player actually said; it only ever overlaps the
+                        // art/NPC layers behind it, and fades away on its own
+                        // a few seconds after typing anyway (dissolveBubble/
+                        // autoAdvance below).
                         Positioned(
                           left: 8,
                           bottom: 4,
@@ -469,6 +457,24 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
                             },
                           ),
                         ),
+                        // Layer 4 (front): the player's own echoed last
+                        // message. Painted last so it always stays on top of
+                        // Hati's lane behind it — left inset is his frog's
+                        // width plus a margin, not just the frog's width, so
+                        // even a short reply clears his frog instead of
+                        // sitting flush against it.
+                        if (_lastSentText != null && _lastSentText!.isNotEmpty)
+                          Positioned(
+                            left: _kFrogSize + 24,
+                            right: 16,
+                            bottom: 16,
+                            child: Align(
+                              alignment: Alignment.centerRight,
+                              child: _CharacterSpeechBubble(
+                                text: _lastSentText!,
+                              ),
+                            ),
+                          ),
                         // Difficult Mode's branch points (e.g. "Sorry, I just
                         // wanted to..." / "Never mind." / continue angrily /
                         // custom) send several real choices, not one default
@@ -666,14 +672,17 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
   }
 }
 
-// ── Hati overlay: frog + bubble, front-most layer of the scene ─────────────
+// ── Hati overlay: frog + bubble, pinned lower-left ──────────────────────────
 /// The caller wraps this in a plain `Positioned(left, bottom)` with a fixed
-/// [frogSize] — this widget itself no longer does any of its own alignment
-/// or scaling, so Hati's position and size stay exactly the same regardless
-/// of what else is on screen. Only the bubble above him grows or shrinks
-/// with the message, sized by [HatiLayout.bubbleMaxWidth]/[bubbleMaxHeight]
-/// — it's free to extend past the art/NPC layers behind it since this is
-/// the front-most layer in the scene's Stack.
+/// [frogSize]. Passes `alignment: CrossAxisAlignment.start` down to
+/// [HatiSpeakingBlock] so the frog stays anchored to that same left edge on
+/// every turn instead of re-centering itself under whatever width this
+/// turn's bubble happens to be — only the bubble above him grows or shrinks
+/// with the message, sized by [HatiLayout.bubbleMaxWidth]/[bubbleMaxHeight].
+/// It's still free to extend past the art/NPC layers behind it (this is the
+/// second-frontmost layer in the scene's Stack — see the player's echoed
+/// message painted after it), and fades on its own a few seconds after
+/// typing (dissolveBubble/autoAdvance below).
 class _ApproachHatiLane extends StatelessWidget {
   final bool showBubble;
   final String message;
@@ -703,6 +712,11 @@ class _ApproachHatiLane extends StatelessWidget {
               persistentMessage: message,
               frogSize: frogSize,
               mood: HatiMood.encourage,
+              // Keeps the frog itself pinned to this lane's fixed left
+              // edge instead of re-centering under whatever width this
+              // turn's bubble happens to be — see HatiSpeakingBlock's
+              // alignment doc.
+              alignment: CrossAxisAlignment.start,
               // Fades the bubble out on its own a few seconds after it
               // finishes typing, leaving just the frog — it used to stay
               // put indefinitely until the player tapped. autoAdvance adds

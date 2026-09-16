@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'features/onboarding/loading_screen.dart';
@@ -19,19 +18,23 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  // Play Integrity / App Attest only issue valid verdicts for builds that
-  // went through Play/App Store signing and distribution — a debug build
-  // deployed straight from Android Studio or Xcode will never pass them.
-  // Use the debug provider for debug builds (each tester device's printed
-  // debug token still needs to be added in Firebase Console > App Check),
-  // and the real attestation providers for release builds.
+  // Play Integrity / App Attest only issue valid verdicts for an app whose
+  // package is linked to a Google Play Console account (Play Integrity)
+  // or distributed via TestFlight/App Store (App Attest) — neither is true
+  // yet for these Firebase App Distribution test builds, so every
+  // attestation call 403s with "App attestation failed" regardless of
+  // kDebugMode/build type. Forcing the debug provider here too (not just
+  // for kDebugMode builds) unblocks that: each tester's device still needs
+  // its printed debug token added in Firebase Console > App Check > Manage
+  // debug tokens, but that doesn't depend on Play Console at all.
+  //
+  // TODO: once the app is linked in Play Console (see Option B — SHA
+  // fingerprint + Play Integrity API enabled) and/or actually ships via
+  // Play/App Store, restore this to `kDebugMode ? debug : real provider`
+  // so release builds get real attestation instead of the debug provider.
   await FirebaseAppCheck.instance.activate(
-    providerAndroid: kDebugMode
-        ? const AndroidDebugProvider()
-        : const AndroidPlayIntegrityProvider(),
-    providerApple: kDebugMode
-        ? const AppleDebugProvider()
-        : const AppleAppAttestProvider(),
+    providerAndroid: const AndroidDebugProvider(),
+    providerApple: const AppleDebugProvider(),
   );
   runApp(const MyApp());
 }

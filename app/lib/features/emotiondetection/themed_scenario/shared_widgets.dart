@@ -1972,6 +1972,16 @@ class HatiSpeakingBlock extends StatelessWidget {
   /// [_AnimatedHatiSpeechBubble.autoAdvance].
   final bool autoAdvance;
 
+  /// How the bubble and frog line up against each other. Defaults to
+  /// [CrossAxisAlignment.center] (bubble centered above the frog), which is
+  /// what every inline/scrolling usage of this widget wants. Callers that
+  /// pin this block to a fixed screen position (e.g. scene3_interaction's
+  /// lower-left overlay) should pass [CrossAxisAlignment.start] instead —
+  /// otherwise the frog re-centers itself under the bubble every time the
+  /// bubble's width changes with a new message, making Hati appear to
+  /// shift position turn to turn instead of staying put.
+  final CrossAxisAlignment alignment;
+
   const HatiSpeakingBlock({
     super.key,
     this.introMessage = '',
@@ -1984,6 +1994,7 @@ class HatiSpeakingBlock extends StatelessWidget {
     this.holdAfterTyping = const Duration(seconds: 2),
     this.mood = HatiMood.idle,
     this.autoAdvance = false,
+    this.alignment = CrossAxisAlignment.center,
   });
 
   @override
@@ -2031,7 +2042,7 @@ class HatiSpeakingBlock extends StatelessWidget {
     }
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
+      crossAxisAlignment: alignment,
       mainAxisSize: MainAxisSize.min,
       children: [
         bubble,
