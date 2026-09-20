@@ -1516,6 +1516,24 @@ class _AnimatedHatiSpeechBubble extends StatefulWidget {
   /// keeps its tap-paced behavior.
   final bool autoAdvance;
 
+  /// Fixed local X (within the bubble's own rendered box) the tail should
+  /// point at, and the alignment used to place that box within the lane's
+  /// full [maxWidth]. Both null by default (bottomCenter + tail at the
+  /// bubble's own horizontal midpoint) — the right choice when this bubble
+  /// sits above a frog that's centered in the same lane. A caller that
+  /// instead pins the frog to the lane's left edge (see
+  /// [HatiSpeakingBlock]'s `alignment: CrossAxisAlignment.start` — Scene
+  /// 3's lower-left Hati overlay) passes [bubbleAlignment]
+  /// `Alignment.bottomLeft` (so this box's own left edge lines up with the
+  /// frog's) and [tailTargetX] `frogSize / 2`, so the tail keeps pointing
+  /// at the frog's actual center regardless of how wide this turn's
+  /// message makes the bubble. Previously this box was always centered
+  /// across the full lane width regardless of the frog's position, so once
+  /// the frog moved to the lane's left edge the tail kept pointing at the
+  /// lane's center instead of at Hati.
+  final AlignmentGeometry bubbleAlignment;
+  final double? tailTargetX;
+
   const _AnimatedHatiSpeechBubble({
     super.key,
     required this.message,
@@ -1526,6 +1544,8 @@ class _AnimatedHatiSpeechBubble extends StatefulWidget {
     this.onDismissed,
     this.onTypingComplete,
     this.autoAdvance = false,
+    this.bubbleAlignment = Alignment.bottomCenter,
+    this.tailTargetX,
   });
 
   @override
@@ -1748,7 +1768,7 @@ class _AnimatedHatiSpeechBubbleState extends State<_AnimatedHatiSpeechBubble>
     final isTyping = _visibleChars < sentence.length;
 
     return Align(
-      alignment: Alignment.bottomCenter,
+      alignment: widget.bubbleAlignment,
       child: AnimatedBuilder(
         animation: Listenable.merge([
           _entranceController,
@@ -1786,7 +1806,7 @@ class _AnimatedHatiSpeechBubbleState extends State<_AnimatedHatiSpeechBubble>
             alignment: Alignment.topCenter,
             clipBehavior: Clip.none,
             child: CustomPaint(
-              painter: const _HatiSpeechBubblePainter(),
+              painter: _HatiSpeechBubblePainter(tailTargetX: widget.tailTargetX),
               child: Padding(
                 padding: _ScaledBubbleText._padding,
                 child: AnimatedSwitcher(
@@ -1811,7 +1831,14 @@ class _AnimatedHatiSpeechBubbleState extends State<_AnimatedHatiSpeechBubble>
 }
 
 class _HatiSpeechBubblePainter extends CustomPainter {
-  const _HatiSpeechBubblePainter();
+  // Local X (within this bubble's own rendered box) the tail points at.
+  // Null (the default, used everywhere the bubble sits centered above a
+  // centered frog) falls back to the bubble's own horizontal midpoint —
+  // see _AnimatedHatiSpeechBubble.tailTargetX's doc comment for the
+  // pinned-left-lane case that needs a fixed value instead.
+  final double? tailTargetX;
+
+  const _HatiSpeechBubblePainter({this.tailTargetX});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1828,7 +1855,10 @@ class _HatiSpeechBubblePainter extends CustomPainter {
         ),
       );
 
-    final tailCenter = size.width / 2;
+    final tailCenter = (tailTargetX ?? size.width / 2).clamp(
+      tailWidth / 2 + radius,
+      size.width - tailWidth / 2 - radius,
+    );
     final tailPath = Path()
       ..moveTo(tailCenter - tailWidth / 2, bubbleBottom - 1)
       ..lineTo(tailCenter, size.height)
@@ -1846,7 +1876,8 @@ class _HatiSpeechBubblePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _HatiSpeechBubblePainter oldDelegate) =>
+      oldDelegate.tailTargetX != tailTargetX;
 }
 
 // ── Hati Frog Character ───────────────────────────────────────────────────────
@@ -2000,6 +2031,18 @@ class HatiSpeakingBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // See _AnimatedHatiSpeechBubble.bubbleAlignment/tailTargetX's doc
+    // comment — a start-aligned block pins the frog to this lane's left
+    // edge, so the bubble above it needs to line up on that same edge
+    // (instead of centering across the full lane width) with its tail
+    // fixed on the frog's actual center, or the tail points at empty space
+    // to the frog's right instead of at Hati.
+    final pinnedLeft = alignment == CrossAxisAlignment.start;
+    final bubbleAlignment = pinnedLeft
+        ? Alignment.bottomLeft
+        : Alignment.bottomCenter;
+    final tailTargetX = pinnedLeft ? frogSize / 2 : null;
+
     final Widget bubble;
     if (replacementMessage != null) {
       bubble = _AnimatedHatiSpeechBubble(
@@ -2017,6 +2060,8 @@ class HatiSpeakingBlock extends StatelessWidget {
               }
             : null,
         autoAdvance: autoAdvance,
+        bubbleAlignment: bubbleAlignment,
+        tailTargetX: tailTargetX,
       );
     } else if (dissolveBubble) {
       bubble = _AnimatedHatiSpeechBubble(
@@ -2031,6 +2076,8 @@ class HatiSpeakingBlock extends StatelessWidget {
           onSequenceComplete?.call();
         },
         autoAdvance: autoAdvance,
+        bubbleAlignment: bubbleAlignment,
+        tailTargetX: tailTargetX,
       );
     } else {
       bubble = HatiSpeechSequence(

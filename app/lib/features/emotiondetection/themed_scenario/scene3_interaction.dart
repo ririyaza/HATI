@@ -189,22 +189,20 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
               .map((p) => p.text)
               .where((t) => t.trim().isNotEmpty)
               .join('\n\n');
-    // fsg_party/fsn_seat/phys_jeepney's NPC avatar matches foa_supervisor's
-    // single-sprite sizing by request — fbop_spotlight and fne_stage keep
-    // the smaller fixed _SpeakerBlockWidget default (130) they already had,
-    // since those weren't part of the ask. At the larger size, the bubble
-    // also needs foa's own stacked (bubble-above-sprite) layout instead of
-    // the default side-by-side Row — see _SpeakerBlockWidget.stackVertically.
-    // (0.34 of the full screen height used to be fine when this sprite was
-    // the only thing sharing the scene's vertical space; now that the NPC
-    // dialogue, the player's echoed line, and Hati all have to fit without
-    // scrolling, 0.34 left too little room and the three collided — see
-    // the "this part was messed up" fix.)
-    const matchFoaSizeKeys = {'fsg_party', 'fsn_seat', 'phys_jeepney'};
-    final matchesFoaLayout = matchFoaSizeKeys.contains(config.scenarioKey);
-    final npcAvatarSize = matchesFoaLayout
-        ? sceneHeight * 0.22
-        : _SpeakerBlockWidget.defaultAvatarSize;
+    // Every multi/single-NPC scenario (fbop_spotlight, fne_stage,
+    // fsg_party, fsn_seat, phys_jeepney) and foa_supervisor's own sprite
+    // share one size (sceneHeight * 0.34) and one layout — the bubble
+    // stacked above the sprite (stackVertically: true) — by request.
+    //
+    // NOTE: 0.34 was tried once before for fsg_party/fsn_seat/phys_jeepney
+    // and reduced to 0.22 because the NPC dialogue, the player's echoed
+    // line, and Hati all have to fit in the same limited vertical space
+    // without scrolling and started colliding. The OverflowBox/ClipRect
+    // around this block (see npcContentMaxHeight) crops any excess rather
+    // than crashing, but cropped content is still a visual bug on shorter
+    // screens or with longer dialogue — worth checking on a real device.
+    final npcAvatarSize = sceneHeight * 0.34;
+    const matchesFoaLayout = true;
     // fsn_seat/phys_jeepney only ever have ONE character. A Narrator line
     // in the middle of her turn ("The stranger moves their bag.") splits
     // her dialogue into two _SpeakerBlocks either side of it (see
@@ -394,37 +392,29 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
                                             ),
                                         ]
                                       : [
-                                          if (profText.isNotEmpty)
-                                            _CharacterSpeechBubble(
-                                              text: profText,
+                                          // foa_supervisor used to be its own
+                                          // bespoke bubble-above-sprite stack
+                                          // (a hand-duplicated copy of
+                                          // _SpeakerBlockWidget's
+                                          // stackVertically:true branch).
+                                          // Routing through
+                                          // _SpeakerBlockWidget directly
+                                          // gives it the same stacked layout
+                                          // and size as every other scenario
+                                          // (npcAvatarSize, set above).
+                                          if (profText.isNotEmpty ||
+                                              activeSpriteAsset != null)
+                                            _SpeakerBlockWidget(
+                                              block: _SpeakerBlock(
+                                                key: 'foa_prof',
+                                                displayName: '',
+                                                isNarrator: false,
+                                                spriteAsset: activeSpriteAsset,
+                                                lines: [profText],
+                                              ),
+                                              avatarSize: npcAvatarSize,
+                                              stackVertically: true,
                                             ),
-                                          if (activeSpriteAsset != null) ...[
-                                            const SizedBox(height: 8),
-                                            // NPC art is either a static
-                                            // image or a Rive animation
-                                            // (.riv) — Image.asset can't
-                                            // decode Rive's binary format,
-                                            // so branch by extension. Keyed
-                                            // by asset path so switching
-                                            // between the default and angry
-                                            // sprite (different widget
-                                            // subtrees/state) rebuilds
-                                            // cleanly.
-                                            activeSpriteAsset.endsWith('.riv')
-                                                ? NpcRiveSprite(
-                                                    key: ValueKey(
-                                                      activeSpriteAsset,
-                                                    ),
-                                                    assetPath:
-                                                        activeSpriteAsset,
-                                                    height: sceneHeight * 0.34,
-                                                  )
-                                                : Image.asset(
-                                                    activeSpriteAsset,
-                                                    height: sceneHeight * 0.34,
-                                                    fit: BoxFit.contain,
-                                                  ),
-                                          ],
                                         ],
                                 ),
                               ),
@@ -442,9 +432,18 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
                         // art/NPC layers behind it, and fades away on its own
                         // a few seconds after typing anyway (dissolveBubble/
                         // autoAdvance below).
+                        // `bottom` is computed (not a fixed 4px) so his frog
+                        // overlaps up into the NPC content area's lower
+                        // portion, where the NPC's sprite sits — by
+                        // experiment/request — instead of staying tucked in
+                        // the screen's bottom-left corner below it.
                         Positioned(
                           left: 8,
-                          bottom: 4,
+                          bottom:
+                              (stackConstraints.maxHeight -
+                                  12 -
+                                  npcContentMaxHeight) +
+                              _kFrogSize * 0.5,
                           child: _ApproachHatiLane(
                             showBubble: hatiText.isNotEmpty,
                             message: hatiText,
@@ -928,11 +927,47 @@ String _fallbackSpeakerName(String? raw) {
   return base;
 }
 
+/// Same expression-cue keywords as scenario_engine.py's `_detect_npc_mood`
+/// (frown/glare/stern/annoyed/etc.) — checked here per LINE rather than
+/// relying solely on the backend's turn-wide `npc_mood` flag, which only
+/// says "someone in this turn looked angry," not which character or which
+/// of their lines. A block's own text is the actual source of truth for
+/// its own mood, so this takes priority over the generic
+/// first-line-greet/question-mark-tilt heuristic below — otherwise, e.g.,
+/// Carlo's very first line of a turn reading "*/frowns slightly." still
+/// rendered the generic "greet" pose instead of the frown the line
+/// describes.
+final _npcMoodAngryPatterns = [
+  RegExp(r'\bfrown(s|ed|ing)?\b', caseSensitive: false),
+  RegExp(r'\bglare(s|d)?\b', caseSensitive: false),
+  RegExp(r'\bscowl(s|ed)?\b', caseSensitive: false),
+  RegExp(r'\bstern\b', caseSensitive: false),
+  RegExp(r'\bharden(s|ed)?\b', caseSensitive: false),
+  RegExp(r'\bannoyed\b', caseSensitive: false),
+  RegExp(r'\birritated\b', caseSensitive: false),
+  RegExp(r'\bhostile\b', caseSensitive: false),
+  RegExp(r'\bimpatient\b', caseSensitive: false),
+  RegExp(r'\bunimpressed\b', caseSensitive: false),
+  RegExp(r'\bdisapprov\w*\b', caseSensitive: false),
+  RegExp(r'\bexasperat\w*\b', caseSensitive: false),
+  RegExp(r'\bsnaps?\b', caseSensitive: false),
+  RegExp(r'\bnarrows?\s+\w+\s+eyes\b', caseSensitive: false),
+  RegExp(r'\bcrosses?\s+\w+\s+arms\b', caseSensitive: false),
+  RegExp(r'\braises?\s+\w+\s+voice\b', caseSensitive: false),
+  RegExp(r'\bclench\w*\s+\w+\s+(jaw|fist)\b', caseSensitive: false),
+  RegExp(r'\brolls?\s+\w+\s+eyes\b', caseSensitive: false),
+];
+
+bool _lineIndicatesAngryMood(String text) =>
+    _npcMoodAngryPatterns.any((p) => p.hasMatch(text));
+
 /// Groups this turn's non-Hati lines into per-speaker [_SpeakerBlock]s and
 /// picks each block's NPC mood via the heuristic from the task brief:
-/// a character's first line this turn -> greet; a later line ending in
-/// "?" -> tilt; the backend's angry-turn signal (same npc_mood flag that
-/// already drives foa_supervisor's mood swap) -> frown; otherwise -> blink.
+/// the line's own text describing an angry/frowning cue -> frown (highest
+/// priority — see [_lineIndicatesAngryMood]); else a character's first
+/// line this turn -> greet; a later line ending in "?" -> tilt; the
+/// backend's angry-turn signal (same npc_mood flag that already drives
+/// foa_supervisor's mood swap) -> frown as a fallback; otherwise -> blink.
 /// Mood is computed from a block's first line and applies to its one
 /// avatar. [npcMoodAngryThisTurn] is `provider.npcMood == 'angry'`.
 List<_SpeakerBlock> _buildSpeakerBlocks(
@@ -962,12 +997,12 @@ List<_SpeakerBlock> _buildSpeakerBlocks(
     String? spriteAsset;
     if (character != null) {
       final NpcMood mood;
-      if (!seenCharacterIds.contains(character.id)) {
+      if (_lineIndicatesAngryMood(text) || npcMoodAngryThisTurn) {
+        mood = NpcMood.frown;
+      } else if (!seenCharacterIds.contains(character.id)) {
         mood = NpcMood.greet;
       } else if (text.endsWith('?')) {
         mood = NpcMood.tilt;
-      } else if (npcMoodAngryThisTurn) {
-        mood = NpcMood.frown;
       } else {
         mood = NpcMood.blink;
       }
@@ -1160,10 +1195,30 @@ class _SequentialNarratorRevealState extends State<_SequentialNarratorReveal> {
   @override
   void didUpdateWidget(covariant _SequentialNarratorReveal oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.beats != oldWidget.beats) {
+    // `beats` is a fresh List literal built on every parent rebuild (see
+    // _buildSpeakerBlocks), so comparing by reference (`!=`) was true on
+    // EVERY rebuild even with identical content — an unrelated rebuild
+    // elsewhere in the tree (a timer tick, keyboard visibility, provider
+    // notify) kept resetting `_index` back to 0 mid-cycle, which looked
+    // like the reveal restarting/disappearing instead of holding on the
+    // last beat. Compare contents instead, so it only actually resets when
+    // the beats themselves changed (e.g. a new turn's narration).
+    if (!_beatsEqual(widget.beats, oldWidget.beats)) {
       _index = 0;
       _scheduleNext();
     }
+  }
+
+  static bool _beatsEqual(
+    List<(String, String)> a,
+    List<(String, String)> b,
+  ) {
+    if (identical(a, b)) return true;
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
   }
 
   void _scheduleNext() {

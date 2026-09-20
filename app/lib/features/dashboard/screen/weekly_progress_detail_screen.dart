@@ -282,6 +282,7 @@ class _SummaryPage extends StatelessWidget {
             improving: summary.confidenceChangePct >= 0,
             color: const Color(0xFF1DB954),
             values: summary.confidenceSparkline,
+            includedEmotions: const ['Happy', 'Neutral', 'Surprised'],
           ),
           const SizedBox(height: 14),
           _TrendCard(
@@ -295,6 +296,7 @@ class _SummaryPage extends StatelessWidget {
             improving: summary.anxietyChangePct >= 0,
             color: const Color(0xFFE5484D),
             values: summary.anxietySparkline,
+            includedEmotions: const ['Sad', 'Anger', 'Anxious', 'Disgust'],
           ),
           const SizedBox(height: 20),
           _FeedbackCard(message: computeFeedbackMessage(summary)),
@@ -399,6 +401,7 @@ class _TrendCard extends StatelessWidget {
     required this.improving,
     required this.color,
     required this.values,
+    required this.includedEmotions,
   });
 
   final String label;
@@ -406,6 +409,12 @@ class _TrendCard extends StatelessWidget {
   final bool improving;
   final Color color;
   final List<double> values;
+
+  /// Display-cased emotion labels folded into this card's percentage (e.g.
+  /// Confidence: Happy/Neutral/Surprised) — shown as a caption so the user
+  /// knows what actually feeds this number instead of it being a black box.
+  /// See confidenceEmotions/anxietyEmotions in weekly_progress_data.dart.
+  final List<String> includedEmotions;
 
   @override
   Widget build(BuildContext context) {
@@ -415,44 +424,54 @@ class _TrendCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.black87,
-                ),
+              Row(
+                children: [
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Icon(
+                    improving
+                        ? Icons.arrow_upward_rounded
+                        : Icons.arrow_downward_rounded,
+                    size: 16,
+                    color: Colors.black87,
+                  ),
+                  const SizedBox(width: 2),
+                  Text(
+                    changeLabel,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 6),
-              Icon(
-                improving
-                    ? Icons.arrow_upward_rounded
-                    : Icons.arrow_downward_rounded,
-                size: 16,
-                color: Colors.black87,
-              ),
-              const SizedBox(width: 2),
-              Text(
-                changeLabel,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.black87,
+              const Spacer(),
+              SizedBox(
+                width: 120,
+                height: 44,
+                child: CustomPaint(
+                  painter: _SparklinePainter(values: values, color: color),
                 ),
               ),
             ],
           ),
-          const Spacer(),
-          SizedBox(
-            width: 120,
-            height: 44,
-            child: CustomPaint(
-              painter: _SparklinePainter(values: values, color: color),
-            ),
+          const SizedBox(height: 8),
+          Text(
+            'Includes: ${includedEmotions.join(', ')}',
+            style: const TextStyle(fontSize: 11.5, color: Colors.black45),
           ),
         ],
       ),
@@ -717,29 +736,13 @@ class _TriggerBarRow extends StatelessWidget {
       children: [
         SizedBox(
           width: 120,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                datum.label,
-                style: const TextStyle(
-                  fontSize: 12.5,
-                  color: Colors.black87,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              Text(
-                datum.sampleSize == 1
-                    ? '1 log'
-                    : '${datum.sampleSize} logs',
-                style: const TextStyle(
-                  fontSize: 10.5,
-                  color: Colors.black38,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
+          child: Text(
+            datum.label,
+            style: const TextStyle(
+              fontSize: 12.5,
+              color: Colors.black87,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ),
         Expanded(
