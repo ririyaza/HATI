@@ -331,16 +331,26 @@ List<TriggerDatum> computeTriggerPatterns(List<EmotionLogEntry> logs) {
     }
   }
 
-  final result = totalByTheme.entries.map((entry) {
-    final anxiousCount = anxiousByTheme[entry.key] ?? 0;
-    final pct = entry.value == 0 ? 0.0 : (anxiousCount / entry.value) * 100;
-    return TriggerDatum(
-      _themeShortLabels[entry.key] ?? entry.key,
-      pct,
-      entry.value,
-    );
-  }).toList()
-    ..sort((a, b) => b.value.compareTo(a.value));
+  final result =
+      totalByTheme.entries
+          .map((entry) {
+            final anxiousCount = anxiousByTheme[entry.key] ?? 0;
+            final pct = entry.value == 0
+                ? 0.0
+                : (anxiousCount / entry.value) * 100;
+            return TriggerDatum(
+              _themeShortLabels[entry.key] ?? entry.key,
+              pct,
+              entry.value,
+            );
+          })
+          // Trigger Patterns is meant to surface themes that actually
+          // provoke anxiety — a scenario played with zero anxious logs
+          // isn't a "trigger" at all, so it's left off the list entirely
+          // rather than shown as a 0% bar.
+          .where((d) => d.value > 0)
+          .toList()
+        ..sort((a, b) => b.value.compareTo(a.value));
 
   return result;
 }

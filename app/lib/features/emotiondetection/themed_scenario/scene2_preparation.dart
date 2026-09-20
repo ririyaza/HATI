@@ -31,8 +31,22 @@ import 'shared_widgets.dart';
 /// Script" was wrong for goal/path steps specifically.
 String _prepChoiceTitle(String? step) {
   if (step == 'fsg_s2_path') return 'Choose Your Approach';
+  if (step != null && step.contains('ground')) {
+    return 'Choose your Grounding Exercise';
+  }
   if (step != null && step.contains('goal')) return 'Choose Your Goal';
   return 'Choose Your Script';
+}
+
+/// Every theme's "_s2_ground" step (fne_s2_ground, fsn_s2_ground,
+/// fbop_s2_ground, phys_s2_ground, ...) sends a fixed list of grounding
+/// techniques with no free-text/custom option — unlike the script-choice
+/// steps this header is otherwise shared with, which really do end their
+/// options list with a "write your own" pick. "Select one or write your
+/// own" was wrong here since there was never anything to write.
+String _prepChoiceSubtitle(String? step) {
+  if (step != null && step.contains('ground')) return 'Select one to continue';
+  return 'Select one or write your own';
 }
 
 class Scene2Preparation extends StatefulWidget {
@@ -120,7 +134,7 @@ class _Scene2PreparationState extends State<Scene2Preparation> {
         contentBackgroundColor = Colors.white;
         fixedHeader = SectionHeader(
           title: _prepChoiceTitle(step),
-          subtitle: 'Select one or write your own',
+          subtitle: _prepChoiceSubtitle(step),
         );
         body = _ScriptChoiceList(
           key: ValueKey(step),
