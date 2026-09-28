@@ -178,7 +178,7 @@ class _ResumeScenarioDialog extends StatelessWidget {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.15),
+                      color: const Color(0xFFF5F1E8).withValues(alpha: 0.15),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
@@ -192,7 +192,7 @@ class _ResumeScenarioDialog extends StatelessWidget {
                     child: Text(
                       'Resume Scenario?',
                       style: HatiTextStyles.heading3.copyWith(
-                        color: Colors.white,
+                        color: const Color(0xFFF5F1E8),
                       ),
                     ),
                   ),
@@ -357,7 +357,7 @@ class _ScenarioDashboardScene extends StatelessWidget {
               height: 200,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.08),
+                color: const Color(0xFFF5F1E8).withValues(alpha: 0.08),
               ),
             ),
           ),
@@ -553,7 +553,7 @@ class _EmotionSummaryDialog extends StatelessWidget {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.15),
+                      color: const Color(0xFFF5F1E8).withValues(alpha: 0.15),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
@@ -567,7 +567,7 @@ class _EmotionSummaryDialog extends StatelessWidget {
                     child: Text(
                       'Emotions Felt',
                       style: HatiTextStyles.heading3.copyWith(
-                        color: Colors.white,
+                        color: const Color(0xFFF5F1E8),
                       ),
                     ),
                   ),
@@ -726,7 +726,7 @@ class _BadgeUnlockDialog extends StatelessWidget {
                   Expanded(
                     child: Text(
                       badges.length > 1 ? 'Badges Unlocked!' : 'Badge Unlocked!',
-                      style: HatiTextStyles.heading3.copyWith(color: Colors.white),
+                      style: HatiTextStyles.heading3.copyWith(color: const Color(0xFFF5F1E8)),
                     ),
                   ),
                 ],

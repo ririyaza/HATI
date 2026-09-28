@@ -57,6 +57,29 @@ class _Scene0PreSetupState extends State<Scene0PreSetup>
   bool _showSlowStartHint = false;
   Timer? _slowStartTimer;
 
+  // Once Hati's greeting has fully typed out, the bubble is no longer
+  // needed on screen and was covering the scenario title above it — this
+  // fades it out instead (frog stays put), either automatically a few
+  // seconds later or immediately if the player taps anywhere first.
+  bool _bubbleHidden = false;
+  Timer? _bubbleHideTimer;
+
+  void _startBubbleHideTimer() {
+    _bubbleHideTimer?.cancel();
+    _bubbleHideTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted && !_bubbleHidden) setState(() => _bubbleHidden = true);
+    });
+  }
+
+  // Tapping anywhere already skips/advances Hati's typewriter mid-sentence
+  // (see HatiTapToAdvance) — this only additionally dismisses the bubble
+  // once there's nothing left to advance through.
+  void _dismissBubbleOnTap() {
+    if (_dialogueComplete && !_bubbleHidden) {
+      setState(() => _bubbleHidden = true);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -115,6 +138,7 @@ class _Scene0PreSetupState extends State<Scene0PreSetup>
   @override
   void dispose() {
     _slowStartTimer?.cancel();
+    _bubbleHideTimer?.cancel();
     _controller.dispose();
     super.dispose();
   }
@@ -145,9 +169,12 @@ class _Scene0PreSetupState extends State<Scene0PreSetup>
     final readyToBegin = canBegin && _dialogueComplete;
 
     return Scaffold(
-      body: HatiTapToAdvance(
-        child: Stack(
-        children: [
+      body: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: _dismissBubbleOnTap,
+        child: HatiTapToAdvance(
+          child: Stack(
+          children: [
           // Background — the same brand blue (0xFF0B28D9) the Progress and
           // Profile screens use for their own headers, so the scenario
           // intro reads as part of one consistent app, not a different
@@ -165,7 +192,7 @@ class _Scene0PreSetupState extends State<Scene0PreSetup>
               height: 200,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.08),
+                color: const Color(0xFFF5F1E8).withValues(alpha: 0.08),
               ),
             ),
           ),
@@ -177,7 +204,7 @@ class _Scene0PreSetupState extends State<Scene0PreSetup>
               height: 160,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.06),
+                color: const Color(0xFFF5F1E8).withValues(alpha: 0.06),
               ),
             ),
           ),
@@ -280,16 +307,27 @@ class _Scene0PreSetupState extends State<Scene0PreSetup>
                                   // dialog above is dismissed.
                                   const HatiFrogAvatar(size: 180)
                                 else
-                                  HatiSpeakingBlock(
-                                    introMessage: introMessage,
-                                    persistentMessage: persistentMessage,
-                                    frogSize: 180,
-                                    mood: HatiMood.thinking,
-                                    onSequenceComplete: () {
-                                      if (mounted && !_dialogueComplete) {
-                                        setState(() => _dialogueComplete = true);
-                                      }
-                                    },
+                                  AnimatedSwitcher(
+                                    duration: const Duration(milliseconds: 400),
+                                    child: _bubbleHidden
+                                        ? const HatiFrogAvatar(
+                                            key: ValueKey('frog-only'),
+                                            size: 180,
+                                            mood: HatiMood.thinking,
+                                          )
+                                        : HatiSpeakingBlock(
+                                            key: const ValueKey('speaking'),
+                                            introMessage: introMessage,
+                                            persistentMessage: persistentMessage,
+                                            frogSize: 180,
+                                            mood: HatiMood.thinking,
+                                            onSequenceComplete: () {
+                                              if (mounted && !_dialogueComplete) {
+                                                setState(() => _dialogueComplete = true);
+                                                _startBubbleHideTimer();
+                                              }
+                                            },
+                                          ),
                                   ),
 
                                 const Spacer(),
@@ -344,6 +382,7 @@ class _Scene0PreSetupState extends State<Scene0PreSetup>
             ),
           ),
         ],
+          ),
         ),
       ),
     );
@@ -402,7 +441,7 @@ class _ScenarioTutorialDialog extends StatelessWidget {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.15),
+                      color: const Color(0xFFF5F1E8).withValues(alpha: 0.15),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
@@ -416,7 +455,7 @@ class _ScenarioTutorialDialog extends StatelessWidget {
                     child: Text(
                       'How This Scenario Works',
                       style: HatiTextStyles.heading3.copyWith(
-                        color: Colors.white,
+                        color: const Color(0xFFF5F1E8),
                       ),
                     ),
                   ),

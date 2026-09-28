@@ -12,6 +12,8 @@
 // scenario_engine.py never sees or needs those intermediate substeps.
 // ─────────────────────────────────────────────
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'app_theme.dart';
@@ -56,17 +58,43 @@ class _Scene5CopingState extends State<Scene5Coping> {
     Widget? bottomBar;
     String persistentMessage;
 
-    if (step == 'scene5_coping_done') {
+    if (step == 'scene5_coping_done' || step == 'scene5_coping_pref_wait') {
       persistentMessage = parsedTexts.join('\n\n');
       body = _PracticeWalkthrough(
         key: const ValueKey('practice'),
-        strategy: _lastToolText,
+        // scene5_coping_pref_wait's single message ("Go ahead and try this
+        // now: X. Take your time...") IS the strategy text — there's no
+        // separate _lastToolText for it since this path skips the
+        // theme/story_branch tool entirely (see _enter_scene5_coping in
+        // scenario_engine.py).
+        strategy: step == 'scene5_coping_pref_wait'
+            ? parsedTexts.join(' ')
+            : _lastToolText,
         isLoading: provider.isLoading,
         onFinished: () => provider.submitText(
           provider.ui.options.isNotEmpty
               ? provider.ui.options.first
               : "I'm done",
         ),
+      );
+    } else if (step == 'scene5_coping_pref_pick') {
+      // User has more than one onboarding coping preference on file —
+      // let them pick which one to do right now.
+      persistentMessage = parsedTexts.join('\n\n');
+      bottomBar = Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final opt in provider.ui.options)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: HatiOutlineButton(
+                label: opt,
+                onTap: provider.isLoading
+                    ? () {}
+                    : () => provider.submitText(opt),
+              ),
+            ),
+        ],
       );
     } else {
       // scene5_coping: messages = [intro, tool, "Do you want to try..."].
@@ -141,7 +169,7 @@ class _Scene5CopingState extends State<Scene5Coping> {
                 // Only white once the body is actually showing — otherwise
                 // this left a blank white box sitting there for the whole
                 // time Hati was still typing.
-                contentBackgroundColor: _dialogueComplete ? Colors.white : null,
+                contentBackgroundColor: _dialogueComplete ? const Color(0xFFF5F1E8) : null,
               ),
             ),
           ],
@@ -347,6 +375,35 @@ class Scene6Closing extends StatefulWidget {
 class _Scene6ClosingState extends State<Scene6Closing> {
   bool _dialogueComplete = false;
 
+  // Once Hati's closing line has fully typed out, the bubble is no longer
+  // needed on screen and was covering the "What to remember" card above it
+  // — this fades it out instead (frog stays put), either automatically a
+  // few seconds later or immediately if the player taps anywhere first.
+  bool _bubbleHidden = false;
+  Timer? _bubbleHideTimer;
+
+  void _startBubbleHideTimer() {
+    _bubbleHideTimer?.cancel();
+    _bubbleHideTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted && !_bubbleHidden) setState(() => _bubbleHidden = true);
+    });
+  }
+
+  // Tapping anywhere already skips/advances Hati's typewriter mid-sentence
+  // (see HatiTapToAdvance) — this only additionally dismisses the bubble
+  // once there's nothing left to advance through.
+  void _dismissBubbleOnTap() {
+    if (_dialogueComplete && !_bubbleHidden) {
+      setState(() => _bubbleHidden = true);
+    }
+  }
+
+  @override
+  void dispose() {
+    _bubbleHideTimer?.cancel();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<ScenarioProvider>();
@@ -367,9 +424,12 @@ class _Scene6ClosingState extends State<Scene6Closing> {
         : 'Finish';
 
     return Scaffold(
-      body: HatiTapToAdvance(
-        child: Stack(
-        children: [
+      body: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: _dismissBubbleOnTap,
+        child: HatiTapToAdvance(
+          child: Stack(
+          children: [
           // Brand blue (0xFF0B28D9) — same header color as the Progress
           // and Profile screens — rather than the scenario's usual green,
           // since this is the "you're done" completion screen, not
@@ -383,7 +443,7 @@ class _Scene6ClosingState extends State<Scene6Closing> {
               height: 240,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.08),
+                color: const Color(0xFFF5F1E8).withValues(alpha: 0.08),
               ),
             ),
           ),
@@ -448,10 +508,10 @@ class _Scene6ClosingState extends State<Scene6Closing> {
                           Container(
                             padding: const EdgeInsets.all(20),
                             decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.08),
+                              color: const Color(0xFFF5F1E8).withValues(alpha: 0.08),
                               borderRadius: BorderRadius.circular(16),
                               border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.12),
+                                color: const Color(0xFFF5F1E8).withValues(alpha: 0.12),
                               ),
                             ),
                             child: Column(
@@ -479,15 +539,26 @@ class _Scene6ClosingState extends State<Scene6Closing> {
                             ),
                           ),
                           const SizedBox(height: 16),
-                          HatiSpeakingBlock(
-                            persistentMessage: closingLine,
-                            frogSize: 150,
-                            mood: HatiMood.happy,
-                            onSequenceComplete: () {
-                              if (mounted && !_dialogueComplete) {
-                                setState(() => _dialogueComplete = true);
-                              }
-                            },
+                          AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 400),
+                            child: _bubbleHidden
+                                ? const HatiFrogAvatar(
+                                    key: ValueKey('frog-only'),
+                                    size: 150,
+                                    mood: HatiMood.happy,
+                                  )
+                                : HatiSpeakingBlock(
+                                    key: const ValueKey('speaking'),
+                                    persistentMessage: closingLine,
+                                    frogSize: 150,
+                                    mood: HatiMood.happy,
+                                    onSequenceComplete: () {
+                                      if (mounted && !_dialogueComplete) {
+                                        setState(() => _dialogueComplete = true);
+                                        _startBubbleHideTimer();
+                                      }
+                                    },
+                                  ),
                           ),
                           const SizedBox(height: 20),
                         ],
@@ -521,6 +592,7 @@ class _Scene6ClosingState extends State<Scene6Closing> {
             ),
           ),
         ],
+          ),
         ),
       ),
     );

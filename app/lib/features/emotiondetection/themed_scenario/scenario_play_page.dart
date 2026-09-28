@@ -181,7 +181,7 @@ class _ScenarioLoadingScreenState extends State<_ScenarioLoadingScreen>
               Text(
                 'Getting things ready…',
                 textAlign: TextAlign.center,
-                style: HatiTextStyles.heading3.copyWith(color: Colors.white),
+                style: HatiTextStyles.heading3.copyWith(color: const Color(0xFFF5F1E8)),
               ),
               const SizedBox(height: 12),
               Text(
@@ -190,7 +190,7 @@ class _ScenarioLoadingScreenState extends State<_ScenarioLoadingScreen>
                 "out.",
                 textAlign: TextAlign.center,
                 style: HatiTextStyles.bodyMedium.copyWith(
-                  color: Colors.white.withValues(alpha: 0.8),
+                  color: const Color(0xFFF5F1E8).withValues(alpha: 0.8),
                 ),
               ),
               const SizedBox(height: 28),
@@ -201,8 +201,8 @@ class _ScenarioLoadingScreenState extends State<_ScenarioLoadingScreen>
                   child: LinearProgressIndicator(
                     value: _progress.value,
                     minHeight: 10,
-                    backgroundColor: Colors.white.withValues(alpha: 0.2),
-                    color: Colors.white,
+                    backgroundColor: const Color(0xFFF5F1E8).withValues(alpha: 0.2),
+                    color: const Color(0xFFF5F1E8),
                   ),
                 ),
               ),

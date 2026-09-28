@@ -136,7 +136,7 @@ class _AssessmentCompleteScreenState extends State<AssessmentCompleteScreen> {
                 textAlign: TextAlign.center,
                 style: theme.textTheme.headlineLarge?.copyWith(
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                  color: const Color(0xFFF5F1E8),
                   fontSize: 28,
                 ),
               ),
@@ -193,7 +193,7 @@ class _AssessmentCompleteScreenState extends State<AssessmentCompleteScreen> {
                                 width: 22,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2.5,
-                                  color: Colors.white,
+                                  color: const Color(0xFFF5F1E8),
                                 ),
                               )
                             : const Text(
@@ -201,7 +201,7 @@ class _AssessmentCompleteScreenState extends State<AssessmentCompleteScreen> {
                                 style: TextStyle(
                                   fontSize: 17,
                                   fontWeight: FontWeight.w600,
-                                  color: Colors.white,
+                                  color: const Color(0xFFF5F1E8),
                                 ),
                               ),
                       ),
@@ -218,7 +218,7 @@ class _AssessmentCompleteScreenState extends State<AssessmentCompleteScreen> {
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(26),
                           ),
-                          backgroundColor: Colors.white,
+                          backgroundColor: const Color(0xFFF5F1E8),
                         ),
                         onPressed: (_dialogueComplete && !_isNavigatingToApp)
                             ? _handleViewResult
@@ -260,8 +260,8 @@ class _BackgroundBlob extends StatelessWidget {
           shape: BoxShape.circle,
           gradient: RadialGradient(
             colors: [
-              Colors.white.withValues(alpha: opacity),
-              Colors.white.withValues(alpha: 0),
+              const Color(0xFFF5F1E8).withValues(alpha: opacity),
+              const Color(0xFFF5F1E8).withValues(alpha: 0),
             ],
           ),
         ),

@@ -68,7 +68,7 @@ class _ProgressContent extends StatelessWidget {
         .toList();
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF5F1E8),
       body: Column(
         children: [
           Container(
@@ -84,17 +84,17 @@ class _ProgressContent extends StatelessWidget {
                     const Text(
                       'HATI',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: const Color(0xFFF5F1E8),
                         fontSize: 28,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 1.2,
                       ),
                     ),
                     const SizedBox(height: 6),
-                    const Text(
+                    Text(
                       'My Progress',
                       style: TextStyle(
-                        color: Colors.white70,
+                        color: Color(0xFFF5F1E8).withValues(alpha: 0.70),
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
                       ),
@@ -104,7 +104,7 @@ class _ProgressContent extends StatelessWidget {
                       width: double.infinity,
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.15),
+                        color: const Color(0xFFF5F1E8).withOpacity(0.15),
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Row(
@@ -119,17 +119,17 @@ class _ProgressContent extends StatelessWidget {
                                   value: data.overallProgress,
                                   strokeWidth: 7,
                                   backgroundColor:
-                                      Colors.white.withOpacity(0.25),
+                                      const Color(0xFFF5F1E8).withOpacity(0.25),
                                   valueColor:
                                       const AlwaysStoppedAnimation<Color>(
-                                    Colors.white,
+                                    const Color(0xFFF5F1E8),
                                   ),
                                 ),
                                 Center(
                                   child: Text(
                                     '$percent%',
                                     style: const TextStyle(
-                                      color: Colors.white,
+                                      color: const Color(0xFFF5F1E8),
                                       fontSize: 15,
                                       fontWeight: FontWeight.w800,
                                     ),
@@ -146,7 +146,7 @@ class _ProgressContent extends StatelessWidget {
                                 const Text(
                                   'Overall Completion',
                                   style: TextStyle(
-                                    color: Colors.white,
+                                    color: const Color(0xFFF5F1E8),
                                     fontSize: 16,
                                     fontWeight: FontWeight.w700,
                                   ),
@@ -154,8 +154,8 @@ class _ProgressContent extends StatelessWidget {
                                 const SizedBox(height: 4),
                                 Text(
                                   '${data.scenariosCompleted} of ${data.totalScenarios} scenarios done',
-                                  style: const TextStyle(
-                                    color: Colors.white70,
+                                  style: TextStyle(
+                                    color: Color(0xFFF5F1E8).withValues(alpha: 0.70),
                                     fontSize: 13,
                                     fontWeight: FontWeight.w500,
                                   ),
@@ -164,7 +164,7 @@ class _ProgressContent extends StatelessWidget {
                                 Text(
                                   'Level ${data.level} Learner',
                                   style: const TextStyle(
-                                    color: Colors.white,
+                                    color: const Color(0xFFF5F1E8),
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,
                                   ),
@@ -184,7 +184,7 @@ class _ProgressContent extends StatelessWidget {
             child: Container(
               width: double.infinity,
               decoration: const BoxDecoration(
-                color: Colors.white,
+                color: const Color(0xFFF5F1E8),
                 borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
               ),
               transform: Matrix4.translationValues(0, -20, 0),
@@ -299,7 +299,7 @@ class _WeeklyStreak extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFFF5F1E8),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFE0E0E0)),
       ),
@@ -342,7 +342,7 @@ class _WeeklyStreak extends StatelessWidget {
                     child: Icon(
                       active ? Icons.check : Icons.remove,
                       size: 16,
-                      color: active ? Colors.white : Colors.black26,
+                      color: active ? const Color(0xFFF5F1E8) : Colors.black26,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -376,7 +376,7 @@ class _ModuleProgressCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFFF5F1E8),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFE0E0E0)),
       ),
@@ -620,7 +620,7 @@ class _BadgeDescriptionDialog extends StatelessWidget {
       insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: const Color(0xFFF5F1E8),
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
@@ -650,7 +650,7 @@ class _BadgeDescriptionDialog extends StatelessWidget {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.15),
+                      color: const Color(0xFFF5F1E8).withValues(alpha: 0.15),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
@@ -664,7 +664,7 @@ class _BadgeDescriptionDialog extends StatelessWidget {
                     child: Text(
                       badge.label.replaceAll('\n', ' '),
                       style: const TextStyle(
-                        color: Colors.white,
+                        color: const Color(0xFFF5F1E8),
                         fontSize: 17,
                         fontWeight: FontWeight.w700,
                       ),
@@ -734,7 +734,7 @@ class _BadgeDescriptionDialog extends StatelessWidget {
                   onPressed: () => Navigator.of(context).pop(),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF0B28D9),
-                    foregroundColor: Colors.white,
+                    foregroundColor: const Color(0xFFF5F1E8),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
@@ -767,7 +767,7 @@ class _StateScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF5F1E8),
       body: Center(
         child: loading
             ? const CircularProgressIndicator(color: Color(0xFF0B28D9))

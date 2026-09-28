@@ -8,7 +8,7 @@ class SupportResourcesScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF5F1E8),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
@@ -94,7 +94,7 @@ class SupportResourcesScreen extends StatelessWidget {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(26),
                     ),
-                    backgroundColor: Colors.white,
+                    backgroundColor: const Color(0xFFF5F1E8),
                   ),
                   onPressed: () => Navigator.of(context).pushAndRemoveUntil(
                     MaterialPageRoute(builder: (_) => const DashboardScreen()),
@@ -142,7 +142,7 @@ class _ResourceCard extends StatelessWidget {
             child: Text(
               title,
               style: const TextStyle(
-                color: Colors.white,
+                color: const Color(0xFFF5F1E8),
                 fontSize: 14.5,
                 fontWeight: FontWeight.w700,
                 height: 1.3,

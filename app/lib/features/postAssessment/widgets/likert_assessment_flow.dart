@@ -96,7 +96,7 @@ class _LikertAssessmentFlowState extends State<LikertAssessmentFlow> {
     final isLastOfFlow = _currentIndex == widget.questions.length - 1;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF5F1E8),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -109,8 +109,8 @@ class _LikertAssessmentFlowState extends State<LikertAssessmentFlow> {
                 children: [
                   Text(
                     widget.headerTitle,
-                    style: const TextStyle(
-                      color: Colors.white60,
+                    style: TextStyle(
+                      color: Color(0xFFF5F1E8).withValues(alpha: 0.60),
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 2,
@@ -121,8 +121,8 @@ class _LikertAssessmentFlowState extends State<LikertAssessmentFlow> {
                     children: [
                       Text(
                         'Question ${globalIndex + 1} of ${widget.totalInFlow}',
-                        style: const TextStyle(
-                          color: Colors.white70,
+                        style: TextStyle(
+                          color: Color(0xFFF5F1E8).withValues(alpha: 0.70),
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
                         ),
@@ -130,8 +130,8 @@ class _LikertAssessmentFlowState extends State<LikertAssessmentFlow> {
                       const Spacer(),
                       Text(
                         '${(progress * 100).toInt()}%',
-                        style: const TextStyle(
-                          color: Colors.white70,
+                        style: TextStyle(
+                          color: Color(0xFFF5F1E8).withValues(alpha: 0.70),
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
                         ),
@@ -144,9 +144,9 @@ class _LikertAssessmentFlowState extends State<LikertAssessmentFlow> {
                     child: LinearProgressIndicator(
                       value: progress,
                       minHeight: 6,
-                      backgroundColor: Colors.white24,
+                      backgroundColor: Color(0xFFF5F1E8).withValues(alpha: 0.24),
                       valueColor: const AlwaysStoppedAnimation<Color>(
-                        Colors.white,
+                        const Color(0xFFF5F1E8),
                       ),
                     ),
                   ),
@@ -218,7 +218,7 @@ class _LikertAssessmentFlowState extends State<LikertAssessmentFlow> {
             Container(
               padding: const EdgeInsets.fromLTRB(24, 14, 24, 12),
               decoration: const BoxDecoration(
-                color: Colors.white,
+                color: const Color(0xFFF5F1E8),
                 border: Border(top: BorderSide(color: Color(0xFFF0F0F0))),
               ),
               child: Column(
@@ -269,7 +269,7 @@ class _LikertAssessmentFlowState extends State<LikertAssessmentFlow> {
                               style: const TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w700,
-                                color: Colors.white,
+                                color: const Color(0xFFF5F1E8),
                               ),
                             ),
                           ),
@@ -320,7 +320,7 @@ class _OptionTile extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 0),
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFFF0F3FF) : Colors.white,
+          color: selected ? const Color(0xFFF0F3FF) : const Color(0xFFF5F1E8),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: selected ? _blue : const Color(0xFFE0E0E0),
@@ -345,14 +345,14 @@ class _OptionTile extends StatelessWidget {
               height: 22,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: selected ? _blue : Colors.white,
+                color: selected ? _blue : const Color(0xFFF5F1E8),
                 border: Border.all(
                   color: selected ? _blue : const Color(0xFFCCCCCC),
                   width: 1.5,
                 ),
               ),
               child: selected
-                  ? const Icon(Icons.check, size: 14, color: Colors.white)
+                  ? const Icon(Icons.check, size: 14, color: const Color(0xFFF5F1E8))
                   : null,
             ),
           ],

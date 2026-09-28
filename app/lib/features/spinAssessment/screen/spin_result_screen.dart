@@ -154,7 +154,7 @@ class _SpinResultScreenState extends State<SpinResultScreen>
     final progress = (widget.score / _maxScore).clamp(0.0, 1.0);
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF5F1E8),
       body: Column(
         children: [
           // ── Hero header ─────────────────────────────────────

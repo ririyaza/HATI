@@ -87,7 +87,7 @@ class _LogoutConfirmDialog extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(28),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: const Color(0xFFF5F1E8),
           borderRadius: BorderRadius.circular(28),
           boxShadow: [
             BoxShadow(
@@ -139,7 +139,7 @@ class _LogoutConfirmDialog extends StatelessWidget {
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFD9250B),
-                  foregroundColor: Colors.white,
+                  foregroundColor: const Color(0xFFF5F1E8),
                   elevation: 0,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(25),
@@ -189,7 +189,7 @@ class _ProfileContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF5F1E8),
       body: Column(
         children: [
           Container(
@@ -205,7 +205,7 @@ class _ProfileContent extends StatelessWidget {
                     const Text(
                       'HATI',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: const Color(0xFFF5F1E8),
                         fontSize: 28,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 1.2,
@@ -231,7 +231,7 @@ class _ProfileContent extends StatelessWidget {
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: const TextStyle(
-                                        color: Colors.white,
+                                        color: const Color(0xFFF5F1E8),
                                         fontSize: 22,
                                         fontWeight: FontWeight.w700,
                                       ),
@@ -246,12 +246,12 @@ class _ProfileContent extends StatelessWidget {
                                       currentName: data.displayName,
                                       currentPronouns: data.pronouns,
                                     ),
-                                    child: const Padding(
-                                      padding: EdgeInsets.all(4),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(4),
                                       child: Icon(
                                         Icons.edit_outlined,
                                         size: 16,
-                                        color: Colors.white70,
+                                        color: Color(0xFFF5F1E8).withValues(alpha: 0.70),
                                       ),
                                     ),
                                   ),
@@ -283,7 +283,7 @@ class _ProfileContent extends StatelessWidget {
             child: Container(
               width: double.infinity,
               decoration: const BoxDecoration(
-                color: Colors.white,
+                color: const Color(0xFFF5F1E8),
                 borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
               ),
               transform: Matrix4.translationValues(0, -20, 0),
@@ -444,12 +444,12 @@ class _EditableProfileAvatar extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: const Color(0xFF0B28D9),
-                border: Border.all(color: Colors.white, width: 2),
+                border: Border.all(color: const Color(0xFFF5F1E8), width: 2),
               ),
               child: const Icon(
                 Icons.edit_rounded,
                 size: 12,
-                color: Colors.white,
+                color: const Color(0xFFF5F1E8),
               ),
             ),
           ),
@@ -474,8 +474,8 @@ class _ProfileAvatar extends StatelessWidget {
       height: 72,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: Colors.white.withOpacity(0.2),
-        border: Border.all(color: Colors.white, width: 2.5),
+        color: const Color(0xFFF5F1E8).withOpacity(0.2),
+        border: Border.all(color: const Color(0xFFF5F1E8), width: 2.5),
       ),
       clipBehavior: Clip.antiAlias,
       child: hasPhoto
@@ -487,10 +487,10 @@ class _ProfileAvatar extends StatelessWidget {
                     errorBuilder: (_, __, ___) => const Icon(
                       Icons.person,
                       size: 40,
-                      color: Colors.white,
+                      color: const Color(0xFFF5F1E8),
                     ),
                   )
-          : const Icon(Icons.person, size: 40, color: Colors.white),
+          : const Icon(Icons.person, size: 40, color: const Color(0xFFF5F1E8)),
     );
   }
 }
@@ -505,13 +505,13 @@ class _HeaderChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.25),
+        color: const Color(0xFFF5F1E8).withOpacity(0.25),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
         label,
         style: const TextStyle(
-          color: Colors.white,
+          color: const Color(0xFFF5F1E8),
           fontSize: 12,
           fontWeight: FontWeight.w600,
         ),
@@ -672,7 +672,7 @@ class _AssessmentEntryCard extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFFF5F1E8),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFE0E0E0)),
       ),
@@ -946,7 +946,7 @@ class _CheckInStatusCard extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: const Color(0xFFF5F1E8),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: const Color(0xFFE0E0E0)),
             ),
@@ -1048,7 +1048,7 @@ class _CopingPreferencesCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFFF5F1E8),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFE0E0E0)),
       ),
@@ -1131,7 +1131,7 @@ Future<void> _showNotificationSettingsSheet(
 ) {
   return showModalBottomSheet<void>(
     context: context,
-    backgroundColor: Colors.white,
+    backgroundColor: const Color(0xFFF5F1E8),
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
     ),
@@ -1354,7 +1354,7 @@ class _SettingsTile extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: const Color(0xFFF5F1E8),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: const Color(0xFFE0E0E0)),
         ),
@@ -1392,7 +1392,7 @@ class _StateScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF5F1E8),
       body: Center(
         child: loading
             ? const CircularProgressIndicator(color: Color(0xFF0B28D9))

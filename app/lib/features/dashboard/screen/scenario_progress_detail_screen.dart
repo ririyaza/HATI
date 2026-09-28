@@ -116,7 +116,7 @@ class _ScenarioProgressDetailScreenState
                     onPressed: () => Navigator.pop(context),
                     icon: const Icon(
                       Icons.arrow_back_ios_new_rounded,
-                      color: Colors.white,
+                      color: const Color(0xFFF5F1E8),
                       size: 20,
                     ),
                   ),
@@ -125,7 +125,7 @@ class _ScenarioProgressDetailScreenState
                       'Scenario Progress',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: Colors.white,
+                        color: const Color(0xFFF5F1E8),
                         fontSize: 19,
                         fontWeight: FontWeight.w700,
                       ),
@@ -143,7 +143,7 @@ class _ScenarioProgressDetailScreenState
                     ),
                     icon: const Icon(
                       Icons.filter_alt_outlined,
-                      color: Colors.white,
+                      color: const Color(0xFFF5F1E8),
                       size: 22,
                     ),
                     itemBuilder: (context) => [
@@ -155,14 +155,14 @@ class _ScenarioProgressDetailScreenState
                             children: [
                               Text(
                                 f.label,
-                                style: const TextStyle(color: Colors.white),
+                                style: const TextStyle(color: const Color(0xFFF5F1E8)),
                               ),
                               if (f == _difficultyFilter)
                                 const Padding(
                                   padding: EdgeInsets.only(left: 12),
                                   child: Icon(
                                     Icons.check_rounded,
-                                    color: Colors.white,
+                                    color: const Color(0xFFF5F1E8),
                                     size: 18,
                                   ),
                                 ),
@@ -180,7 +180,7 @@ class _ScenarioProgressDetailScreenState
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(
-                      child: CircularProgressIndicator(color: Colors.white),
+                      child: CircularProgressIndicator(color: const Color(0xFFF5F1E8)),
                     );
                   }
                   final scores = _scoresFrom(snapshot.data ?? const []);
@@ -270,7 +270,7 @@ class _ScenarioProgressDetailScreenState
                           headline,
                           textAlign: TextAlign.center,
                           style: const TextStyle(
-                            color: Colors.white,
+                            color: const Color(0xFFF5F1E8),
                             fontSize: 21,
                             fontWeight: FontWeight.w800,
                           ),
@@ -279,8 +279,8 @@ class _ScenarioProgressDetailScreenState
                         Text(
                           body,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: Colors.white70,
+                          style: TextStyle(
+                            color: Color(0xFFF5F1E8).withValues(alpha: 0.70),
                             fontSize: 13.5,
                             height: 1.5,
                           ),
@@ -312,7 +312,7 @@ class _ScenarioProgressDetailScreenState
                               style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w700,
-                                color: Colors.white,
+                                color: const Color(0xFFF5F1E8),
                               ),
                             ),
                           ),
@@ -379,8 +379,8 @@ class _EmotionGlowCircle extends StatelessWidget {
               shape: BoxShape.circle,
               gradient: RadialGradient(
                 colors: [
-                  Colors.white.withValues(alpha: 0.18),
-                  Colors.white.withValues(alpha: 0.0),
+                  const Color(0xFFF5F1E8).withValues(alpha: 0.18),
+                  const Color(0xFFF5F1E8).withValues(alpha: 0.0),
                 ],
               ),
             ),
@@ -404,7 +404,7 @@ class _EmotionGlowCircle extends StatelessWidget {
                 // this screen — falls back to a plain icon instead.
                 errorBuilder: (context, error, stackTrace) => const Icon(
                   Icons.emoji_emotions_outlined,
-                  color: Colors.white,
+                  color: const Color(0xFFF5F1E8),
                   size: 56,
                 ),
               ),
@@ -442,7 +442,7 @@ class _EmotionBar extends StatelessWidget {
           // though neither number is actually wrong.
           '${score.value.toStringAsFixed(0)}%',
           style: const TextStyle(
-            color: Colors.white,
+            color: const Color(0xFFF5F1E8),
             fontSize: 16,
             fontWeight: FontWeight.w800,
           ),
@@ -453,7 +453,7 @@ class _EmotionBar extends StatelessWidget {
           height: _maxHeight,
           padding: const EdgeInsets.all(4),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: const Color(0xFFF5F1E8),
             borderRadius: BorderRadius.circular(16),
           ),
           alignment: Alignment.bottomCenter,
@@ -474,7 +474,7 @@ class _EmotionBar extends StatelessWidget {
         Text(
           score.label,
           style: const TextStyle(
-            color: Colors.white,
+            color: const Color(0xFFF5F1E8),
             fontSize: 12.5,
             fontWeight: FontWeight.w600,
           ),

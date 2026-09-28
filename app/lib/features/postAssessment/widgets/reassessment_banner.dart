@@ -73,7 +73,7 @@ class _ReassessmentDialog extends StatelessWidget {
       elevation: 0,
       insetPadding: const EdgeInsets.symmetric(horizontal: 28),
       child: Material(
-        color: Colors.white,
+        color: const Color(0xFFF5F1E8),
         borderRadius: BorderRadius.circular(20),
         clipBehavior: Clip.antiAlias,
         child: Padding(
@@ -139,7 +139,7 @@ class _ReassessmentDialog extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
-                      color: Colors.white,
+                      color: const Color(0xFFF5F1E8),
                     ),
                   ),
                 ),

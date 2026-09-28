@@ -549,7 +549,7 @@ class _EmotionPageState extends State<EmotionPage> {
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: const Color(0xFFF5F1E8),
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
@@ -655,7 +655,7 @@ class _EmotionPageState extends State<EmotionPage> {
           insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
           child: Container(
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: const Color(0xFFF5F1E8),
               borderRadius: BorderRadius.circular(28),
               boxShadow: [
                 BoxShadow(
@@ -687,17 +687,17 @@ class _EmotionPageState extends State<EmotionPage> {
                           width: 42,
                           height: 42,
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
+                            color: const Color(0xFFF5F1E8).withOpacity(0.2),
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(Icons.insights, color: Colors.white),
+                          child: const Icon(Icons.insights, color: const Color(0xFFF5F1E8)),
                         ),
                         const SizedBox(width: 14),
                         const Expanded(
                           child: Text(
                             'EMOTION SUMMARY',
                             style: TextStyle(
-                              color: Colors.white,
+                              color: const Color(0xFFF5F1E8),
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
                               letterSpacing: 0.6,
@@ -796,7 +796,7 @@ class _EmotionPageState extends State<EmotionPage> {
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           letterSpacing: 0.6,
-                          color: Colors.white,
+                          color: const Color(0xFFF5F1E8),
                         ),
                       ),
                     ),
@@ -866,7 +866,7 @@ class _EmotionPageState extends State<EmotionPage> {
     return Scaffold(
       backgroundColor: const Color(0xFFF2F4F7),
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: const Color(0xFFF5F1E8),
         elevation: 0.5,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black87),
@@ -924,7 +924,7 @@ class _EmotionPageState extends State<EmotionPage> {
                     padding: const EdgeInsets.all(12),
                     constraints: const BoxConstraints(maxWidth: 280),
                     decoration: BoxDecoration(
-                      color: msg.isUser ? const Color(0xFF007AFF) : Colors.white,
+                      color: msg.isUser ? const Color(0xFF007AFF) : const Color(0xFFF5F1E8),
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
@@ -937,7 +937,7 @@ class _EmotionPageState extends State<EmotionPage> {
                     child: RichText(
                       text: _parseBoldText(
                         msg.text,
-                        msg.isUser ? Colors.white : Colors.black87,
+                        msg.isUser ? const Color(0xFFF5F1E8) : Colors.black87,
                       ),
                     ),
                   ),
@@ -949,7 +949,7 @@ class _EmotionPageState extends State<EmotionPage> {
           _buildChoiceButtons(),
           Container(
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-            color: Colors.white,
+            color: const Color(0xFFF5F1E8),
             child: Row(
               children: [
                 IconButton(

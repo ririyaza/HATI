@@ -142,7 +142,7 @@ class _HomeScreenState extends State<HomeScreen> {
               const Text(
                 'HATI',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: const Color(0xFFF5F1E8),
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 1.2,

@@ -125,7 +125,7 @@ class _ConsentFlowScreenState extends State<ConsentFlowScreen>
           ),
           content: const Text(
             'Please review and check all consent statements.',
-            style: TextStyle(color: Colors.white),
+            style: TextStyle(color: const Color(0xFFF5F1E8)),
           ),
         ),
       );
@@ -168,7 +168,7 @@ class _ConsentFlowScreenState extends State<ConsentFlowScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF5F1E8),
       body: Column(
         children: [
           _Header(
@@ -361,7 +361,7 @@ class _ConsentFlowScreenState extends State<ConsentFlowScreen>
                   ),
                   child: const Icon(
                     Icons.shield_rounded,
-                    color: Colors.white,
+                    color: const Color(0xFFF5F1E8),
                     size: 18,
                   ),
                 ),
@@ -441,12 +441,12 @@ class _Header extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.15),
+                        color: const Color(0xFFF5F1E8).withOpacity(0.15),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: const Icon(
                         Icons.arrow_back_rounded,
-                        color: Colors.white,
+                        color: const Color(0xFFF5F1E8),
                         size: 20,
                       ),
                     ),
@@ -455,7 +455,7 @@ class _Header extends StatelessWidget {
                   Text(
                     'Step ${stepIndex + 1} of $totalSteps',
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.65),
+                      color: const Color(0xFFF5F1E8).withOpacity(0.65),
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                     ),
@@ -470,12 +470,12 @@ class _Header extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.18),
+                      color: const Color(0xFFF5F1E8).withOpacity(0.18),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Icon(
                       stepIcons[stepIndex],
-                      color: Colors.white,
+                      color: const Color(0xFFF5F1E8),
                       size: 18,
                     ),
                   ),
@@ -483,7 +483,7 @@ class _Header extends StatelessWidget {
                   Text(
                     stepTitles[stepIndex].replaceAll('\n', ' '),
                     style: const TextStyle(
-                      color: Colors.white,
+                      color: const Color(0xFFF5F1E8),
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
                     ),
@@ -520,8 +520,8 @@ class _ProgressBar extends StatelessWidget {
             child: Container(
               height: 2,
               color: filled
-                  ? Colors.white.withOpacity(0.7)
-                  : Colors.white.withOpacity(0.2),
+                  ? const Color(0xFFF5F1E8).withOpacity(0.7)
+                  : const Color(0xFFF5F1E8).withOpacity(0.2),
             ),
           );
         }
@@ -535,12 +535,12 @@ class _ProgressBar extends StatelessWidget {
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: isDone
-                ? Colors.white
+                ? const Color(0xFFF5F1E8)
                 : isActive
-                ? Colors.white
-                : Colors.white.withOpacity(0.2),
+                ? const Color(0xFFF5F1E8)
+                : const Color(0xFFF5F1E8).withOpacity(0.2),
             border: Border.all(
-              color: isActive ? Colors.white : Colors.white.withOpacity(0.35),
+              color: isActive ? const Color(0xFFF5F1E8) : const Color(0xFFF5F1E8).withOpacity(0.35),
               width: isActive ? 0 : 1.5,
             ),
           ),
@@ -565,7 +565,7 @@ class _ProgressBar extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
-                    color: Colors.white.withOpacity(0.6),
+                    color: const Color(0xFFF5F1E8).withOpacity(0.6),
                   ),
                 ),
         );
@@ -609,7 +609,7 @@ class _BottomBar extends StatelessWidget {
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF0B28D9),
-                    foregroundColor: Colors.white,
+                    foregroundColor: const Color(0xFFF5F1E8),
                     elevation: 0,
                     disabledBackgroundColor: const Color(
                       0xFF0B28D9,
@@ -655,7 +655,7 @@ class _BottomBar extends StatelessWidget {
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF0B28D9),
-                    foregroundColor: Colors.white,
+                    foregroundColor: const Color(0xFFF5F1E8),
                     elevation: 0,
                     disabledBackgroundColor: const Color(
                       0xFF0B28D9,
@@ -713,7 +713,7 @@ class _ConsentCheckItem extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         decoration: BoxDecoration(
-          color: checked ? const Color(0xFFEEF1FF) : Colors.white,
+          color: checked ? const Color(0xFFEEF1FF) : const Color(0xFFF5F1E8),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: checked
@@ -731,7 +731,7 @@ class _ConsentCheckItem extends StatelessWidget {
               height: 22,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: checked ? const Color(0xFF0B28D9) : Colors.white,
+                color: checked ? const Color(0xFF0B28D9) : const Color(0xFFF5F1E8),
                 border: Border.all(
                   color: checked
                       ? const Color(0xFF0B28D9)
@@ -743,7 +743,7 @@ class _ConsentCheckItem extends StatelessWidget {
                   ? const Icon(
                       Icons.check_rounded,
                       size: 13,
-                      color: Colors.white,
+                      color: const Color(0xFFF5F1E8),
                     )
                   : null,
             ),
@@ -783,7 +783,7 @@ class _ConsentSuccessDialog extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(28),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: const Color(0xFFF5F1E8),
           borderRadius: BorderRadius.circular(28),
           boxShadow: [
             BoxShadow(
@@ -835,7 +835,7 @@ class _ConsentSuccessDialog extends StatelessWidget {
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF0B28D9),
-                  foregroundColor: Colors.white,
+                  foregroundColor: const Color(0xFFF5F1E8),
                   elevation: 0,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(25),
