@@ -56,17 +56,43 @@ class _Scene5CopingState extends State<Scene5Coping> {
     Widget? bottomBar;
     String persistentMessage;
 
-    if (step == 'scene5_coping_done') {
+    if (step == 'scene5_coping_done' || step == 'scene5_coping_pref_wait') {
       persistentMessage = parsedTexts.join('\n\n');
       body = _PracticeWalkthrough(
         key: const ValueKey('practice'),
-        strategy: _lastToolText,
+        // scene5_coping_pref_wait's single message ("Go ahead and try this
+        // now: X. Take your time...") IS the strategy text — there's no
+        // separate _lastToolText for it since this path skips the
+        // theme/story_branch tool entirely (see _enter_scene5_coping in
+        // scenario_engine.py).
+        strategy: step == 'scene5_coping_pref_wait'
+            ? parsedTexts.join(' ')
+            : _lastToolText,
         isLoading: provider.isLoading,
         onFinished: () => provider.submitText(
           provider.ui.options.isNotEmpty
               ? provider.ui.options.first
               : "I'm done",
         ),
+      );
+    } else if (step == 'scene5_coping_pref_pick') {
+      // User has more than one onboarding coping preference on file —
+      // let them pick which one to do right now.
+      persistentMessage = parsedTexts.join('\n\n');
+      bottomBar = Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final opt in provider.ui.options)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: HatiOutlineButton(
+                label: opt,
+                onTap: provider.isLoading
+                    ? () {}
+                    : () => provider.submitText(opt),
+              ),
+            ),
+        ],
       );
     } else {
       // scene5_coping: messages = [intro, tool, "Do you want to try..."].
@@ -148,7 +174,7 @@ class _Scene5CopingState extends State<Scene5Coping> {
                 // Only white once the body is actually showing — otherwise
                 // this left a blank white box sitting there for the whole
                 // time Hati was still typing.
-                contentBackgroundColor: _dialogueComplete ? Colors.white : null,
+                contentBackgroundColor: _dialogueComplete ? const Color(0xFFF5F1E8) : null,
               ),
             ),
           ],
@@ -376,25 +402,25 @@ class _Scene6ClosingState extends State<Scene6Closing> {
     return Scaffold(
       body: HatiTapToAdvance(
         child: Stack(
-          children: [
-            // Brand blue (0xFF0B28D9) — same header color as the Progress
-            // and Profile screens — rather than the scenario's usual green,
-            // since this is the "you're done" completion screen, not
-            // in-scenario dialogue.
-            Container(color: const Color(0xFF0B28D9)),
-            Positioned(
-              top: -80,
-              left: -80,
-              child: Container(
-                width: 240,
-                height: 240,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white.withValues(alpha: 0.08),
-                ),
+        children: [
+          // Brand blue (0xFF0B28D9) — same header color as the Progress
+          // and Profile screens — rather than the scenario's usual green,
+          // since this is the "you're done" completion screen, not
+          // in-scenario dialogue.
+          Container(color: const Color(0xFF0B28D9)),
+          Positioned(
+            top: -80,
+            left: -80,
+            child: Container(
+              width: 240,
+              height: 240,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFFF5F1E8).withValues(alpha: 0.08),
               ),
             ),
-            // No back button on this completion screen, but still gets the
+          ),
+          // No back button on this completion screen, but still gets the
             // same undo affordance as every other Hati-dialogue screen.
             SafeArea(
               child: Align(
@@ -452,14 +478,10 @@ class _Scene6ClosingState extends State<Scene6Closing> {
                                 vertical: 8,
                               ),
                               decoration: BoxDecoration(
-                                color: HatiColors.softGold.withValues(
-                                  alpha: 0.2,
-                                ),
+                                color: HatiColors.softGold.withValues(alpha: 0.2),
                                 borderRadius: BorderRadius.circular(20),
                                 border: Border.all(
-                                  color: HatiColors.softGold.withValues(
-                                    alpha: 0.4,
-                                  ),
+                                  color: HatiColors.softGold.withValues(alpha: 0.4),
                                 ),
                               ),
                               child: const Text(
@@ -472,65 +494,68 @@ class _Scene6ClosingState extends State<Scene6Closing> {
                                 ),
                               ),
                             ),
-                            const SizedBox(height: 20),
-                            Container(
-                              padding: const EdgeInsets.all(20),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.08),
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.12),
+                          const SizedBox(height: 20),
+                          Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF5F1E8).withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: const Color(0xFFF5F1E8).withValues(alpha: 0.12),
+                              ),
+                            ),
+                            child: Column(
+                              children: [
+                                const Text(
+                                  '💡 What to remember:',
+                                  style: TextStyle(
+                                    color: HatiColors.mintFresh,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                    letterSpacing: 0.5,
+                                  ),
                                 ),
-                              ),
-                              child: Column(
-                                children: [
-                                  const Text(
-                                    '💡 What to remember:',
-                                    style: TextStyle(
-                                      color: HatiColors.mintFresh,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 12,
-                                      letterSpacing: 0.5,
-                                    ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  insight,
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: const Color(0xFFF5F1E8).withValues(alpha: 0.85),
+                                    fontSize: _insightFontSize(insight),
+                                    height: 1.4,
                                   ),
-                                  const SizedBox(height: 10),
-                                  Text(
-                                    insight,
-                                    textAlign: TextAlign.center,
-                                    style: HatiTextStyles.bodyLarge.copyWith(
-                                      color: HatiColors.warmCream,
-                                      height: 1.7,
-                                      fontSize: _insightFontSize(insight),
-                                    ),
-                                  ),
-                                ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          // Reserves room for the bubble to grow into above
+                          // the frog (bottom-aligned within this fixed box)
+                          // instead of letting it paint outside its layout
+                          // box and cover the "What to remember" card above
+                          // — same HatiLayout.coachZoneHeight formula
+                          // HatiCoachZone already relies on for this exact
+                          // reason.
+                          SizedBox(
+                            height: HatiLayout.coachZoneHeight,
+                            child: Align(
+                              alignment: Alignment.bottomCenter,
+                              child: HatiSpeakingBlock(
+                                persistentMessage: closingLine,
+                                frogSize: 150,
+                                mood: HatiMood.happy,
+                                onSequenceComplete: () {
+                                  if (mounted && !_dialogueComplete) {
+                                    setState(() => _dialogueComplete = true);
+                                  }
+                                },
                               ),
                             ),
-                            const SizedBox(height: 16),
-                            HatiSpeakingBlock(
-                              persistentMessage: closingLine,
-                              frogSize: 150,
-                              mood: HatiMood.happy,
-                              showAdvanceCue: true,
-                              onSequenceComplete: () {
-                                if (mounted && !_dialogueComplete) {
-                                  setState(() => _dialogueComplete = true);
-                                }
-                              },
-                              onUndoRestored: () {
-                                if (mounted && _dialogueComplete) {
-                                  setState(() => _dialogueComplete = false);
-                                }
-                              },
-                            ),
-                            if (!_dialogueComplete) ...[
-                              const SizedBox(height: 8),
-                              const HatiIdleTapReminder(),
-                            ],
-                            const SizedBox(height: 20),
-                          ],
-                        ),
+                          ),
+                          const SizedBox(height: 20),
+                        ],
                       ),
+                    ),
                     ),
                     // Stays out of the tree — not just disabled — until the
                     // closing line has fully typed out, then pops in.

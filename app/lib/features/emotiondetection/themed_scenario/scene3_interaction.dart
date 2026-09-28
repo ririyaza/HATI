@@ -911,7 +911,7 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
   Widget _buildMediumPickerPanel(BuildContext context) {
     return Container(
       decoration: const BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFFF5F1E8),
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         boxShadow: [
           BoxShadow(
@@ -977,7 +977,7 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
       return PopIn(
         key: ValueKey(_turnKey),
         child: Container(
-          color: Colors.white,
+          color: const Color(0xFFF5F1E8),
           child: SafeArea(
             top: false,
             child: ScaleChoiceCard(
@@ -993,7 +993,7 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
       return PopIn(
         key: ValueKey(_turnKey),
         child: Container(
-          color: Colors.white,
+          color: const Color(0xFFF5F1E8),
           padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
           child: SafeArea(
             top: false,
@@ -1028,7 +1028,7 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
     return Container(
       height: panelHeight,
       decoration: const BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFFF5F1E8),
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         boxShadow: [
           BoxShadow(
@@ -1185,6 +1185,25 @@ class _StageScrim extends StatelessWidget {
   }
 }
 
+class _TapAnywhereHint extends StatelessWidget {
+  const _TapAnywhereHint();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: const Text(
+        'Tap anywhere to continue',
+        style: TextStyle(color: const Color(0xFFF5F1E8), fontSize: 12),
+      ),
+    );
+  }
+}
+
 class _TypingIndicator extends StatefulWidget {
   const _TypingIndicator();
 
@@ -1210,7 +1229,7 @@ class _TypingIndicatorState extends State<_TypingIndicator>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFFF5F1E8),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -1417,7 +1436,7 @@ class _NpcBubbleWithNameTag extends StatelessWidget {
           child: Text(
             nameLabel!,
             style: const TextStyle(
-              color: Colors.white,
+              color: const Color(0xFFF5F1E8),
               fontSize: 11,
               fontWeight: FontWeight.w700,
             ),
@@ -1533,32 +1552,32 @@ class _TypedCaptionState extends State<_TypedCaption> {
             child: child,
           ),
         ),
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.55),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Text(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.55),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Text(
                 displayed,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
-                  color: Colors.white,
+                  color: const Color(0xFFF5F1E8),
                   fontStyle: FontStyle.italic,
                   fontSize: 14,
                   height: 1.4,
                 ),
               ),
-            ),
-            const Positioned(
-              left: -14,
-              top: -14,
-              child: HatiBubbleUndoButton(),
-            ),
-          ],
+              const Positioned(
+                left: -14,
+                top: -14,
+                child: HatiBubbleUndoButton(),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1581,7 +1600,7 @@ class _CharacterSpeechBubble extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: const Color(0xFFF5F1E8),
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
@@ -1853,7 +1872,7 @@ class _ApproachInputBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: Colors.white,
+      color: const Color(0xFFF5F1E8),
       child: SafeArea(
         top: false,
         child: Padding(

@@ -18,7 +18,7 @@ const Color _kBlue = Color(0xFF0B28D9);
 Future<void> showSoundSettingsSheet(BuildContext context) {
   return showModalBottomSheet<void>(
     context: context,
-    backgroundColor: Colors.white,
+    backgroundColor: const Color(0xFFF5F1E8),
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
     ),

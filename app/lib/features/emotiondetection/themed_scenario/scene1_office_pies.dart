@@ -179,7 +179,7 @@ class _Scene1OfficePiesState extends State<Scene1OfficePies> {
                 // actually showing — otherwise it left a blank white box
                 // sitting there for the whole time Hati was still typing.
                 contentBackgroundColor: isPies && _dialogueComplete
-                    ? Colors.white
+                    ? const Color(0xFFF5F1E8)
                     : null,
               ),
             ),
@@ -226,7 +226,7 @@ class _PiesHeader extends StatelessWidget {
                 child: const Text(
                   'P.I.E.S. CHECK',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: const Color(0xFFF5F1E8),
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 1.2,

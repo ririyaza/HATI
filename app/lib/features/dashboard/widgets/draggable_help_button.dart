@@ -80,7 +80,7 @@ class _DraggableHelpButtonState extends State<DraggableHelpButton> {
                   ),
                   child: const Icon(
                     Icons.support_agent_rounded,
-                    color: Colors.white,
+                    color: const Color(0xFFF5F1E8),
                     size: 28,
                   ),
                 ),

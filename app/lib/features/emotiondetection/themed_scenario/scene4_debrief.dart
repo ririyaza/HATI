@@ -49,20 +49,25 @@ class _Scene4DebriefState extends State<Scene4Debrief> {
         step == 'scene4_actual' ||
         step == 'scene4_fne_severity') {
       final String question;
+      final String? boldWord;
       switch (step) {
         case 'scene4_predicted':
           question = 'How anxious did you expect to feel? (0–10)';
+          boldWord = 'expect';
           break;
         case 'scene4_actual':
           question = 'How anxious did you actually feel? (0–10)';
+          boldWord = 'actually';
           break;
         default:
           question = 'How bad was the actual outcome? (0–10)';
+          boldWord = null;
       }
-      contentBackgroundColor = Colors.white;
+      contentBackgroundColor = const Color(0xFFF5F1E8);
       body = _AnxietySliderCard(
         key: ValueKey(step),
         question: question,
+        boldWord: boldWord,
         isLoading: provider.isLoading,
         onSubmit: (v) => provider.submitText(v.toString()),
       );
@@ -85,7 +90,7 @@ class _Scene4DebriefState extends State<Scene4Debrief> {
         // SUDS-style check not covered by the three named steps above) —
         // same slider treatment instead of falling through to a wall of
         // individual number buttons.
-        contentBackgroundColor = Colors.white;
+        contentBackgroundColor = const Color(0xFFF5F1E8);
         body = ScaleChoiceCard(
           key: ValueKey(step),
           options: ui.options,
@@ -93,7 +98,7 @@ class _Scene4DebriefState extends State<Scene4Debrief> {
           onSubmit: provider.submitText,
         );
       } else {
-        contentBackgroundColor = Colors.white;
+        contentBackgroundColor = const Color(0xFFF5F1E8);
         body = _DebriefChoiceCard(
           key: ValueKey(step),
           options: ui.options,
@@ -171,12 +176,14 @@ class _Scene4DebriefState extends State<Scene4Debrief> {
 
 class _AnxietySliderCard extends StatefulWidget {
   final String question;
+  final String? boldWord;
   final bool isLoading;
   final ValueChanged<int> onSubmit;
 
   const _AnxietySliderCard({
     super.key,
     required this.question,
+    this.boldWord,
     required this.isLoading,
     required this.onSubmit,
   });
@@ -197,6 +204,7 @@ class _AnxietySliderCardState extends State<_AnxietySliderCard> {
         children: [
           SliderQuestion(
             question: widget.question,
+            boldWord: widget.boldWord,
             initial: _value,
             onChanged: (v) => _value = v,
           ),

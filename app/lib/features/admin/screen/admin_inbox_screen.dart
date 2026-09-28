@@ -22,10 +22,10 @@ class AdminInboxScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF5F1E8),
       appBar: AppBar(
         backgroundColor: const Color(0xFF0B28D9),
-        foregroundColor: Colors.white,
+        foregroundColor: const Color(0xFFF5F1E8),
         title: const Text(
           'Developer Inbox',
           style: TextStyle(fontWeight: FontWeight.w700),
@@ -126,7 +126,7 @@ class _MessageCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: isRead ? Colors.white : const Color(0xFFF0F3FF),
+          color: isRead ? const Color(0xFFF5F1E8) : const Color(0xFFF0F3FF),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: isRead ? const Color(0xFFE0E0E0) : const Color(0xFF0B28D9),

@@ -154,33 +154,33 @@ class _Scene0PreSetupState extends State<Scene0PreSetup>
             // green-themed area.
             Container(color: const Color(0xFF0B28D9)),
 
-            // Decorative circles — white-on-blue rather than the old
-            // green-on-green tones, which read as a background accent
-            // regardless of what's behind them.
-            Positioned(
-              top: -60,
-              right: -60,
-              child: Container(
-                width: 200,
-                height: 200,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white.withValues(alpha: 0.08),
-                ),
+          // Decorative circles — white-on-blue rather than the old
+          // green-on-green tones, which read as a background accent
+          // regardless of what's behind them.
+          Positioned(
+            top: -60,
+            right: -60,
+            child: Container(
+              width: 200,
+              height: 200,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFFF5F1E8).withValues(alpha: 0.08),
               ),
             ),
-            Positioned(
-              bottom: -40,
-              left: -40,
-              child: Container(
-                width: 160,
-                height: 160,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white.withValues(alpha: 0.06),
-                ),
+          ),
+          Positioned(
+            bottom: -40,
+            left: -40,
+            child: Container(
+              width: 160,
+              height: 160,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFFF5F1E8).withValues(alpha: 0.06),
               ),
             ),
+          ),
 
             // No shared SceneTopHeader on this screen — still gets the same
             // undo affordance as every other Hati-dialogue screen.
@@ -442,7 +442,7 @@ class _ScenarioTutorialDialog extends StatelessWidget {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.15),
+                      color: const Color(0xFFF5F1E8).withValues(alpha: 0.15),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
@@ -456,7 +456,7 @@ class _ScenarioTutorialDialog extends StatelessWidget {
                     child: Text(
                       'How This Scenario Works',
                       style: HatiTextStyles.heading3.copyWith(
-                        color: Colors.white,
+                        color: const Color(0xFFF5F1E8),
                       ),
                     ),
                   ),

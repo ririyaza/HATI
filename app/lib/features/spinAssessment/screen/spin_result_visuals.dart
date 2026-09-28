@@ -149,7 +149,7 @@ class SpinResultHeroHeader extends StatelessWidget {
             Text(
               'HATI',
               style: TextStyle(
-                color: Colors.white.withOpacity(0.6),
+                color: const Color(0xFFF5F1E8).withOpacity(0.6),
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 3,
@@ -159,7 +159,7 @@ class SpinResultHeroHeader extends StatelessWidget {
             const Text(
               'Assessment Complete',
               style: TextStyle(
-                color: Colors.white,
+                color: const Color(0xFFF5F1E8),
                 fontSize: 20,
                 fontWeight: FontWeight.w700,
               ),
@@ -173,7 +173,7 @@ class SpinResultHeroHeader extends StatelessWidget {
                 progress: progress * arcAnim.value,
                 score: score,
                 color: theme.secondary,
-                trackColor: Colors.white.withOpacity(0.15),
+                trackColor: const Color(0xFFF5F1E8).withOpacity(0.15),
               ),
             ),
           ],
@@ -219,7 +219,7 @@ class SpinResultArcGauge extends StatelessWidget {
               Text(
                 '$score',
                 style: const TextStyle(
-                  color: Colors.white,
+                  color: const Color(0xFFF5F1E8),
                   fontSize: 52,
                   fontWeight: FontWeight.w900,
                   height: 1,
@@ -228,7 +228,7 @@ class SpinResultArcGauge extends StatelessWidget {
               Text(
                 'out of 68',
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.65),
+                  color: const Color(0xFFF5F1E8).withOpacity(0.65),
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
                 ),
@@ -400,7 +400,7 @@ class SpinResultActionButton extends StatelessWidget {
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
           backgroundColor: color,
-          foregroundColor: Colors.white,
+          foregroundColor: const Color(0xFFF5F1E8),
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(28),

@@ -52,7 +52,7 @@ class ReferralScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF5F1E8),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(24, 32, 24, 32),
@@ -131,7 +131,7 @@ class ReferralScreen extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
-                      color: Colors.white,
+                      color: const Color(0xFFF5F1E8),
                     ),
                   ),
                 ),
@@ -145,7 +145,7 @@ class ReferralScreen extends StatelessWidget {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(26),
                     ),
-                    backgroundColor: Colors.white,
+                    backgroundColor: const Color(0xFFF5F1E8),
                   ),
                   onPressed: () {
                     Navigator.of(context).pushAndRemoveUntil(

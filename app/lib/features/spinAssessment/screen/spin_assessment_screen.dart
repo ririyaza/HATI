@@ -233,7 +233,7 @@ class _SpinAssessmentScreenState extends State<SpinAssessmentScreen> {
   // ─────────────────────────────────────────────────────────────
   Widget _buildIntroScreen() {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF5F1E8),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -244,11 +244,11 @@ class _SpinAssessmentScreenState extends State<SpinAssessmentScreen> {
               color: _blue,
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
               child: Column(
-                children: const [
+                children: [
                   Text(
                     'HATI',
                     style: TextStyle(
-                      color: Colors.white60,
+                      color: Color(0xFFF5F1E8).withValues(alpha: 0.60),
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 3,
@@ -258,7 +258,7 @@ class _SpinAssessmentScreenState extends State<SpinAssessmentScreen> {
                   Text(
                     'Social Comfort Check-in',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: const Color(0xFFF5F1E8),
                       fontSize: 22,
                       fontWeight: FontWeight.w700,
                     ),
@@ -318,7 +318,7 @@ class _SpinAssessmentScreenState extends State<SpinAssessmentScreen> {
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
-                          color: Colors.white,
+                          color: const Color(0xFFF5F1E8),
                         ),
                       ),
                     ),
@@ -374,7 +374,7 @@ class _SpinAssessmentScreenState extends State<SpinAssessmentScreen> {
     final hasAnswer = question.selectedScore != null;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF5F1E8),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -386,10 +386,10 @@ class _SpinAssessmentScreenState extends State<SpinAssessmentScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'HATI',
                     style: TextStyle(
-                      color: Colors.white60,
+                      color: Color(0xFFF5F1E8).withValues(alpha: 0.60),
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 2,
@@ -400,8 +400,8 @@ class _SpinAssessmentScreenState extends State<SpinAssessmentScreen> {
                     children: [
                       Text(
                         'Question ${currentIndex + 1} of ${spinQuestions.length}',
-                        style: const TextStyle(
-                          color: Colors.white70,
+                        style: TextStyle(
+                          color: Color(0xFFF5F1E8).withValues(alpha: 0.70),
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
                         ),
@@ -409,8 +409,8 @@ class _SpinAssessmentScreenState extends State<SpinAssessmentScreen> {
                       const Spacer(),
                       Text(
                         '${(progress * 100).toInt()}%',
-                        style: const TextStyle(
-                          color: Colors.white70,
+                        style: TextStyle(
+                          color: Color(0xFFF5F1E8).withValues(alpha: 0.70),
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
                         ),
@@ -423,9 +423,9 @@ class _SpinAssessmentScreenState extends State<SpinAssessmentScreen> {
                     child: LinearProgressIndicator(
                       value: progress,
                       minHeight: 6,
-                      backgroundColor: Colors.white24,
+                      backgroundColor: Color(0xFFF5F1E8).withValues(alpha: 0.24),
                       valueColor: const AlwaysStoppedAnimation<Color>(
-                        Colors.white,
+                        const Color(0xFFF5F1E8),
                       ),
                     ),
                   ),
@@ -492,7 +492,7 @@ class _SpinAssessmentScreenState extends State<SpinAssessmentScreen> {
             Container(
               padding: const EdgeInsets.fromLTRB(24, 14, 24, 12),
               decoration: const BoxDecoration(
-                color: Colors.white,
+                color: const Color(0xFFF5F1E8),
                 border: Border(top: BorderSide(color: Color(0xFFF0F0F0))),
               ),
               child: Column(
@@ -541,7 +541,7 @@ class _SpinAssessmentScreenState extends State<SpinAssessmentScreen> {
                               style: const TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w700,
-                                color: Colors.white,
+                                color: const Color(0xFFF5F1E8),
                               ),
                             ),
                           ),
@@ -586,7 +586,7 @@ class _DoThisLaterDialog extends StatelessWidget {
       elevation: 0,
       insetPadding: const EdgeInsets.symmetric(horizontal: 28),
       child: Material(
-        color: Colors.white,
+        color: const Color(0xFFF5F1E8),
         borderRadius: BorderRadius.circular(20),
         clipBehavior: Clip.antiAlias,
         child: Padding(
@@ -645,7 +645,7 @@ class _DoThisLaterDialog extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
-                      color: Colors.white,
+                      color: const Color(0xFFF5F1E8),
                     ),
                   ),
                 ),
@@ -692,7 +692,7 @@ class _OptionTile extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 0),
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFFF0F3FF) : Colors.white,
+          color: selected ? const Color(0xFFF0F3FF) : const Color(0xFFF5F1E8),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: selected ? _blue : const Color(0xFFE0E0E0),
@@ -717,14 +717,14 @@ class _OptionTile extends StatelessWidget {
               height: 22,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: selected ? _blue : Colors.white,
+                color: selected ? _blue : const Color(0xFFF5F1E8),
                 border: Border.all(
                   color: selected ? _blue : const Color(0xFFCCCCCC),
                   width: 1.5,
                 ),
               ),
               child: selected
-                  ? const Icon(Icons.check, size: 14, color: Colors.white)
+                  ? const Icon(Icons.check, size: 14, color: const Color(0xFFF5F1E8))
                   : null,
             ),
           ],

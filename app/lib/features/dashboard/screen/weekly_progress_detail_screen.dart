@@ -61,14 +61,14 @@ class _WeeklyProgressDetailScreenState
                 onPressed: () => setDialogState(
                   () => picked = DateTime(picked.year, picked.month - 1),
                 ),
-                icon: const Icon(Icons.chevron_left_rounded, color: Colors.white),
+                icon: const Icon(Icons.chevron_left_rounded, color: const Color(0xFFF5F1E8)),
               ),
               Expanded(
                 child: Text(
                   _formatMonth(picked),
                   textAlign: TextAlign.center,
                   style: const TextStyle(
-                    color: Colors.white,
+                    color: const Color(0xFFF5F1E8),
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
                   ),
@@ -78,14 +78,14 @@ class _WeeklyProgressDetailScreenState
                 onPressed: () => setDialogState(
                   () => picked = DateTime(picked.year, picked.month + 1),
                 ),
-                icon: const Icon(Icons.chevron_right_rounded, color: Colors.white),
+                icon: const Icon(Icons.chevron_right_rounded, color: const Color(0xFFF5F1E8)),
               ),
             ],
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, picked),
-              child: const Text('Go', style: TextStyle(color: Colors.white)),
+              child: const Text('Go', style: TextStyle(color: const Color(0xFFF5F1E8))),
             ),
           ],
         ),
@@ -119,7 +119,7 @@ class _WeeklyProgressDetailScreenState
                     onPressed: () => Navigator.pop(context),
                     icon: const Icon(
                       Icons.arrow_back_ios_new_rounded,
-                      color: Colors.white,
+                      color: const Color(0xFFF5F1E8),
                       size: 20,
                     ),
                   ),
@@ -128,7 +128,7 @@ class _WeeklyProgressDetailScreenState
                       'Weekly Progress',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: Colors.white,
+                        color: const Color(0xFFF5F1E8),
                         fontSize: 19,
                         fontWeight: FontWeight.w700,
                       ),
@@ -149,7 +149,7 @@ class _WeeklyProgressDetailScreenState
                   width: active ? 22 : 8,
                   height: 8,
                   decoration: BoxDecoration(
-                    color: active ? Colors.white : Colors.white30,
+                    color: active ? const Color(0xFFF5F1E8) : Color(0xFFF5F1E8).withValues(alpha: 0.30),
                     borderRadius: BorderRadius.circular(4),
                   ),
                 );
@@ -162,17 +162,17 @@ class _WeeklyProgressDetailScreenState
                 builder: (context, snapshot) {
                   if (snapshot.connectionState != ConnectionState.done) {
                     return const Center(
-                      child: CircularProgressIndicator(color: Colors.white),
+                      child: CircularProgressIndicator(color: const Color(0xFFF5F1E8)),
                     );
                   }
                   if (snapshot.hasError) {
-                    return const Center(
+                    return Center(
                       child: Padding(
-                        padding: EdgeInsets.all(24),
+                        padding: const EdgeInsets.all(24),
                         child: Text(
                           "Couldn't load your progress data. Pull to refresh or try again later.",
                           textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.white70),
+                          style: TextStyle(color: Color(0xFFF5F1E8).withValues(alpha: 0.70)),
                         ),
                       ),
                     );
@@ -241,7 +241,7 @@ class _SummaryPage extends StatelessWidget {
           const Text(
             'Summary',
             style: TextStyle(
-              color: Colors.white,
+              color: const Color(0xFFF5F1E8),
               fontSize: 24,
               fontWeight: FontWeight.w800,
             ),
@@ -257,7 +257,7 @@ class _SummaryPage extends StatelessWidget {
                   Text(
                     monthLabel,
                     style: const TextStyle(
-                      color: Colors.white,
+                      color: const Color(0xFFF5F1E8),
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                       decoration: TextDecoration.underline,
@@ -266,7 +266,7 @@ class _SummaryPage extends StatelessWidget {
                   const SizedBox(width: 4),
                   const Icon(
                     Icons.keyboard_arrow_down_rounded,
-                    color: Colors.white,
+                    color: const Color(0xFFF5F1E8),
                     size: 18,
                   ),
                 ],
@@ -337,7 +337,7 @@ class _CalendarCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        border: Border.all(color: Colors.white, width: 1.5),
+        border: Border.all(color: const Color(0xFFF5F1E8), width: 1.5),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
@@ -350,7 +350,7 @@ class _CalendarCard extends StatelessWidget {
                       child: Text(
                         d,
                         style: const TextStyle(
-                          color: Colors.white,
+                          color: const Color(0xFFF5F1E8),
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
                         ),
@@ -378,7 +378,7 @@ class _CalendarCard extends StatelessWidget {
                               decoration: BoxDecoration(
                                 color: active
                                     ? const Color(0xFFFFB020)
-                                    : Colors.white24,
+                                    : Color(0xFFF5F1E8).withValues(alpha: 0.24),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                             ),
@@ -421,7 +421,7 @@ class _TrendCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFFF5F1E8),
         borderRadius: BorderRadius.circular(18),
       ),
       child: Column(
@@ -537,7 +537,7 @@ class _FeedbackCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFFF5F1E8),
         borderRadius: BorderRadius.circular(18),
       ),
       child: Column(
@@ -581,7 +581,7 @@ class _TriggerPatternsPage extends StatelessWidget {
           const Text(
             'Trigger Patterns',
             style: TextStyle(
-              color: Colors.white,
+              color: const Color(0xFFF5F1E8),
               fontSize: 24,
               fontWeight: FontWeight.w800,
             ),
@@ -591,7 +591,7 @@ class _TriggerPatternsPage extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: const Color(0xFFF5F1E8),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Column(
@@ -791,7 +791,7 @@ class _TriggerBarRow extends StatelessWidget {
                           textAlign: TextAlign.right,
                           style: const TextStyle(
                             fontSize: 11,
-                            color: Colors.white,
+                            color: const Color(0xFFF5F1E8),
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -840,7 +840,7 @@ class _EmotionTrendsPage extends StatelessWidget {
           const Text(
             'Emotion Trends',
             style: TextStyle(
-              color: Colors.white,
+              color: const Color(0xFFF5F1E8),
               fontSize: 24,
               fontWeight: FontWeight.w800,
             ),
@@ -850,7 +850,7 @@ class _EmotionTrendsPage extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
             decoration: BoxDecoration(
-              border: Border.all(color: Colors.white24, width: 1.5),
+              border: Border.all(color: Color(0xFFF5F1E8).withValues(alpha: 0.24), width: 1.5),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Column(
@@ -873,14 +873,14 @@ class _EmotionTrendsPage extends StatelessWidget {
                             children: [
                               Text(
                                 r.label,
-                                style: const TextStyle(color: Colors.white),
+                                style: const TextStyle(color: const Color(0xFFF5F1E8)),
                               ),
                               if (r == range)
                                 const Padding(
                                   padding: EdgeInsets.only(left: 12),
                                   child: Icon(
                                     Icons.check_rounded,
-                                    color: Colors.white,
+                                    color: const Color(0xFFF5F1E8),
                                     size: 18,
                                   ),
                                 ),
@@ -893,14 +893,14 @@ class _EmotionTrendsPage extends StatelessWidget {
                       children: [
                         const Icon(
                           Icons.filter_alt_outlined,
-                          color: Colors.white,
+                          color: const Color(0xFFF5F1E8),
                           size: 14,
                         ),
                         const SizedBox(width: 6),
                         Text(
                           range.label,
                           style: const TextStyle(
-                            color: Colors.white,
+                            color: const Color(0xFFF5F1E8),
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
                             decoration: TextDecoration.underline,
@@ -925,8 +925,8 @@ class _EmotionTrendsPage extends StatelessWidget {
                                 'Finish a few scenarios to see your emotion trends here.',
                             },
                             textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: Colors.white70,
+                            style: TextStyle(
+                              color: Color(0xFFF5F1E8).withValues(alpha: 0.70),
                               fontSize: 12.5,
                             ),
                           ),
@@ -977,14 +977,14 @@ class _EmotionDonutChart extends StatelessWidget {
                   Text(
                     total.toStringAsFixed(0),
                     style: const TextStyle(
-                      color: Colors.white,
+                      color: const Color(0xFFF5F1E8),
                       fontSize: 26,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
-                  const Text(
+                  Text(
                     'logged',
-                    style: TextStyle(color: Colors.white70, fontSize: 12),
+                    style: TextStyle(color: Color(0xFFF5F1E8).withValues(alpha: 0.70), fontSize: 12),
                   ),
                 ],
               ),
@@ -1012,7 +1012,7 @@ class _EmotionDonutChart extends StatelessWidget {
                       child: Text(
                         emotion.label,
                         style: const TextStyle(
-                          color: Colors.white,
+                          color: const Color(0xFFF5F1E8),
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
                         ),
@@ -1023,7 +1023,7 @@ class _EmotionDonutChart extends StatelessWidget {
                           ? '0%'
                           : '${(emotion.value / total * 100).round()}%',
                       style: const TextStyle(
-                        color: Colors.white,
+                        color: const Color(0xFFF5F1E8),
                         fontSize: 13,
                         fontWeight: FontWeight.w800,
                       ),
@@ -1034,8 +1034,8 @@ class _EmotionDonutChart extends StatelessWidget {
                       child: Text(
                         emotion.value.toStringAsFixed(0),
                         textAlign: TextAlign.right,
-                        style: const TextStyle(
-                          color: Colors.white54,
+                        style: TextStyle(
+                          color: Color(0xFFF5F1E8).withValues(alpha: 0.54),
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
                         ),
@@ -1105,7 +1105,7 @@ class _EmotionDonutPainter extends CustomPainter {
           text: TextSpan(
             text: '${(share * 100).round()}%',
             style: const TextStyle(
-              color: Colors.white,
+              color: const Color(0xFFF5F1E8),
               fontSize: 12,
               fontWeight: FontWeight.w800,
             ),

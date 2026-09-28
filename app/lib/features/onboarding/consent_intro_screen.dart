@@ -90,7 +90,7 @@ class _ConsentIntroScreenState extends State<ConsentIntroScreen>
                       child: Text(
                         'HATI',
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.55),
+                          color: const Color(0xFFF5F1E8).withOpacity(0.55),
                           fontSize: 13,
                           fontWeight: FontWeight.w800,
                           letterSpacing: 3.5,
@@ -103,7 +103,7 @@ class _ConsentIntroScreenState extends State<ConsentIntroScreen>
                     const Text(
                       'Before We Begin',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: const Color(0xFFF5F1E8),
                         fontSize: 30,
                         fontWeight: FontWeight.w800,
                         height: 1.15,
@@ -113,7 +113,7 @@ class _ConsentIntroScreenState extends State<ConsentIntroScreen>
                     Text(
                       'We need your informed consent before you take part\nin our research study.',
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.75),
+                        color: const Color(0xFFF5F1E8).withOpacity(0.75),
                         fontSize: 15,
                         height: 1.5,
                         fontWeight: FontWeight.w400,
@@ -135,7 +135,7 @@ class _ConsentIntroScreenState extends State<ConsentIntroScreen>
                                   center: Alignment.center,
                                   radius: 0.65,
                                   colors: [
-                                    Colors.white.withOpacity(0.07),
+                                    const Color(0xFFF5F1E8).withOpacity(0.07),
                                     Colors.transparent,
                                   ],
                                 ),
@@ -170,7 +170,7 @@ class _ConsentIntroScreenState extends State<ConsentIntroScreen>
                       height: 54,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
+                          backgroundColor: const Color(0xFFF5F1E8),
                           foregroundColor: const Color(0xFF0B28D9),
                           elevation: 0,
                           shape: RoundedRectangleBorder(
@@ -230,7 +230,7 @@ class _StepsPreview extends StatelessWidget {
             return Container(
               width: 16,
               height: 1,
-              color: Colors.white.withOpacity(0.25),
+              color: const Color(0xFFF5F1E8).withOpacity(0.25),
               margin: const EdgeInsets.symmetric(horizontal: 2),
             );
           }
@@ -257,14 +257,14 @@ class _StepDot extends StatelessWidget {
           height: 26,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: Colors.white.withOpacity(0.18),
-            border: Border.all(color: Colors.white.withOpacity(0.4), width: 1),
+            color: const Color(0xFFF5F1E8).withOpacity(0.18),
+            border: Border.all(color: const Color(0xFFF5F1E8).withOpacity(0.4), width: 1),
           ),
           alignment: Alignment.center,
           child: Text(
             '$number',
             style: const TextStyle(
-              color: Colors.white,
+              color: const Color(0xFFF5F1E8),
               fontSize: 11,
               fontWeight: FontWeight.w700,
             ),
@@ -291,8 +291,8 @@ class _BackgroundBlob extends StatelessWidget {
           shape: BoxShape.circle,
           gradient: RadialGradient(
             colors: [
-              Colors.white.withValues(alpha: opacity),
-              Colors.white.withValues(alpha: 0),
+              const Color(0xFFF5F1E8).withValues(alpha: opacity),
+              const Color(0xFFF5F1E8).withValues(alpha: 0),
             ],
           ),
         ),

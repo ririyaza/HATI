@@ -344,7 +344,7 @@ class _TutorialScreenState extends State<TutorialScreen>
                             Icon(
                               Icons.arrow_forward_rounded,
                               color: isLast
-                                  ? Colors.white
+                                  ? const Color(0xFFF5F1E8)
                                   : const Color(0xFF0B28D9),
                               size: 18,
                             ),
@@ -390,7 +390,7 @@ class _TutorialSlideView extends StatelessWidget {
                 ),
               ),
               child: Center(
-                child: Icon(slide.icon, size: 56, color: Colors.white),
+                child: Icon(slide.icon, size: 56, color: const Color(0xFFF5F1E8)),
               ),
             ),
             const SizedBox(height: 36),
@@ -398,7 +398,7 @@ class _TutorialSlideView extends StatelessWidget {
               slide.title,
               textAlign: TextAlign.center,
               style: const TextStyle(
-                color: Colors.white,
+                color: const Color(0xFFF5F1E8),
                 fontSize: 26,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 0.2,
@@ -419,7 +419,7 @@ class _TutorialSlideView extends StatelessWidget {
                 slide.subtitle,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.9),
+                  color: const Color(0xFFF5F1E8).withValues(alpha: 0.9),
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                 ),
@@ -430,7 +430,7 @@ class _TutorialSlideView extends StatelessWidget {
               slide.description,
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.78),
+                color: const Color(0xFFF5F1E8).withValues(alpha: 0.78),
                 fontSize: 15,
                 fontWeight: FontWeight.w400,
                 height: 1.6,

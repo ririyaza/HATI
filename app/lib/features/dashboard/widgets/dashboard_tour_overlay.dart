@@ -414,7 +414,7 @@ class _SpotlightPainter extends CustomPainter {
     canvas.drawRRect(
       hole,
       Paint()
-        ..color = Colors.white
+        ..color = const Color(0xFFF5F1E8)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2.5,
     );
@@ -485,7 +485,7 @@ class _TourCard extends StatelessWidget {
     final card = Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFFF5F1E8),
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(

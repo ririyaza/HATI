@@ -64,7 +64,7 @@ class _SpinResultReviewScreenState extends State<SpinResultReviewScreen>
     final qualifies = spinQualifies(widget.score);
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF5F1E8),
       body: Column(
         children: [
           Stack(
@@ -149,12 +149,12 @@ class _BackButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.2),
+          color: const Color(0xFFF5F1E8).withOpacity(0.2),
           borderRadius: BorderRadius.circular(10),
         ),
         child: const Icon(
           Icons.arrow_back_rounded,
-          color: Colors.white,
+          color: const Color(0xFFF5F1E8),
           size: 20,
         ),
       ),

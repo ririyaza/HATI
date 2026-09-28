@@ -248,7 +248,7 @@ class _SignupScreenState extends State<SignupScreen> {
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: _kBrand,
-                      foregroundColor: Colors.white,
+                      foregroundColor: const Color(0xFFF5F1E8),
                       elevation: 0,
                       disabledBackgroundColor: _kBrand.withOpacity(0.35),
                       shape: RoundedRectangleBorder(
@@ -262,7 +262,7 @@ class _SignupScreenState extends State<SignupScreen> {
                             width: 24,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              color: Colors.white,
+                              color: const Color(0xFFF5F1E8),
                             ),
                           )
                         : const Text(
@@ -313,7 +313,7 @@ InputDecoration _fieldDecoration({required String hintText, Widget? suffixIcon})
     hintText: hintText,
     hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 16),
     filled: true,
-    fillColor: Colors.white,
+    fillColor: const Color(0xFFF5F1E8),
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(14),
       borderSide: const BorderSide(color: _kFieldBorder),

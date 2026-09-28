@@ -193,7 +193,7 @@ class _PostAssessmentResultsScreenState
       return Scaffold(
         body: _texturedBackground(
           child: const Center(
-            child: CircularProgressIndicator(color: Colors.white),
+            child: CircularProgressIndicator(color: const Color(0xFFF5F1E8)),
           ),
         ),
       );
@@ -208,7 +208,7 @@ class _PostAssessmentResultsScreenState
               child: Text(
                 _error ?? 'Unable to load results.',
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.white70, fontSize: 14),
+                style: TextStyle(color: Color(0xFFF5F1E8).withValues(alpha: 0.70), fontSize: 14),
               ),
             ),
           ),
@@ -229,7 +229,7 @@ class _PostAssessmentResultsScreenState
                 Container(
                   padding: const EdgeInsets.fromLTRB(24, 26, 24, 24),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: const Color(0xFFF5F1E8),
                     borderRadius: BorderRadius.circular(28),
                     boxShadow: [
                       BoxShadow(
@@ -294,7 +294,7 @@ class _PostAssessmentResultsScreenState
                   height: 52,
                   child: FilledButton(
                     style: FilledButton.styleFrom(
-                      backgroundColor: Colors.white,
+                      backgroundColor: const Color(0xFFF5F1E8),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(26),
                       ),
@@ -337,8 +337,8 @@ class _BackgroundBlob extends StatelessWidget {
           shape: BoxShape.circle,
           gradient: RadialGradient(
             colors: [
-              Colors.white.withValues(alpha: opacity),
-              Colors.white.withValues(alpha: 0),
+              const Color(0xFFF5F1E8).withValues(alpha: opacity),
+              const Color(0xFFF5F1E8).withValues(alpha: 0),
             ],
           ),
         ),
@@ -439,7 +439,7 @@ class _ComparisonChartCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFFF5F1E8),
         borderRadius: BorderRadius.circular(22),
         border: Border.all(color: color.withValues(alpha: 0.16)),
         boxShadow: [

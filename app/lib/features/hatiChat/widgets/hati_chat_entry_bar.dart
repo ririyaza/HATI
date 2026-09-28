@@ -25,23 +25,23 @@ class HatiChatEntryBar extends StatelessWidget {
         height: 52,
         padding: const EdgeInsets.symmetric(horizontal: 20),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.16),
+          color: const Color(0xFFF5F1E8).withValues(alpha: 0.16),
           borderRadius: BorderRadius.circular(26),
-          border: Border.all(color: Colors.white24),
+          border: Border.all(color: Color(0xFFF5F1E8).withValues(alpha: 0.24)),
         ),
-        child: const Row(
+        child: Row(
           children: [
             Expanded(
               child: Text(
                 'Ask Hati anything...',
                 style: TextStyle(
-                  color: Colors.white70,
+                  color: Color(0xFFF5F1E8).withValues(alpha: 0.70),
                   fontSize: 15,
                   fontWeight: FontWeight.w500,
                 ),
               ),
             ),
-            Icon(Icons.chat_bubble_outline_rounded, color: Colors.white, size: 20),
+            Icon(Icons.chat_bubble_outline_rounded, color: const Color(0xFFF5F1E8), size: 20),
           ],
         ),
       ),

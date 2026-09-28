@@ -179,7 +179,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             currentIndex: _selectedIndex,
             onTap: _onItemTapped,
             type: BottomNavigationBarType.fixed,
-            backgroundColor: Colors.white,
+            backgroundColor: const Color(0xFFF5F1E8),
             selectedItemColor: const Color(0xFF007AFF),
             unselectedItemColor: Colors.grey,
             selectedLabelStyle: const TextStyle(
