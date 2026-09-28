@@ -25,7 +25,8 @@ class ProfileScreen extends StatelessWidget {
           return const _StateScaffold.loading();
         }
         final user = authSnapshot.data;
-        if (user == null) return const _StateScaffold(message: 'Please log in.');
+        if (user == null)
+          return const _StateScaffold(message: 'Please log in.');
 
         return StreamBuilder<DashboardUserData>(
           stream: DashboardDataService.watchForUser(user),
@@ -318,7 +319,7 @@ class _ProfileContent extends StatelessWidget {
                       body: data.goal.isNotEmpty
                           ? data.goal
                           : "You haven't set a goal yet. Tap the edit icon "
-                              'to add one.',
+                                'to add one.',
                     ),
                     const SizedBox(height: 24),
                     const Text(
@@ -346,9 +347,7 @@ class _ProfileContent extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    _CopingPreferencesCard(
-                      preferences: data.copingPreferences,
-                    ),
+                    _CopingPreferencesCard(preferences: data.copingPreferences),
                     const SizedBox(height: 24),
                     const Text(
                       'Settings',
@@ -472,25 +471,27 @@ class _ProfileAvatar extends StatelessWidget {
     return Container(
       width: 72,
       height: 72,
+      padding: const EdgeInsets.all(2.5),
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: Colors.white.withOpacity(0.2),
         border: Border.all(color: Colors.white, width: 2.5),
       ),
-      clipBehavior: Clip.antiAlias,
-      child: hasPhoto
-          ? isAsset
-                ? Image.asset(photoUrl, fit: BoxFit.cover)
-                : Image.network(
-                    photoUrl,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => const Icon(
-                      Icons.person,
-                      size: 40,
-                      color: Colors.white,
-                    ),
-                  )
-          : const Icon(Icons.person, size: 40, color: Colors.white),
+      child: ClipOval(
+        child: hasPhoto
+            ? isAsset
+                  ? Image.asset(photoUrl, fit: BoxFit.cover)
+                  : Image.network(
+                      photoUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const Icon(
+                        Icons.person,
+                        size: 40,
+                        color: Colors.white,
+                      ),
+                    )
+            : const Icon(Icons.person, size: 40, color: Colors.white),
+      ),
     );
   }
 }
@@ -711,8 +712,7 @@ class _AssessmentEntryCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                if (gain != null)
-                  _GainChip(gain: gain),
+                if (gain != null) _GainChip(gain: gain),
               ],
             ),
           ),
@@ -765,9 +765,7 @@ class _GainChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final improved = gain < 0;
     final color = improved ? const Color(0xFF1DB954) : const Color(0xFFFF9500);
-    final label = gain == 0
-        ? 'No change'
-        : '${gain > 0 ? '+' : ''}$gain pts';
+    final label = gain == 0 ? 'No change' : '${gain > 0 ? '+' : ''}$gain pts';
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -924,7 +922,8 @@ class _CheckInStatusCard extends StatelessWidget {
               'changed your mind? Tap to start it now.';
           color = const Color(0xFFFF9500);
         } else {
-          title = 'Next check-in in ${status.daysUntilDue} '
+          title =
+              'Next check-in in ${status.daysUntilDue} '
               '${status.daysUntilDue == 1 ? 'day' : 'days'}';
           subtitle =
               'Last check-in: ${_formatDate(status.lastAssessedAt)} '
@@ -937,10 +936,10 @@ class _CheckInStatusCard extends StatelessWidget {
         return GestureDetector(
           onTap: canStartNow
               ? () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const PostAssessmentIntroScreen(),
-                    ),
-                  )
+                  MaterialPageRoute(
+                    builder: (_) => const PostAssessmentIntroScreen(),
+                  ),
+                )
               : null,
           child: Container(
             width: double.infinity,
@@ -1125,10 +1124,7 @@ class _CopingPreferencesCard extends StatelessWidget {
   }
 }
 
-Future<void> _showNotificationSettingsSheet(
-  BuildContext context,
-  String uid,
-) {
+Future<void> _showNotificationSettingsSheet(BuildContext context, String uid) {
   return showModalBottomSheet<void>(
     context: context,
     backgroundColor: Colors.white,
@@ -1383,8 +1379,8 @@ class _SettingsTile extends StatelessWidget {
 class _StateScaffold extends StatelessWidget {
   const _StateScaffold({required this.message}) : loading = false;
   const _StateScaffold.loading()
-      : message = 'Loading profile...',
-        loading = true;
+    : message = 'Loading profile...',
+      loading = true;
 
   final String message;
   final bool loading;

@@ -195,6 +195,7 @@ class _Scene2PreparationState extends State<Scene2Preparation> {
               currentStep: 2,
               totalSteps: 7,
               sceneLabel: 'Preparation & Intention',
+              showUndo: true,
             ),
             const SceneSpeedToggleRow(),
             Expanded(
@@ -205,6 +206,12 @@ class _Scene2PreparationState extends State<Scene2Preparation> {
                 onSequenceComplete: () {
                   if (mounted && !_dialogueComplete) {
                     setState(() => _dialogueComplete = true);
+                  }
+                },
+                showIdleReminder: !_dialogueComplete,
+                onUndoRestored: () {
+                  if (mounted && _dialogueComplete) {
+                    setState(() => _dialogueComplete = false);
                   }
                 },
                 fixedHeader: fixedHeader,

@@ -92,6 +92,9 @@ class _HatiSpriteAnimationState extends State<HatiSpriteAnimation> {
                 holdAfterTyping: widget.holdAfterTyping,
                 onBubbleDismissed: widget.onDismissed,
                 onSequenceComplete: widget.onTypingComplete,
+                // Auto-advancing dialogue doesn't need a "tap to continue"
+                // prompt — it moves on by itself. Tap-paced dialogue does.
+                showAdvanceCue: !widget.autoAdvance,
               )
             : HatiFrogAvatar(
                 key: const ValueKey('hati-waiting'),

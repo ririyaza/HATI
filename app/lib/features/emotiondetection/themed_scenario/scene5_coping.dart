@@ -124,6 +124,7 @@ class _Scene5CopingState extends State<Scene5Coping> {
               currentStep: 5,
               totalSteps: 7,
               sceneLabel: 'Coping Strategy Integration',
+              showUndo: true,
             ),
             const SceneSpeedToggleRow(),
             Expanded(
@@ -134,6 +135,12 @@ class _Scene5CopingState extends State<Scene5Coping> {
                 onSequenceComplete: () {
                   if (mounted && !_dialogueComplete) {
                     setState(() => _dialogueComplete = true);
+                  }
+                },
+                showIdleReminder: !_dialogueComplete,
+                onUndoRestored: () {
+                  if (mounted && _dialogueComplete) {
+                    setState(() => _dialogueComplete = false);
                   }
                 },
                 body: body,
@@ -369,158 +376,189 @@ class _Scene6ClosingState extends State<Scene6Closing> {
     return Scaffold(
       body: HatiTapToAdvance(
         child: Stack(
-        children: [
-          // Brand blue (0xFF0B28D9) — same header color as the Progress
-          // and Profile screens — rather than the scenario's usual green,
-          // since this is the "you're done" completion screen, not
-          // in-scenario dialogue.
-          Container(color: const Color(0xFF0B28D9)),
-          Positioned(
-            top: -80,
-            left: -80,
-            child: Container(
-              width: 240,
-              height: 240,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.08),
+          children: [
+            // Brand blue (0xFF0B28D9) — same header color as the Progress
+            // and Profile screens — rather than the scenario's usual green,
+            // since this is the "you're done" completion screen, not
+            // in-scenario dialogue.
+            Container(color: const Color(0xFF0B28D9)),
+            Positioned(
+              top: -80,
+              left: -80,
+              child: Container(
+                width: 240,
+                height: 240,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withValues(alpha: 0.08),
+                ),
               ),
             ),
-          ),
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
-              child: Column(
-                children: [
-                  const SceneProgressBar(
-                    currentStep: 6,
-                    totalSteps: 7,
-                    sceneLabel: 'Closing',
-                  ),
-                  Expanded(
-                    child: SingleChildScrollView(
-                      child: Column(
-                        children: [
-                          const SizedBox(height: 20),
-                          Container(
-                            width: 90,
-                            height: 90,
-                            decoration: BoxDecoration(
-                              color: HatiColors.softGold.withValues(alpha: 0.2),
-                              shape: BoxShape.circle,
-                              border: Border.all(
+            // No back button on this completion screen, but still gets the
+            // same undo affordance as every other Hati-dialogue screen.
+            SafeArea(
+              child: Align(
+                alignment: Alignment.topRight,
+                child: Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: const HatiUndoButton(),
+                ),
+              ),
+            ),
+            SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 28,
+                  vertical: 24,
+                ),
+                child: Column(
+                  children: [
+                    const SceneProgressBar(
+                      currentStep: 6,
+                      totalSteps: 7,
+                      sceneLabel: 'Closing',
+                    ),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        child: Column(
+                          children: [
+                            const SizedBox(height: 20),
+                            Container(
+                              width: 90,
+                              height: 90,
+                              decoration: BoxDecoration(
                                 color: HatiColors.softGold.withValues(
-                                  alpha: 0.5,
+                                  alpha: 0.2,
                                 ),
-                                width: 2,
-                              ),
-                            ),
-                            child: const Center(
-                              child: Text('🏆', style: TextStyle(fontSize: 40)),
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: HatiColors.softGold.withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: HatiColors.softGold.withValues(
-                                  alpha: 0.4,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: HatiColors.softGold.withValues(
+                                    alpha: 0.5,
+                                  ),
+                                  width: 2,
                                 ),
                               ),
-                            ),
-                            child: const Text(
-                              'SCENARIO COMPLETE!',
-                              style: TextStyle(
-                                color: HatiColors.softGold,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
-                                letterSpacing: 1.5,
+                              child: const Center(
+                                child: Text(
+                                  '🏆',
+                                  style: TextStyle(fontSize: 40),
+                                ),
                               ),
                             ),
-                          ),
-                          const SizedBox(height: 20),
-                          Container(
-                            padding: const EdgeInsets.all(20),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.08),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.12),
+                            const SizedBox(height: 20),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 8,
                               ),
-                            ),
-                            child: Column(
-                              children: [
-                                const Text(
-                                  '💡 What to remember:',
-                                  style: TextStyle(
-                                    color: HatiColors.mintFresh,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 12,
-                                    letterSpacing: 0.5,
+                              decoration: BoxDecoration(
+                                color: HatiColors.softGold.withValues(
+                                  alpha: 0.2,
+                                ),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: HatiColors.softGold.withValues(
+                                    alpha: 0.4,
                                   ),
                                 ),
-                                const SizedBox(height: 10),
-                                Text(
-                                  insight,
-                                  textAlign: TextAlign.center,
-                                  style: HatiTextStyles.bodyLarge.copyWith(
-                                    color: HatiColors.warmCream,
-                                    height: 1.7,
-                                    fontSize: _insightFontSize(insight),
-                                  ),
+                              ),
+                              child: const Text(
+                                'SCENARIO COMPLETE!',
+                                style: TextStyle(
+                                  color: HatiColors.softGold,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                  letterSpacing: 1.5,
                                 ),
-                              ],
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 16),
-                          HatiSpeakingBlock(
-                            persistentMessage: closingLine,
-                            frogSize: 150,
-                            mood: HatiMood.happy,
-                            onSequenceComplete: () {
-                              if (mounted && !_dialogueComplete) {
-                                setState(() => _dialogueComplete = true);
-                              }
-                            },
-                          ),
-                          const SizedBox(height: 20),
-                        ],
+                            const SizedBox(height: 20),
+                            Container(
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.08),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.12),
+                                ),
+                              ),
+                              child: Column(
+                                children: [
+                                  const Text(
+                                    '💡 What to remember:',
+                                    style: TextStyle(
+                                      color: HatiColors.mintFresh,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Text(
+                                    insight,
+                                    textAlign: TextAlign.center,
+                                    style: HatiTextStyles.bodyLarge.copyWith(
+                                      color: HatiColors.warmCream,
+                                      height: 1.7,
+                                      fontSize: _insightFontSize(insight),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            HatiSpeakingBlock(
+                              persistentMessage: closingLine,
+                              frogSize: 150,
+                              mood: HatiMood.happy,
+                              showAdvanceCue: true,
+                              onSequenceComplete: () {
+                                if (mounted && !_dialogueComplete) {
+                                  setState(() => _dialogueComplete = true);
+                                }
+                              },
+                              onUndoRestored: () {
+                                if (mounted && _dialogueComplete) {
+                                  setState(() => _dialogueComplete = false);
+                                }
+                              },
+                            ),
+                            if (!_dialogueComplete) ...[
+                              const SizedBox(height: 8),
+                              const HatiIdleTapReminder(),
+                            ],
+                            const SizedBox(height: 20),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                  // Stays out of the tree — not just disabled — until the
-                  // closing line has fully typed out, then pops in.
-                  if (_dialogueComplete)
-                    PopIn(
-                      key: const ValueKey('finish-button'),
-                      child: HatiButton(
-                        label: finishLabel,
-                        icon: Icons.check_rounded,
-                        // Was the same 0xFF0B28D9 as this screen's own
-                        // background container above — the button
-                        // effectively had no visible fill against it. The
-                        // lighter accent blue (same one Scene0's "Begin"
-                        // button uses) actually shows up.
-                        color: const Color(0xFF3DA9FC),
-                        onTap: provider.isLoading
-                            ? null
-                            : () => provider.submitText(finishLabel),
-                      ),
-                    )
-                  else
-                    const SizedBox(height: 52),
-                  const SizedBox(height: 8),
-                ],
+                    // Stays out of the tree — not just disabled — until the
+                    // closing line has fully typed out, then pops in.
+                    if (_dialogueComplete)
+                      PopIn(
+                        key: const ValueKey('finish-button'),
+                        child: HatiButton(
+                          label: finishLabel,
+                          icon: Icons.check_rounded,
+                          // Was the same 0xFF0B28D9 as this screen's own
+                          // background container above — the button
+                          // effectively had no visible fill against it. The
+                          // lighter accent blue (same one Scene0's "Begin"
+                          // button uses) actually shows up.
+                          color: const Color(0xFF3DA9FC),
+                          onTap: provider.isLoading
+                              ? null
+                              : () => provider.submitText(finishLabel),
+                        ),
+                      )
+                    else
+                      const SizedBox(height: 52),
+                    const SizedBox(height: 8),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
         ),
       ),
     );

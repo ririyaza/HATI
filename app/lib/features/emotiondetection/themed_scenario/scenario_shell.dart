@@ -43,14 +43,26 @@ class _ScenarioShellState extends State<ScenarioShell> {
   bool _resumeDialogHandled = false;
   SceneId? _lastScene;
 
-  /// Plays a short transition cue on every scene change, and the louder
-  /// "scenario complete" cue specifically when the dashboard/completion
-  /// scene is reached — both keyed off [SceneId] changes rather than the
-  /// raw backend step, so this fires exactly once per scene (not once per
-  /// backend sub-step within the same scene).
+  /// Keeps the background music on the right track for [scene] — Scene 3's
+  /// own [HatiMusicTrack.interaction] track while the player is in the NPC
+  /// approach, [HatiMusicTrack.scenario] everywhere else — and plays a
+  /// short transition cue on every scene change, plus the louder "scenario
+  /// complete" cue specifically when the dashboard/completion scene is
+  /// reached. Both the cue logic and the track pick are keyed off
+  /// [SceneId] changes rather than the raw backend step, so they fire
+  /// exactly once per scene (not once per backend sub-step within the same
+  /// scene). The track switch runs even on the very first scene
+  /// resolution (a resumed session can land straight back in Scene 3) —
+  /// only the cue sounds are gated on this not being the first scene.
   void _maybeAnnounceSceneChange(SceneId scene) {
     final previous = _lastScene;
     _lastScene = scene;
+
+    final track = scene == SceneId.interaction
+        ? HatiMusicTrack.interaction
+        : HatiMusicTrack.scenario;
+    HatiAudioService.instance.playScenarioMusic(track: track);
+
     if (previous == null || previous == scene) return;
     if (scene == SceneId.dashboard) {
       HatiAudioService.instance.playScenarioComplete();

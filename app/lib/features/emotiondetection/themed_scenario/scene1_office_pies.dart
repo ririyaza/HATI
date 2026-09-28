@@ -83,6 +83,7 @@ class _Scene1OfficePiesState extends State<Scene1OfficePies> {
               currentStep: 1,
               totalSteps: 7,
               sceneLabel: 'The Office',
+              showUndo: true,
             ),
             const SceneSpeedToggleRow(),
             Expanded(
@@ -93,6 +94,12 @@ class _Scene1OfficePiesState extends State<Scene1OfficePies> {
                 onSequenceComplete: () {
                   if (mounted && !_dialogueComplete) {
                     setState(() => _dialogueComplete = true);
+                  }
+                },
+                showIdleReminder: !_dialogueComplete,
+                onUndoRestored: () {
+                  if (mounted && _dialogueComplete) {
+                    setState(() => _dialogueComplete = false);
                   }
                 },
                 // fixedHeader and body end up as direct siblings inside
@@ -157,12 +164,14 @@ class _Scene1OfficePiesState extends State<Scene1OfficePies> {
                         key: ValueKey(step),
                         child: TextResponseCard(
                           key: ValueKey(step),
-                          hintText: provider.ui.placeholder ?? 'Tell me more...',
+                          hintText:
+                              provider.ui.placeholder ?? 'Tell me more...',
                           isLoading: provider.isLoading,
                           onSubmit: provider.submitText,
                           onSubmitAudio: (path) => provider.submitAudio(
                             path,
-                            userId: FirebaseAuth.instance.currentUser?.uid ?? '',
+                            userId:
+                                FirebaseAuth.instance.currentUser?.uid ?? '',
                           ),
                         ),
                       ),

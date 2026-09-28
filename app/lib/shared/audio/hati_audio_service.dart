@@ -19,6 +19,35 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+/// Which looping background track should be playing. [scenario] covers
+/// every scene except Scene 3 — office/P.I.E.S., preparation, debrief,
+/// coping, closing, dashboard — and [interaction] is Scene 3's own track,
+/// swapped in for just the NPC approach and back out once it ends.
+enum HatiMusicTrack { scenario, interaction }
+
+/// Applied to every player this service creates — music and one-shot SFX
+/// alike. `audioplayers`' `AudioPlayer` defaults to
+/// `AndroidAudioFocus.gain` on Android, meaning every new player (each SFX
+/// one-shot included) requests *exclusive* audio focus by default; the OS
+/// then pauses whichever player already held it, which is exactly why bg
+/// music used to cut out the instant Hati's talk cue (or any other SFX)
+/// played. `none` means none of our own players fight each other for
+/// focus, so they mix freely — this app only ever plays its own sounds
+/// simultaneously, never competes with another app's audio. `mixWithOthers`
+/// on iOS is the equivalent: don't interrupt whatever else (e.g. the
+/// user's own music app) might already be playing.
+final AudioContext _kSharedAudioContext = AudioContext(
+  android: const AudioContextAndroid(
+    contentType: AndroidContentType.music,
+    usageType: AndroidUsageType.media,
+    audioFocus: AndroidAudioFocus.none,
+  ),
+  iOS: AudioContextIOS(
+    category: AVAudioSessionCategory.playback,
+    options: const {AVAudioSessionOptions.mixWithOthers},
+  ),
+);
+
 class HatiAudioService {
   HatiAudioService._();
 
@@ -37,11 +66,12 @@ class HatiAudioService {
   // enough under the mic to stop bleeding into a voice recording.
   static const double _duckFactor = 0.12;
 
-  static const String _bgMusicAsset = 'SFX/bg_music.mp3';
+  static const String _scenarioMusicAsset = 'SFX/preperation_bg.mp3';
+  static const String _interactionMusicAsset = 'SFX/interaction_bg.mp3';
   static const String _hatiTalkAsset = 'SFX/hati_sound.mp3';
   static const String _badgeAsset = 'SFX/badge_completion.wav';
   static const String _scenarioCompleteAsset = 'SFX/scenario_complete.wav';
-  static const String _sceneTransitionAsset = 'SFX/scene_transition.wav';
+  static const String _sceneTransitionAsset = 'SFX/scene_transition.mp3';
 
   final AudioPlayer _musicPlayer = AudioPlayer();
 
@@ -59,6 +89,15 @@ class HatiAudioService {
   // is anything to actually (re)start.
   bool _musicWanted = false;
   bool _ducked = false;
+
+  // Which track is currently selected (null = nothing started yet this
+  // scenario). Tracked separately from whatever volume the player is
+  // actually sitting at right now ([_lastSetMusicVolume]) so a repeated
+  // playScenarioMusic() call for the *same* track — every scene change
+  // re-asserts one — can no-op instead of restarting the loop audibly.
+  HatiMusicTrack? _currentTrack;
+  double _lastSetMusicVolume = 0;
+  StreamSubscription<void>? _musicCompleteSub;
 
   DateTime? _lastHatiTalkAt;
   // Floor between consecutive "Hati talk" blips — sentences can be very
@@ -81,6 +120,9 @@ class HatiAudioService {
       musicVolume = prefs.getDouble(_kMusicVolumeKey) ?? defaultMusicVolume;
       sfxVolume = prefs.getDouble(_kSfxVolumeKey) ?? defaultSfxVolume;
       await _musicPlayer.setReleaseMode(ReleaseMode.loop);
+      _musicCompleteSub = _musicPlayer.onPlayerComplete.listen(
+        (_) => _onMusicPlayerComplete(),
+      );
     } catch (e, st) {
       // Fall back to in-memory defaults above — a settings-read failure
       // shouldn't block audio from working for the rest of the session.
@@ -93,25 +135,107 @@ class HatiAudioService {
     if (!_initialized) await init();
   }
 
+  /// `ReleaseMode.loop` should already restart the track natively when it
+  /// finishes — this listener is a safety net for the case where it
+  /// somehow doesn't (an OS-level audio interruption — a phone call, a
+  /// notification sound stealing focus despite [_kSharedAudioContext],
+  /// etc.), so a scene never goes silent partway through just because one
+  /// loop cycle didn't restart itself. Waits a beat first so it doesn't
+  /// race the native loop's own restart on every ordinary cycle.
+  Future<void> _onMusicPlayerComplete() async {
+    if (!_musicWanted || !musicEnabled) return;
+    final track = _currentTrack;
+    if (track == null) return;
+    await Future.delayed(const Duration(milliseconds: 200));
+    if (_musicPlayer.state == PlayerState.playing) return;
+    try {
+      await _musicPlayer.play(
+        AssetSource(_assetForTrack(track)),
+        ctx: _kSharedAudioContext,
+      );
+      await _setMusicPlayerVolume(
+        _ducked ? musicVolume * _duckFactor : musicVolume,
+      );
+    } catch (e, st) {
+      debugPrint('HatiAudioService._onMusicPlayerComplete failed: $e\n$st');
+    }
+  }
+
   // ── Background music ──────────────────────────────────────────────────
 
-  /// Starts (or resumes) the scenario's looping background music. Safe to
-  /// call even while `musicEnabled` is off — it just remembers that music
-  /// is "wanted" so flipping the setting back on mid-scenario resumes it.
-  Future<void> playScenarioMusic() async {
+  String _assetForTrack(HatiMusicTrack track) => switch (track) {
+    HatiMusicTrack.scenario => _scenarioMusicAsset,
+    HatiMusicTrack.interaction => _interactionMusicAsset,
+  };
+
+  /// Sets the music player's volume and remembers it, so [_fadeMusicVolume]
+  /// has a real starting point to ramp from without needing to read it back
+  /// from the player (audioplayers doesn't expose a reliable synchronous
+  /// getter for it).
+  Future<void> _setMusicPlayerVolume(double volume) async {
+    final clamped = volume.clamp(0.0, 1.0);
+    _lastSetMusicVolume = clamped;
+    await _musicPlayer.setVolume(clamped);
+  }
+
+  /// Linearly ramps the music player's volume from wherever it currently
+  /// is to [to] over [duration], in a handful of steps — a scene/track
+  /// change should cross-fade, not hard-cut. Best-effort: a failure
+  /// mid-ramp just stops stepping rather than throwing.
+  Future<void> _fadeMusicVolume(double to, Duration duration) async {
+    const steps = 8;
+    final from = _lastSetMusicVolume;
+    final target = to.clamp(0.0, 1.0);
+    final stepDelay = Duration(
+      milliseconds: (duration.inMilliseconds / steps).round(),
+    );
+    for (var i = 1; i <= steps; i++) {
+      final value = from + (target - from) * (i / steps);
+      try {
+        await _setMusicPlayerVolume(value);
+      } catch (_) {
+        return;
+      }
+      if (i < steps) await Future.delayed(stepDelay);
+    }
+  }
+
+  /// Starts (or resumes) the scenario's looping background music on
+  /// [track], short-fading out whatever was already playing first if
+  /// [track] differs from what's currently selected — see [HatiMusicTrack].
+  /// Safe to call repeatedly with the same track (every scene change
+  /// re-asserts one; this no-ops rather than audibly restarting the loop),
+  /// and safe to call even while `musicEnabled` is off — it just remembers
+  /// which track is "wanted" so flipping the setting back on resumes it.
+  Future<void> playScenarioMusic({
+    HatiMusicTrack track = HatiMusicTrack.scenario,
+  }) async {
     await _ensureInitialized();
     _musicWanted = true;
+    final sameTrack = _currentTrack == track;
+    _currentTrack = track;
     if (!musicEnabled) return;
+    if (sameTrack && _musicPlayer.state == PlayerState.playing) return;
+
     try {
       await _musicPlayer.setReleaseMode(ReleaseMode.loop);
-      await _musicPlayer.setVolume(_ducked ? musicVolume * _duckFactor : musicVolume);
-      await _musicPlayer.play(AssetSource(_bgMusicAsset));
+      if (!sameTrack && _musicPlayer.state == PlayerState.playing) {
+        await _fadeMusicVolume(0, const Duration(milliseconds: 400));
+        await _musicPlayer.stop();
+      }
+      await _setMusicPlayerVolume(0);
+      await _musicPlayer.play(
+        AssetSource(_assetForTrack(track)),
+        ctx: _kSharedAudioContext,
+      );
+      final target = _ducked ? musicVolume * _duckFactor : musicVolume;
+      await _fadeMusicVolume(target, const Duration(milliseconds: 500));
     } catch (e, st) {
       // Missing/corrupt asset or no audio output on this device — music is
       // a nice-to-have, never worth crashing a scenario over. Logged (not
       // silently swallowed) so a real problem is at least visible in the
       // debug console instead of just "no sound, no clue why".
-      debugPrint('HatiAudioService.playScenarioMusic failed: $e\n$st');
+      debugPrint('HatiAudioService.playScenarioMusic($track) failed: $e\n$st');
     }
   }
 
@@ -120,6 +244,8 @@ class HatiAudioService {
   Future<void> stopScenarioMusic() async {
     _musicWanted = false;
     _ducked = false;
+    _currentTrack = null;
+    _lastSetMusicVolume = 0;
     try {
       await _musicPlayer.stop();
     } catch (_) {}
@@ -128,12 +254,14 @@ class HatiAudioService {
   /// Temporarily lowers music under the mic while Scene 3 (or any other
   /// voice-recording input) is capturing the player's voice, so the
   /// background track doesn't bleed into the recording or the speech
-  /// pipeline. Pair with [restoreMusic] once recording stops.
+  /// pipeline. Pair with [restoreMusic] once recording stops. Instant, not
+  /// faded — recording can start on short notice and shouldn't wait on a
+  /// ramp.
   Future<void> duckMusic() async {
     if (_ducked || !_musicWanted) return;
     _ducked = true;
     try {
-      await _musicPlayer.setVolume(musicVolume * _duckFactor);
+      await _setMusicPlayerVolume(musicVolume * _duckFactor);
     } catch (_) {}
   }
 
@@ -142,7 +270,7 @@ class HatiAudioService {
     if (!_ducked) return;
     _ducked = false;
     try {
-      await _musicPlayer.setVolume(musicVolume);
+      await _setMusicPlayerVolume(musicVolume);
     } catch (_) {}
   }
 
@@ -155,12 +283,28 @@ class HatiAudioService {
       final player = AudioPlayer();
       await player.setReleaseMode(ReleaseMode.release);
       await player.setVolume(sfxVolume);
+
+      // Dispose once playback actually finishes, or after a flat timeout as
+      // a safety net if the completion event never fires — whichever comes
+      // first. Deliberately not `Future.timeout()`: audioplayers' actual
+      // runtime stream type there didn't line up with its declared
+      // `Stream<void>` signature, so an `onTimeout` closure returning null
+      // threw a TypeError *before* play() ever ran, silently killing every
+      // one-shot sound. Two independent futures racing via whichever
+      // resolves first sidesteps that entirely.
+      var disposed = false;
+      void disposeOnce() {
+        if (disposed) return;
+        disposed = true;
+        player.dispose();
+      }
+
+      unawaited(player.onPlayerComplete.first.then((_) => disposeOnce()));
       unawaited(
-        player.onPlayerComplete.first
-            .timeout(const Duration(seconds: 8), onTimeout: () {})
-            .whenComplete(player.dispose),
+        Future.delayed(const Duration(seconds: 8), disposeOnce),
       );
-      await player.play(AssetSource(asset));
+
+      await player.play(AssetSource(asset), ctx: _kSharedAudioContext);
     } catch (e, st) {
       // Same reasoning as playScenarioMusic(): never let a missing sound
       // asset or a busy audio session interrupt the scenario itself.
@@ -168,10 +312,14 @@ class HatiAudioService {
     }
   }
 
-  /// A short blip played once per line of Hati's dialogue as it types out
-  /// — never per character (see the throttle above), and never for NPC/
-  /// narrator lines, which reuse the same typewriter widget but pass
-  /// `playTalkSound: false`.
+  /// A short blip played once per section of Hati's dialogue — the whole
+  /// message, however many sentence-bubbles it paginates into as the
+  /// player taps through — not once per bubble/sentence (see
+  /// _AnimatedHatiSpeechBubbleState._typeCurrentSentence's `_sentenceIndex
+  /// == 0` gate in shared_widgets.dart) and never for NPC/narrator lines,
+  /// which reuse the same typewriter widget but pass `playTalkSound:
+  /// false`. The throttle below is just a safety net against two sections
+  /// starting back-to-back in the same frame.
   Future<void> playHatiTalk() async {
     final now = DateTime.now();
     final last = _lastHatiTalkAt;
@@ -200,7 +348,7 @@ class HatiAudioService {
         await _musicPlayer.stop();
       } catch (_) {}
     } else if (_musicWanted) {
-      await playScenarioMusic();
+      await playScenarioMusic(track: _currentTrack ?? HatiMusicTrack.scenario);
     }
   }
 
@@ -222,7 +370,7 @@ class HatiAudioService {
     } catch (_) {}
     if (!_ducked) {
       try {
-        await _musicPlayer.setVolume(musicVolume);
+        await _setMusicPlayerVolume(musicVolume);
       } catch (_) {}
     }
   }

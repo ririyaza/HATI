@@ -138,6 +138,7 @@ class _Scene4DebriefState extends State<Scene4Debrief> {
               currentStep: 4,
               totalSteps: 7,
               sceneLabel: 'Post-Interaction Reflection',
+              showUndo: true,
             ),
             const SceneSpeedToggleRow(),
             Expanded(
@@ -148,6 +149,12 @@ class _Scene4DebriefState extends State<Scene4Debrief> {
                 onSequenceComplete: () {
                   if (mounted && !_dialogueComplete) {
                     setState(() => _dialogueComplete = true);
+                  }
+                },
+                showIdleReminder: !_dialogueComplete,
+                onUndoRestored: () {
+                  if (mounted && _dialogueComplete) {
+                    setState(() => _dialogueComplete = false);
                   }
                 },
                 body: body,

@@ -778,11 +778,17 @@ class SceneTopHeader extends StatelessWidget {
   final int currentStep;
   final int totalSteps;
 
+  /// When true, shows a [HatiUndoButton] in the header's top-right corner —
+  /// an always-available "go back to the previous dialogue" affordance.
+  /// False (the default) keeps every existing caller's look unchanged.
+  final bool showUndo;
+
   const SceneTopHeader({
     super.key,
     required this.sceneLabel,
     required this.currentStep,
     required this.totalSteps,
+    this.showUndo = false,
   });
 
   @override
@@ -799,12 +805,18 @@ class SceneTopHeader extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            IconButton(
-              onPressed: () => Navigator.maybePop(context),
-              icon: const Icon(Icons.arrow_back, color: Colors.white),
-              visualDensity: VisualDensity.compact,
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                IconButton(
+                  onPressed: () => Navigator.maybePop(context),
+                  icon: const Icon(Icons.arrow_back, color: Colors.white),
+                  visualDensity: VisualDensity.compact,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+                if (showUndo) const HatiUndoButton(color: Colors.white),
+              ],
             ),
             const SizedBox(height: 8),
             Padding(
@@ -1361,6 +1373,22 @@ class HatiDialogueTapController {
 
   static void removeListener(VoidCallback listener) =>
       _ticks.removeListener(listener);
+
+  // ── Undo channel ──────────────────────────────────────────────────────
+  // Mirrors the tap channel above but signals "go back" instead of
+  // "advance" — every mounted dialogue bubble also listens for these and
+  // steps itself backward (replaying the previous sentence, or undoing its
+  // own dismiss) rather than forward. See
+  // _AnimatedHatiSpeechBubbleState._handleUndo and [HatiUndoButton].
+  static final ValueNotifier<int> _undoTicks = ValueNotifier<int>(0);
+
+  static void undo() => _undoTicks.value++;
+
+  static void addUndoListener(VoidCallback listener) =>
+      _undoTicks.addListener(listener);
+
+  static void removeUndoListener(VoidCallback listener) =>
+      _undoTicks.removeListener(listener);
 }
 
 /// Wraps a scene's body so a tap anywhere on screen advances whichever Hati
@@ -1573,6 +1601,19 @@ class _AnimatedHatiSpeechBubble extends StatefulWidget {
   /// own lines get the voice cue.
   final bool playTalkSound;
 
+  /// Fired when [HatiDialogueTapController.undo] brought a dissolved/
+  /// dismissed bubble back on screen — the caller should undo whatever it
+  /// did in response to the original dismissal (e.g. flip its own
+  /// "dialogue complete" flag back to false so input controls hide again).
+  final VoidCallback? onUndoRestored;
+
+  /// Fired when undo has nothing left to rewind to within this bubble
+  /// (already showing its first sentence, not dissolved). Most callers
+  /// leave this null — there being nothing earlier in the current message
+  /// is the correct end of undo for them. Scene 3's beat-driven dialogue
+  /// uses it to step back to the previous beat.
+  final VoidCallback? onUndoExhausted;
+
   const _AnimatedHatiSpeechBubble({
     super.key,
     required this.message,
@@ -1588,6 +1629,8 @@ class _AnimatedHatiSpeechBubble extends StatefulWidget {
     this.textAlign = TextAlign.center,
     this.showAdvanceCue = false,
     this.playTalkSound = true,
+    this.onUndoRestored,
+    this.onUndoExhausted,
   });
 
   @override
@@ -1670,6 +1713,7 @@ class _AnimatedHatiSpeechBubbleState extends State<_AnimatedHatiSpeechBubble>
     });
 
     HatiDialogueTapController.addListener(_handleTap);
+    HatiDialogueTapController.addUndoListener(_handleUndo);
   }
 
   void _startTypewriter() {
@@ -1704,7 +1748,11 @@ class _AnimatedHatiSpeechBubbleState extends State<_AnimatedHatiSpeechBubble>
       _onSentenceFullyShown();
       return;
     }
-    if (widget.playTalkSound) {
+    // Once per section (this whole message, however many sentence-bubbles
+    // it paginates into), not once per bubble — only the first sentence of
+    // this widget instance triggers it, so a long message tapped through
+    // several bubbles plays the cue once instead of once per tap.
+    if (widget.playTalkSound && _sentenceIndex == 0) {
       HatiAudioService.instance.playHatiTalk();
     }
     _scheduleNextChar(sentence);
@@ -1787,9 +1835,54 @@ class _AnimatedHatiSpeechBubbleState extends State<_AnimatedHatiSpeechBubble>
     _advance();
   }
 
+  /// Handles a [HatiDialogueTapController] undo tick: composable so
+  /// repeated presses step back further each time — undoing a dismiss
+  /// brings back and replays the last sentence; stepping back mid-message
+  /// replays the previous sentence; already typing the current one just
+  /// restarts it; with nothing earlier in this message, hands off to
+  /// [_AnimatedHatiSpeechBubble.onUndoExhausted]. Always replays from the
+  /// start of typing rather than instantly restoring — simpler, and "undo"
+  /// reads as "go back and see it again," not a state teleport.
+  void _handleUndo() {
+    if (!mounted || _sentences.isEmpty) return;
+    _typewriterTimer?.cancel();
+    _autoAdvanceTimer?.cancel();
+
+    if (_dissolved || _dissolving) {
+      _dissolveController.value = 0;
+      setState(() {
+        _dissolved = false;
+        _dissolving = false;
+        _visibleChars = 0;
+      });
+      _typeCurrentSentence();
+      widget.onUndoRestored?.call();
+      return;
+    }
+
+    final sentence = _sentences[_sentenceIndex.clamp(0, _sentences.length - 1)];
+    if (_visibleChars < sentence.length) {
+      setState(() => _visibleChars = 0);
+      _typeCurrentSentence();
+      return;
+    }
+
+    if (_sentenceIndex > 0) {
+      setState(() {
+        _sentenceIndex--;
+        _visibleChars = 0;
+      });
+      _typeCurrentSentence();
+      return;
+    }
+
+    widget.onUndoExhausted?.call();
+  }
+
   @override
   void dispose() {
     HatiDialogueTapController.removeListener(_handleTap);
+    HatiDialogueTapController.removeUndoListener(_handleUndo);
     _typewriterTimer?.cancel();
     _autoAdvanceTimer?.cancel();
     _entranceController.dispose();
@@ -1878,6 +1971,17 @@ class _AnimatedHatiSpeechBubbleState extends State<_AnimatedHatiSpeechBubble>
                         bottom: -12,
                         child: _AdvanceCueChevron(),
                       ),
+                    const Positioned(
+                      // This Positioned sits inside the bubble's own text
+                      // padding (_ScaledBubbleText._padding: 24 left, 22
+                      // top), so a small offset like -8 lands the button
+                      // well inside the bubble instead of at its corner —
+                      // needs to cancel most of that padding to actually
+                      // reach the visual edge.
+                      left: -22,
+                      top: -20,
+                      child: HatiBubbleUndoButton(),
+                    ),
                   ],
                 ),
               ),
@@ -1939,6 +2043,39 @@ class _HatiSpeechBubblePainter extends CustomPainter {
       oldDelegate.tailTargetX != tailTargetX;
 }
 
+/// Small always-visible "go back" icon meant to pin to a dialogue bubble's
+/// own top-left corner — deliberately on the bubble itself, not just the
+/// scene header (see [HatiUndoButton]), so it's impossible to miss
+/// regardless of what's happening elsewhere on screen. Tapping it broadcasts
+/// the same [HatiDialogueTapController.undo] signal as the header button.
+/// Public (unlike most of this bubble's internals) so Scene 3's own
+/// [_TypedCaption] — a separate small typewriter that doesn't go through
+/// [_AnimatedHatiSpeechBubble] — can pin the same icon to itself.
+class HatiBubbleUndoButton extends StatelessWidget {
+  const HatiBubbleUndoButton({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: 'Undo — go back to the previous dialogue',
+      child: Material(
+        color: Colors.white,
+        shape: const CircleBorder(),
+        elevation: 2,
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: HatiDialogueTapController.undo,
+          child: const Padding(
+            padding: EdgeInsets.all(6),
+            child: Icon(Icons.undo_rounded, size: 16, color: Color(0xFF4A8FD4)),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// Small pulsing "tap to continue" chevron shown at a fully-typed bubble's
 /// bottom-right — see [_AnimatedHatiSpeechBubble.showAdvanceCue]. Loops a
 /// gentle bob + fade for as long as it's mounted; the parent only mounts it
@@ -1980,6 +2117,141 @@ class _AdvanceCueChevronState extends State<_AdvanceCueChevron>
           size: 20,
           color: Color(0xFF4A8FD4),
         ),
+      ),
+    );
+  }
+}
+
+/// Reusable "Tap anywhere to continue" reminder for any scene with Hati
+/// dialogue. Invisible until the player has been idle for [idleDelay]
+/// (default 8s) while this widget is mounted, then visible for
+/// [visibleDuration] (default 4s), then hides and re-arms — a recurring
+/// nudge for a player who's stalled, not a constant fixture. Resets on any
+/// real screen tap via the same [HatiDialogueTapController] every scene
+/// already feeds through [HatiTapToAdvance], so no new tap-broadcast
+/// plumbing is needed for this. Callers mount it conditionally (e.g. `if
+/// (!_dialogueComplete) const HatiIdleTapReminder()`) so it's simply out of
+/// the tree — and can't nag — once there's no dialogue left to tap through.
+class HatiIdleTapReminder extends StatefulWidget {
+  final Duration idleDelay;
+  final Duration visibleDuration;
+
+  const HatiIdleTapReminder({
+    super.key,
+    this.idleDelay = const Duration(seconds: 8),
+    this.visibleDuration = const Duration(seconds: 4),
+  });
+
+  @override
+  State<HatiIdleTapReminder> createState() => _HatiIdleTapReminderState();
+}
+
+class _HatiIdleTapReminderState extends State<HatiIdleTapReminder>
+    with SingleTickerProviderStateMixin {
+  bool _visible = false;
+  Timer? _idleTimer;
+  Timer? _visibleTimer;
+  late final AnimationController _pulse = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 900),
+  )..repeat(reverse: true);
+
+  @override
+  void initState() {
+    super.initState();
+    HatiDialogueTapController.addListener(_onTap);
+    _armIdleTimer();
+  }
+
+  void _armIdleTimer() {
+    _idleTimer?.cancel();
+    _idleTimer = Timer(widget.idleDelay, _show);
+  }
+
+  void _show() {
+    if (!mounted) return;
+    setState(() => _visible = true);
+    _visibleTimer?.cancel();
+    _visibleTimer = Timer(widget.visibleDuration, () {
+      if (!mounted) return;
+      setState(() => _visible = false);
+      _armIdleTimer();
+    });
+  }
+
+  void _onTap() {
+    if (!mounted) return;
+    if (_visible) setState(() => _visible = false);
+    _visibleTimer?.cancel();
+    _armIdleTimer();
+  }
+
+  @override
+  void dispose() {
+    HatiDialogueTapController.removeListener(_onTap);
+    _idleTimer?.cancel();
+    _visibleTimer?.cancel();
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: AnimatedOpacity(
+        opacity: _visible ? 1 : 0,
+        duration: const Duration(milliseconds: 250),
+        child: AnimatedBuilder(
+          animation: _pulse,
+          builder: (context, child) =>
+              Transform.scale(scale: 1 + 0.04 * _pulse.value, child: child),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.55),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: const Text(
+              'Tap anywhere to continue',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Small reusable "go back" affordance for any scene with Hati dialogue —
+/// always enabled, always tappable. Pressing it broadcasts
+/// [HatiDialogueTapController.undo], which whichever dialogue bubble is
+/// currently mounted reacts to (replaying its previous sentence, or undoing
+/// its own dismiss); if there's genuinely nothing left to rewind within the
+/// current turn, it's a harmless no-op (see `onUndoExhausted` on
+/// [HatiSpeakingBlock]/[HatiCoachSpeech]) — this button deliberately has no
+/// enabled/disabled state of its own, since tracking "is there something to
+/// undo" per scene isn't worth the added state for what's meant to be a
+/// simple, always-present reassurance that going back is possible.
+class HatiUndoButton extends StatelessWidget {
+  final Color color;
+
+  const HatiUndoButton({super.key, this.color = Colors.white});
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: 'Undo — go back to the previous dialogue',
+      child: IconButton(
+        onPressed: HatiDialogueTapController.undo,
+        icon: Icon(Icons.undo_rounded, color: color),
+        visualDensity: VisualDensity.compact,
+        padding: EdgeInsets.zero,
+        constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
       ),
     );
   }
@@ -2125,6 +2397,12 @@ class HatiSpeakingBlock extends StatelessWidget {
   /// Forwarded to [_AnimatedHatiSpeechBubble.showAdvanceCue].
   final bool showAdvanceCue;
 
+  /// Forwarded to [_AnimatedHatiSpeechBubble.onUndoRestored].
+  final VoidCallback? onUndoRestored;
+
+  /// Forwarded to [_AnimatedHatiSpeechBubble.onUndoExhausted].
+  final VoidCallback? onUndoExhausted;
+
   const HatiSpeakingBlock({
     super.key,
     this.introMessage = '',
@@ -2140,6 +2418,8 @@ class HatiSpeakingBlock extends StatelessWidget {
     this.alignment = CrossAxisAlignment.center,
     this.textAlign = TextAlign.center,
     this.showAdvanceCue = false,
+    this.onUndoRestored,
+    this.onUndoExhausted,
   });
 
   @override
@@ -2177,6 +2457,8 @@ class HatiSpeakingBlock extends StatelessWidget {
         tailTargetX: tailTargetX,
         textAlign: textAlign,
         showAdvanceCue: showAdvanceCue,
+        onUndoRestored: onUndoRestored,
+        onUndoExhausted: onUndoExhausted,
       );
     } else if (dissolveBubble) {
       bubble = _AnimatedHatiSpeechBubble(
@@ -2195,6 +2477,8 @@ class HatiSpeakingBlock extends StatelessWidget {
         tailTargetX: tailTargetX,
         textAlign: textAlign,
         showAdvanceCue: showAdvanceCue,
+        onUndoRestored: onUndoRestored,
+        onUndoExhausted: onUndoExhausted,
       );
     } else {
       bubble = HatiSpeechSequence(
@@ -2245,6 +2529,12 @@ class HatiCoachSpeech extends StatelessWidget {
   /// passes false, since this same widget doubles as their speech bubble.
   final bool playTalkSound;
 
+  /// Forwarded to [_AnimatedHatiSpeechBubble.onUndoRestored].
+  final VoidCallback? onUndoRestored;
+
+  /// Forwarded to [_AnimatedHatiSpeechBubble.onUndoExhausted].
+  final VoidCallback? onUndoExhausted;
+
   const HatiCoachSpeech({
     super.key,
     this.introMessage = '',
@@ -2260,6 +2550,8 @@ class HatiCoachSpeech extends StatelessWidget {
     this.textAlign = TextAlign.center,
     this.showAdvanceCue = false,
     this.playTalkSound = true,
+    this.onUndoRestored,
+    this.onUndoExhausted,
   });
 
   @override
@@ -2285,6 +2577,8 @@ class HatiCoachSpeech extends StatelessWidget {
         textAlign: textAlign,
         showAdvanceCue: showAdvanceCue,
         playTalkSound: playTalkSound,
+        onUndoRestored: onUndoRestored,
+        onUndoExhausted: onUndoExhausted,
       );
     }
     if (dissolveBubble) {
@@ -2305,6 +2599,8 @@ class HatiCoachSpeech extends StatelessWidget {
         textAlign: textAlign,
         showAdvanceCue: showAdvanceCue,
         playTalkSound: playTalkSound,
+        onUndoRestored: onUndoRestored,
+        onUndoExhausted: onUndoExhausted,
       );
     }
     return HatiSpeechSequence(
@@ -2329,6 +2625,12 @@ class HatiCoachZone extends StatelessWidget {
   final double frogWidthScale;
   final HatiMood mood;
 
+  /// Forwarded to [HatiCoachSpeech.onUndoRestored].
+  final VoidCallback? onUndoRestored;
+
+  /// Forwarded to [HatiCoachSpeech.onUndoExhausted].
+  final VoidCallback? onUndoExhausted;
+
   const HatiCoachZone({
     super.key,
     this.introMessage = '',
@@ -2341,6 +2643,8 @@ class HatiCoachZone extends StatelessWidget {
     this.showBubble = true,
     this.frogWidthScale = 1,
     this.mood = HatiMood.idle,
+    this.onUndoRestored,
+    this.onUndoExhausted,
   });
 
   @override
@@ -2368,6 +2672,13 @@ class HatiCoachZone extends StatelessWidget {
                   onBubbleDismissed: onBubbleDismissed,
                   dissolveBubble: dissolveBubble,
                   holdAfterTyping: holdAfterTyping,
+                  onUndoRestored: onUndoRestored,
+                  onUndoExhausted: onUndoExhausted,
+                  // Every HatiCoachZone caller is Hati talking, tap (or
+                  // wait) to continue — always show the cue rather than
+                  // making each of the 4+ scenes that use this opt in
+                  // individually, which is exactly how it went missing.
+                  showAdvanceCue: true,
                 ),
               ),
             ),
@@ -2439,6 +2750,19 @@ class HatiSceneShell extends StatelessWidget {
   final Color? contentBackgroundColor;
   final HatiMood mood;
 
+  /// Forwarded to [HatiCoachZone.onUndoRestored].
+  final VoidCallback? onUndoRestored;
+
+  /// Forwarded to [HatiCoachZone.onUndoExhausted].
+  final VoidCallback? onUndoExhausted;
+
+  /// Shows a [HatiIdleTapReminder] near the bottom of the coach area once
+  /// the player's been idle a while. Callers pass their own "still waiting
+  /// on the player to tap through Hati's dialogue" flag (e.g.
+  /// `!_dialogueComplete`) so it's automatically out of the tree once
+  /// there's nothing left to tap through.
+  final bool showIdleReminder;
+
   const HatiSceneShell({
     super.key,
     this.showCoach = true,
@@ -2453,6 +2777,9 @@ class HatiSceneShell extends StatelessWidget {
     this.bottomBar,
     this.contentBackgroundColor,
     this.mood = HatiMood.idle,
+    this.onUndoRestored,
+    this.onUndoExhausted,
+    this.showIdleReminder = false,
   });
 
   @override
@@ -2499,7 +2826,20 @@ class HatiSceneShell extends StatelessWidget {
                             showBubble: showBubble,
                             frogWidthScale: frogWidthScale,
                             mood: mood,
+                            onUndoRestored: onUndoRestored,
+                            onUndoExhausted: onUndoExhausted,
                           ),
+                        ),
+                      ),
+                    if (showIdleReminder)
+                      Positioned(
+                        bottom: 8,
+                        left: 0,
+                        right: 0,
+                        height: visibleHeight,
+                        child: const Align(
+                          alignment: Alignment.bottomCenter,
+                          child: HatiIdleTapReminder(),
                         ),
                       ),
                     // Header + choices combined into one draggable sheet —

@@ -359,7 +359,6 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
   bool _dialogueComplete = false;
   Timer? _advanceGapTimer;
   bool _transitionLocked = false;
-  int _totalBeatsShown = 0;
 
   // Who's on stage in the NPC slot — survives across turns (Section 4.3):
   // the character stays put until a beat actually names someone new.
@@ -515,7 +514,6 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
       if (!mounted) return;
       setState(() {
         _beatIndex++;
-        _totalBeatsShown++;
         _syncOnStageForBeat(
           _beatIndex < _beats.length ? _beats[_beatIndex] : null,
         );
@@ -523,6 +521,28 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
         _transitionLocked = false;
       });
     });
+  }
+
+  /// Undo, once the current beat's own bubble has nothing left to rewind
+  /// within itself (see `onUndoExhausted` at both call sites below) — steps
+  /// back to the previous beat, replaying it. Going forward only ever needs
+  /// the *new* current beat to update on-stage state; going backward needs
+  /// the on-stage character to match what it would have been at that
+  /// earlier point, so it's re-derived from scratch rather than tracked as
+  /// an undo stack (turn beat lists are short, so this is cheap).
+  void _undoBeat() {
+    if (!mounted || _beatIndex == 0) return;
+    setState(() {
+      _beatIndex--;
+      _dialogueComplete = false;
+      _resyncOnStageThroughBeat(_beatIndex);
+    });
+  }
+
+  void _resyncOnStageThroughBeat(int index) {
+    for (var i = 0; i <= index && i < _beats.length; i++) {
+      _syncOnStageForBeat(_beats[i]);
+    }
   }
 
   @override
@@ -579,6 +599,7 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
                 sceneLabel: 'The Approach',
                 currentStep: 3,
                 totalSteps: 7,
+                showUndo: true,
               ),
               const SceneSpeedToggleRow(),
               Expanded(
@@ -666,6 +687,14 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
                                     holdAfterTyping: const Duration(seconds: 3),
                                     showAdvanceCue: true,
                                     onSequenceComplete: _onBeatDismissed,
+                                    onUndoExhausted: _undoBeat,
+                                    onUndoRestored: () {
+                                      if (mounted && _dialogueComplete) {
+                                        setState(
+                                          () => _dialogueComplete = false,
+                                        );
+                                      }
+                                    },
                                   )
                                 : HatiFrogAvatar(
                                     size: hatiH,
@@ -695,6 +724,7 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
                                   key: ValueKey('${_turnKey}_$_beatIndex'),
                                   text: currentBeat.text,
                                   onDismissed: _onBeatDismissed,
+                                  onUndoExhausted: _undoBeat,
                                 ),
                               ),
                             ),
@@ -796,14 +826,12 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
                         // Layer 7: HUD. Progress now lives in the header
                         // band (SceneTopHeader) like every other scene —
                         // no floating pill duplicating it over the art.
-                        if (!pickerVisible &&
-                            _totalBeatsShown < 2 &&
-                            currentBeat != null)
+                        if (!pickerVisible && !_dialogueComplete)
                           const Positioned(
                             bottom: 8,
                             left: 0,
                             right: 0,
-                            child: Center(child: _TapAnywhereHint()),
+                            child: Center(child: HatiIdleTapReminder()),
                           ),
                         if (pickerVisible)
                           Positioned(
@@ -868,6 +896,12 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
               if (beat.kind == _BeatKind.npc) _lastNpcLineForReplay = beat.text;
             },
             onSequenceComplete: _onBeatDismissed,
+            onUndoExhausted: _undoBeat,
+            onUndoRestored: () {
+              if (mounted && _dialogueComplete) {
+                setState(() => _dialogueComplete = false);
+              }
+            },
           ),
         ),
       ),
@@ -1151,25 +1185,6 @@ class _StageScrim extends StatelessWidget {
   }
 }
 
-class _TapAnywhereHint extends StatelessWidget {
-  const _TapAnywhereHint();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.35),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: const Text(
-        'Tap anywhere to continue',
-        style: TextStyle(color: Colors.white, fontSize: 12),
-      ),
-    );
-  }
-}
-
 class _TypingIndicator extends StatefulWidget {
   const _TypingIndicator();
 
@@ -1423,7 +1438,18 @@ class _TypedCaption extends StatefulWidget {
   final String text;
   final VoidCallback? onDismissed;
 
-  const _TypedCaption({super.key, required this.text, this.onDismissed});
+  /// Fired when undo is pressed while this caption is fully typed and not
+  /// mid-dismiss — a plain caption is one block of text with no earlier
+  /// sentence of its own to fall back to, so undo always hands straight off
+  /// to the beat director (see Scene3's `_undoBeat`) in that case.
+  final VoidCallback? onUndoExhausted;
+
+  const _TypedCaption({
+    super.key,
+    required this.text,
+    this.onDismissed,
+    this.onUndoExhausted,
+  });
 
   @override
   State<_TypedCaption> createState() => _TypedCaptionState();
@@ -1438,6 +1464,7 @@ class _TypedCaptionState extends State<_TypedCaption> {
   void initState() {
     super.initState();
     HatiDialogueTapController.addListener(_handleTap);
+    HatiDialogueTapController.addUndoListener(_handleUndo);
     _scheduleNext();
   }
 
@@ -1464,9 +1491,24 @@ class _TypedCaptionState extends State<_TypedCaption> {
     });
   }
 
+  void _handleUndo() {
+    if (!mounted) return;
+    if (_dismissing) {
+      // Still within the fade-out window — cancel it and replay.
+      setState(() {
+        _dismissing = false;
+        _visibleChars = 0;
+      });
+      _scheduleNext();
+      return;
+    }
+    widget.onUndoExhausted?.call();
+  }
+
   @override
   void dispose() {
     HatiDialogueTapController.removeListener(_handleTap);
+    HatiDialogueTapController.removeUndoListener(_handleUndo);
     _timer?.cancel();
     super.dispose();
   }
@@ -1491,22 +1533,32 @@ class _TypedCaptionState extends State<_TypedCaption> {
             child: child,
           ),
         ),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.55),
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: Text(
-            displayed,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Colors.white,
-              fontStyle: FontStyle.italic,
-              fontSize: 14,
-              height: 1.4,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.55),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Text(
+                displayed,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontStyle: FontStyle.italic,
+                  fontSize: 14,
+                  height: 1.4,
+                ),
+              ),
             ),
-          ),
+            const Positioned(
+              left: -14,
+              top: -14,
+              child: HatiBubbleUndoButton(),
+            ),
+          ],
         ),
       ),
     );
