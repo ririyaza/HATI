@@ -19,6 +19,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../shared/audio/hati_audio_service.dart';
 import '../../dashboard/widgets/draggable_help_button.dart';
 import 'app_theme.dart';
 import 'scenario_models.dart';
@@ -40,6 +41,23 @@ class ScenarioShell extends StatefulWidget {
 
 class _ScenarioShellState extends State<ScenarioShell> {
   bool _resumeDialogHandled = false;
+  SceneId? _lastScene;
+
+  /// Plays a short transition cue on every scene change, and the louder
+  /// "scenario complete" cue specifically when the dashboard/completion
+  /// scene is reached — both keyed off [SceneId] changes rather than the
+  /// raw backend step, so this fires exactly once per scene (not once per
+  /// backend sub-step within the same scene).
+  void _maybeAnnounceSceneChange(SceneId scene) {
+    final previous = _lastScene;
+    _lastScene = scene;
+    if (previous == null || previous == scene) return;
+    if (scene == SceneId.dashboard) {
+      HatiAudioService.instance.playScenarioComplete();
+    } else {
+      HatiAudioService.instance.playSceneTransition();
+    }
+  }
 
   Future<void> _maybeShowResumeDialog(ScenarioProvider provider) async {
     if (!provider.pendingResume || _resumeDialogHandled) return;
@@ -76,6 +94,7 @@ class _ScenarioShellState extends State<ScenarioShell> {
       if (!mounted) return;
       _maybeShowResumeDialog(provider);
       _maybeShowError(provider);
+      _maybeAnnounceSceneChange(provider.currentScene);
     });
 
     final scene = provider.currentScene;
@@ -279,6 +298,7 @@ class _ScenarioDashboardScene extends StatelessWidget {
   void _maybeShowBadgeUnlock(BuildContext context, ScenarioProvider provider) {
     final newlyUnlocked = provider.consumeNewlyUnlockedBadges();
     if (newlyUnlocked.isEmpty || !context.mounted) return;
+    HatiAudioService.instance.playBadgeCompletion();
     showDialog(
       context: context,
       builder: (context) => _BadgeUnlockDialog(badgeIds: newlyUnlocked),

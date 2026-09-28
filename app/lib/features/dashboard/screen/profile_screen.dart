@@ -7,6 +7,7 @@ import '../../notifications/daily_login_reminder_service.dart';
 import '../../postAssessment/data/post_assessment_repository.dart';
 import '../../postAssessment/data/reassessment_notification_service.dart';
 import '../../postAssessment/screen/post_assessment_intro_screen.dart';
+import '../../../shared/audio/audio_settings_sheet.dart';
 import '../data/dashboard_user_data.dart';
 import '../widgets/help_center_sheet.dart';
 import '../widgets/profile_edit_sheets.dart';
@@ -367,7 +368,7 @@ class _ProfileContent extends StatelessWidget {
                     _SettingsTile(
                       icon: Icons.volume_up_outlined,
                       label: 'Sound & Music',
-                      onTap: () {},
+                      onTap: () => showSoundSettingsSheet(context),
                     ),
                     _SettingsTile(
                       icon: Icons.lock_outline,

@@ -29,6 +29,7 @@ import 'package:rive/rive.dart'
         RiveLoading,
         RiveWidget,
         RiveWidgetBuilder;
+import '../../../shared/audio/hati_audio_service.dart';
 import 'app_theme.dart';
 
 // ── Hati Dialogue Bubble ─────────────────────────────────────────────────────
@@ -977,6 +978,10 @@ class _TextResponseCardState extends State<TextResponseCard> {
     if (await _record.hasPermission()) {
       final dir = await getTemporaryDirectory();
       final path = '${dir.path}/text_response_record.wav';
+      // Ducked, not stopped — the mic still shouldn't pick up any bg music
+      // bleed, but a hard stop/restart would produce an audible gap in a
+      // track that's supposed to loop seamlessly.
+      await HatiAudioService.instance.duckMusic();
       await _record.start(
         const RecordConfig(
           encoder: AudioEncoder.wav,
@@ -1007,6 +1012,7 @@ class _TextResponseCardState extends State<TextResponseCard> {
 
   Future<void> _stopRecording() async {
     final path = await _record.stop();
+    await HatiAudioService.instance.restoreMusic();
     if (!mounted) return;
     setState(() => _isRecording = false);
     if (path == null || widget.onSubmitAudio == null) return;
@@ -1134,6 +1140,9 @@ class HatiSpeechSequence extends StatefulWidget {
   final bool autoAdvance;
   final Duration holdAfterTyping;
 
+  /// Forwarded to [_AnimatedHatiSpeechBubble.playTalkSound].
+  final bool playTalkSound;
+
   const HatiSpeechSequence({
     super.key,
     required this.introMessage,
@@ -1141,6 +1150,7 @@ class HatiSpeechSequence extends StatefulWidget {
     this.onSequenceComplete,
     this.autoAdvance = false,
     this.holdAfterTyping = const Duration(seconds: 2),
+    this.playTalkSound = true,
   });
 
   @override
@@ -1164,6 +1174,7 @@ class _HatiSpeechSequenceState extends State<HatiSpeechSequence> {
         onTypingComplete: widget.onSequenceComplete,
         autoAdvance: widget.autoAdvance,
         holdAfterTyping: widget.holdAfterTyping,
+        playTalkSound: widget.playTalkSound,
       );
     }
 
@@ -1176,6 +1187,7 @@ class _HatiSpeechSequenceState extends State<HatiSpeechSequence> {
       onDismissed: () => setState(() => _introFinished = true),
       autoAdvance: widget.autoAdvance,
       holdAfterTyping: widget.holdAfterTyping,
+      playTalkSound: widget.playTalkSound,
     );
   }
 }
@@ -1272,12 +1284,17 @@ class _ScaledBubbleText extends StatelessWidget {
   final double maxWidth;
   final double maxHeight;
 
+  /// Defaults to the bubble's original centered look; Scene 3's NPC bubble
+  /// passes [TextAlign.right] since it sits right-aligned to its speaker.
+  final TextAlign textAlign;
+
   const _ScaledBubbleText({
     super.key,
     required this.text,
     required this.layoutReference,
     required this.maxWidth,
     required this.maxHeight,
+    this.textAlign = TextAlign.center,
   });
 
   @override
@@ -1291,7 +1308,7 @@ class _ScaledBubbleText extends StatelessWidget {
       width: innerMaxW,
       child: Text(
         text,
-        textAlign: TextAlign.center,
+        textAlign: textAlign,
         style: TextStyle(
           color: Colors.black,
           fontSize: fontSize,
@@ -1385,7 +1402,10 @@ class PopIn extends StatelessWidget {
       curve: Curves.easeOutBack,
       builder: (context, value, child) => Opacity(
         opacity: value.clamp(0, 1),
-        child: Transform.scale(scale: 0.9 + 0.1 * value.clamp(0, 1), child: child),
+        child: Transform.scale(
+          scale: 0.9 + 0.1 * value.clamp(0, 1),
+          child: child,
+        ),
       ),
       child: child,
     );
@@ -1534,6 +1554,25 @@ class _AnimatedHatiSpeechBubble extends StatefulWidget {
   final AlignmentGeometry bubbleAlignment;
   final double? tailTargetX;
 
+  /// Forwarded to [_ScaledBubbleText]; defaults to the original centered
+  /// look everywhere except Scene 3's right-aligned NPC bubble.
+  final TextAlign textAlign;
+
+  /// When true, once the bubble is fully typed (and not mid-dissolve), a
+  /// small pulsing chevron appears at its bottom-right as a "tap to
+  /// continue" cue. Off by default — opt-in for Scene 3's beat-driven
+  /// dialogue, which needs the cue since it (unlike Hati's original
+  /// scenes) plays one caption at a time with no other on-screen hint that
+  /// tapping advances.
+  final bool showAdvanceCue;
+
+  /// Plays [HatiAudioService.playHatiTalk] once per sentence as it starts
+  /// typing. Defaults to true (every caller of this widget used to be
+  /// Hati); Scene 3's NPC/narrator bubbles — which reuse this same
+  /// typewriter machinery via [HatiCoachSpeech] — pass false so only Hati's
+  /// own lines get the voice cue.
+  final bool playTalkSound;
+
   const _AnimatedHatiSpeechBubble({
     super.key,
     required this.message,
@@ -1546,6 +1585,9 @@ class _AnimatedHatiSpeechBubble extends StatefulWidget {
     this.autoAdvance = false,
     this.bubbleAlignment = Alignment.bottomCenter,
     this.tailTargetX,
+    this.textAlign = TextAlign.center,
+    this.showAdvanceCue = false,
+    this.playTalkSound = true,
   });
 
   @override
@@ -1661,6 +1703,9 @@ class _AnimatedHatiSpeechBubbleState extends State<_AnimatedHatiSpeechBubble>
     if (sentence.isEmpty) {
       _onSentenceFullyShown();
       return;
+    }
+    if (widget.playTalkSound) {
+      HatiAudioService.instance.playHatiTalk();
     }
     _scheduleNextChar(sentence);
   }
@@ -1806,20 +1851,34 @@ class _AnimatedHatiSpeechBubbleState extends State<_AnimatedHatiSpeechBubble>
             alignment: Alignment.topCenter,
             clipBehavior: Clip.none,
             child: CustomPaint(
-              painter: _HatiSpeechBubblePainter(tailTargetX: widget.tailTargetX),
+              painter: _HatiSpeechBubblePainter(
+                tailTargetX: widget.tailTargetX,
+              ),
               child: Padding(
                 padding: _ScaledBubbleText._padding,
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 220),
-                  switchInCurve: Curves.easeOut,
-                  switchOutCurve: Curves.easeIn,
-                  child: _ScaledBubbleText(
-                    key: ValueKey(_sentenceIndex),
-                    text: isTyping ? '$displayed|' : displayed,
-                    layoutReference: _layoutReference,
-                    maxWidth: widget.maxWidth,
-                    maxHeight: widget.maxHeight,
-                  ),
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 220),
+                      switchInCurve: Curves.easeOut,
+                      switchOutCurve: Curves.easeIn,
+                      child: _ScaledBubbleText(
+                        key: ValueKey(_sentenceIndex),
+                        text: isTyping ? '$displayed|' : displayed,
+                        layoutReference: _layoutReference,
+                        maxWidth: widget.maxWidth,
+                        maxHeight: widget.maxHeight,
+                        textAlign: widget.textAlign,
+                      ),
+                    ),
+                    if (widget.showAdvanceCue && !isTyping && !_dissolving)
+                      const Positioned(
+                        right: -6,
+                        bottom: -12,
+                        child: _AdvanceCueChevron(),
+                      ),
+                  ],
                 ),
               ),
             ),
@@ -1878,6 +1937,52 @@ class _HatiSpeechBubblePainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _HatiSpeechBubblePainter oldDelegate) =>
       oldDelegate.tailTargetX != tailTargetX;
+}
+
+/// Small pulsing "tap to continue" chevron shown at a fully-typed bubble's
+/// bottom-right — see [_AnimatedHatiSpeechBubble.showAdvanceCue]. Loops a
+/// gentle bob + fade for as long as it's mounted; the parent only mounts it
+/// while the cue should be visible, so no external show/hide wiring needed.
+class _AdvanceCueChevron extends StatefulWidget {
+  const _AdvanceCueChevron();
+
+  @override
+  State<_AdvanceCueChevron> createState() => _AdvanceCueChevronState();
+}
+
+class _AdvanceCueChevronState extends State<_AdvanceCueChevron>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 900),
+  )..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, child) => Opacity(
+          opacity: 0.45 + 0.55 * _controller.value,
+          child: Transform.translate(
+            offset: Offset(0, 3 * _controller.value),
+            child: child,
+          ),
+        ),
+        child: const Icon(
+          Icons.keyboard_arrow_down_rounded,
+          size: 20,
+          color: Color(0xFF4A8FD4),
+        ),
+      ),
+    );
+  }
 }
 
 // ── Hati Frog Character ───────────────────────────────────────────────────────
@@ -2014,6 +2119,12 @@ class HatiSpeakingBlock extends StatelessWidget {
   /// shift position turn to turn instead of staying put.
   final CrossAxisAlignment alignment;
 
+  /// Forwarded to [_AnimatedHatiSpeechBubble.textAlign].
+  final TextAlign textAlign;
+
+  /// Forwarded to [_AnimatedHatiSpeechBubble.showAdvanceCue].
+  final bool showAdvanceCue;
+
   const HatiSpeakingBlock({
     super.key,
     this.introMessage = '',
@@ -2027,6 +2138,8 @@ class HatiSpeakingBlock extends StatelessWidget {
     this.mood = HatiMood.idle,
     this.autoAdvance = false,
     this.alignment = CrossAxisAlignment.center,
+    this.textAlign = TextAlign.center,
+    this.showAdvanceCue = false,
   });
 
   @override
@@ -2062,6 +2175,8 @@ class HatiSpeakingBlock extends StatelessWidget {
         autoAdvance: autoAdvance,
         bubbleAlignment: bubbleAlignment,
         tailTargetX: tailTargetX,
+        textAlign: textAlign,
+        showAdvanceCue: showAdvanceCue,
       );
     } else if (dissolveBubble) {
       bubble = _AnimatedHatiSpeechBubble(
@@ -2078,6 +2193,8 @@ class HatiSpeakingBlock extends StatelessWidget {
         autoAdvance: autoAdvance,
         bubbleAlignment: bubbleAlignment,
         tailTargetX: tailTargetX,
+        textAlign: textAlign,
+        showAdvanceCue: showAdvanceCue,
       );
     } else {
       bubble = HatiSpeechSequence(
@@ -2101,7 +2218,11 @@ class HatiSpeakingBlock extends StatelessWidget {
   }
 }
 
-/// Speech bubble only (no frog) — for use in [HatiCoachZone].
+/// Speech bubble only (no frog) — for use in [HatiCoachZone], and (via the
+/// additive params below) for Scene 3's narrator/NPC beats, which need the
+/// same typewriter/tap-advance/dissolve/pagination machinery Hati's own
+/// bubble has, pinned at an arbitrary screen position instead of paired
+/// with a frog avatar.
 class HatiCoachSpeech extends StatelessWidget {
   final String introMessage;
   final String persistentMessage;
@@ -2110,6 +2231,19 @@ class HatiCoachSpeech extends StatelessWidget {
   final VoidCallback? onBubbleDismissed;
   final bool dissolveBubble;
   final Duration holdAfterTyping;
+
+  /// Forwarded to [_AnimatedHatiSpeechBubble]. All default to that widget's
+  /// own defaults, so [HatiCoachZone]'s existing call site is unaffected.
+  final bool autoAdvance;
+  final AlignmentGeometry bubbleAlignment;
+  final double? tailTargetX;
+  final TextAlign textAlign;
+  final bool showAdvanceCue;
+
+  /// Forwarded to [_AnimatedHatiSpeechBubble.playTalkSound]. Defaults to
+  /// true (Hati, via [HatiCoachZone]) — Scene 3's NPC/narrator call site
+  /// passes false, since this same widget doubles as their speech bubble.
+  final bool playTalkSound;
 
   const HatiCoachSpeech({
     super.key,
@@ -2120,6 +2254,12 @@ class HatiCoachSpeech extends StatelessWidget {
     this.onBubbleDismissed,
     this.dissolveBubble = false,
     this.holdAfterTyping = const Duration(seconds: 2),
+    this.autoAdvance = false,
+    this.bubbleAlignment = Alignment.bottomCenter,
+    this.tailTargetX,
+    this.textAlign = TextAlign.center,
+    this.showAdvanceCue = false,
+    this.playTalkSound = true,
   });
 
   @override
@@ -2139,6 +2279,12 @@ class HatiCoachSpeech extends StatelessWidget {
                 onSequenceComplete?.call();
               }
             : null,
+        autoAdvance: autoAdvance,
+        bubbleAlignment: bubbleAlignment,
+        tailTargetX: tailTargetX,
+        textAlign: textAlign,
+        showAdvanceCue: showAdvanceCue,
+        playTalkSound: playTalkSound,
       );
     }
     if (dissolveBubble) {
@@ -2153,12 +2299,19 @@ class HatiCoachSpeech extends StatelessWidget {
           onBubbleDismissed?.call();
           onSequenceComplete?.call();
         },
+        autoAdvance: autoAdvance,
+        bubbleAlignment: bubbleAlignment,
+        tailTargetX: tailTargetX,
+        textAlign: textAlign,
+        showAdvanceCue: showAdvanceCue,
+        playTalkSound: playTalkSound,
       );
     }
     return HatiSpeechSequence(
       introMessage: introMessage,
       persistentMessage: persistentMessage,
       onSequenceComplete: onSequenceComplete,
+      playTalkSound: playTalkSound,
     );
   }
 }
@@ -2258,10 +2411,7 @@ class HatiFixedBottomBar extends StatelessWidget {
       // the two would otherwise compete for space and hard-overflow (seen
       // with a multi-line bottomBar like TextResponseCard), this lets the
       // bar scroll internally instead of throwing a RenderFlex overflow.
-      child: SafeArea(
-        top: false,
-        child: SingleChildScrollView(child: child),
-      ),
+      child: SafeArea(top: false, child: SingleChildScrollView(child: child)),
     );
   }
 }

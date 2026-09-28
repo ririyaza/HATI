@@ -186,12 +186,40 @@ class _CopingStrategyCard extends StatelessWidget {
   }
 }
 
+/// Splits one approved strategy paragraph into sequential Practice Mode
+/// steps, purely by sentence boundary — no wording is added or changed.
+/// e.g. "Savor and Repeat. Think back to the moment it went well — what
+/// did you do? Remember that, and use the same approach again." becomes
+/// three steps, each the exact same text Hati already said, just paced
+/// out one at a time instead of shown all at once.
+///
+/// A sentence boundary is "." / "!" / "?" followed by whitespace and then
+/// an uppercase letter or digit — the whitespace+uppercase lookahead is
+/// what keeps an ellipsis ("...") or a mid-sentence abbreviation from
+/// being split early. Falls back to the whole string as a single step
+/// when there's nothing to split on (one sentence, or empty text), which
+/// matches this widget's previous behavior exactly.
+List<String> _splitStrategyIntoSteps(String strategy) {
+  final trimmed = strategy.trim();
+  if (trimmed.isEmpty) {
+    return const [
+      'Take a moment to settle in with the strategy Hati just gave you.',
+    ];
+  }
+  final parts = trimmed
+      .split(RegExp(r'(?<=[.!?])\s+(?=[A-Z0-9])'))
+      .map((s) => s.trim())
+      .where((s) => s.isNotEmpty)
+      .toList();
+  return parts.isNotEmpty ? parts : [trimmed];
+}
+
 /// Client-only practice walkthrough. Not driven by the backend — the
 /// backend only expects to hear "I'm done" once this completes. [strategy]
 /// is whichever tool text `_scene5_coping` actually assigned (Anchor,
-/// Reframe, Savoring, grounding, ...) — the first step below surfaces that
-/// exact text instead of a generic script, so the walkthrough always
-/// matches what Hati said the strategy was, whatever it happened to be.
+/// Reframe, Savoring, grounding, ...) — split into steps by
+/// [_splitStrategyIntoSteps] so the walkthrough always matches what Hati
+/// said the strategy was, whatever it happened to be.
 class _PracticeWalkthrough extends StatefulWidget {
   final String strategy;
   final bool isLoading;
@@ -209,17 +237,19 @@ class _PracticeWalkthrough extends StatefulWidget {
 }
 
 class _PracticeWalkthroughState extends State<_PracticeWalkthrough> {
-  // Every coping tool `_scene5_coping` (scenario_engine.py) hands back is a
-  // single, complete instruction — there's no real "step 2" per the script.
-  // This used to always append 3 more generic breathing/rehearsal steps
-  // regardless of which tool was actually assigned, so e.g. "Pause and
-  // Label" or "Repair Message" would show correct step-1 text and then
-  // silently switch to a grounding-style script for steps 2-4.
-  late final List<String> _steps = [
-    widget.strategy.isNotEmpty
-        ? widget.strategy
-        : 'Take a moment to settle in with the strategy Hati just gave you.',
-  ];
+  // Every coping tool `_scene5_coping` (scenario_engine.py) hands back
+  // arrives as one paragraph, not pre-split into steps. This used to show
+  // that whole paragraph as a single "1/1" step with a lone "Finish
+  // Practice" button — no real walkthrough at all. It also used to append
+  // 3 more generic breathing/rehearsal steps regardless of which tool was
+  // actually assigned, so e.g. "Pause and Label" or "Repair Message" would
+  // show correct step-1 text and then silently switch to a grounding-style
+  // script for steps 2-4 — that's gone too.
+  //
+  // _splitStrategyIntoSteps below paces the same approved sentences out
+  // one at a time instead: no wording is added, removed, or reordered,
+  // only sentence boundaries the psychologist-reviewed text already has.
+  late final List<String> _steps = _splitStrategyIntoSteps(widget.strategy);
 
   int _step = 0;
 

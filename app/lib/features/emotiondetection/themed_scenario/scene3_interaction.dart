@@ -2,890 +2,87 @@
 // HATI – Scene 3: The Approach & NPC Interaction
 // screens/scene3_interaction.dart
 //
-// Adapted from testing_env/lib/scene3_interaction.dart. Every scenario's
-// preparation/interaction steps (see scenario_models.kStepToScene) map to
-// this scene. The old hardcoded ResponseBranch-keyed reaction switch
-// (confident/anxious/angry/freeze dialogue) is dropped entirely — NPC
-// dialogue and Hati's coaching text are read directly from
+// Visual-novel "stage" redesign: a fixed background-art stage with Hati
+// pinned bottom-left and the active NPC pinned bottom-right, playing one
+// speech bubble/caption at a time in strict order (Hati -> narration/NPC
+// lines -> input), plus a one-time-per-run input-medium picker (voice/
+// type/both) shown before the scene's first turn.
+//
+// NPC dialogue and Hati's coaching text are read directly from
 // provider.messages every turn, parsed by speaker prefix (e.g.
-// "**Professor:**" / "**Narrator:**" / "**Hati:**").
+// "**Professor:**" / "**Narrator:**" / "**Hati:**") via parseSpeakerMessage.
 //
 // Background art and (optional) character sprite come from
 // provider.config, generalized per scenario: `foa_supervisor` keeps its
-// bespoke classroom + professor sprite art; every other scenario renders
-// full-bleed background art only (config.spriteAsset == null), with the
-// sprite portion of the layout skipped gracefully.
+// bespoke classroom + professor sprite art (treated as a single implicit
+// NPC); every other scenario with `npcCharacters` renders one on-stage
+// character at a time, swapping in the same slot; `foa_classroom` has no
+// sprite art at all, so its speakers get a name tag instead of a portrait.
 //
 // This scene also owns its own AudioRecorder (record package, WAV/16kHz/
 // mono), mirroring scenario_game.dart's pattern but not sharing code with
 // it. Voice input is only offered while the backend expects free text
-// (ui.type == text_input) — the two turns are the opening line to the NPC
-// and the follow-up reply.
+// (ui.type == text_input) or on the "Write your own response" custom path.
 // ─────────────────────────────────────────────
 
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:record/record.dart';
-import 'package:rive/rive.dart';
+import '../../../shared/audio/hati_audio_service.dart';
 import 'scenario_models.dart';
 import 'scenario_provider.dart';
 import 'shared_widgets.dart';
 
 const _kApproachBlue = Color(0xFF4A8FD4);
-const _kApproachCyan = Color(0xFF00D4FF);
-const _kFrogSize = 120.0;
 
-class Scene3Interaction extends StatefulWidget {
-  const Scene3Interaction({super.key});
+/// When true, every beat (Hati's, narration, NPC) advances itself after a
+/// reading-time hold instead of waiting for a tap. Off by default —
+/// player-paced dialogue, matching every other scene.
+const _kAutoAdvanceBeats = false;
 
-  @override
-  State<Scene3Interaction> createState() => _Scene3InteractionState();
-}
+/// Stable synthetic "character id" for foa_supervisor, the one scenario
+/// that has a single sprite (`config.spriteAsset`/`spriteAssetAngry`)
+/// instead of a `config.npcCharacters` list — treated as one implicit NPC
+/// occupying the stage's NPC slot like any other.
+const _kFoaSupervisorImplicitId = 'foa_supervisor_implicit';
 
-class _Scene3InteractionState extends State<Scene3Interaction> {
-  final TextEditingController _controller = TextEditingController();
-  final AudioRecorder _record = AudioRecorder();
-  bool _isRecording = false;
-  bool _isTranscribing = false;
-  String? _lastSentText;
+// ── Beats ────────────────────────────────────────────────────────────────
 
-  // Hati's coach line types out over the scene; don't let "Continue"
-  // advance past it before the last of it has actually been shown.
-  String? _trackedBubbleKey;
-  bool _dialogueComplete = false;
+enum _BeatKind { hati, narrator, npc }
 
-  // True once the player taps "Write your own response" on a multi-choice
-  // turn — swaps the DraggableChoiceSheet for the same textbox+voice input
-  // bar the free-text turns use, instead of only ever offering the backend's
-  // pre-written options. Reset alongside _dialogueComplete on every new turn
-  // (see the bubbleKey check below) so the next choice screen defaults back
-  // to showing the option cards.
-  bool _useCustomResponse = false;
-
-  Future<void> _startRecording() async {
-    if (await _record.hasPermission()) {
-      final dir = await getTemporaryDirectory();
-      final path = '${dir.path}/themed_scenario_record.wav';
-
-      await _record.start(
-        const RecordConfig(
-          encoder: AudioEncoder.wav,
-          sampleRate: 16000,
-          numChannels: 1,
-          bitRate: 256000,
-        ),
-        path: path,
-      );
-
-      if (mounted) setState(() => _isRecording = true);
-    } else if (mounted) {
-      // hasPermission() returned false with no further feedback — tapping
-      // the mic used to just do nothing here, with no way for the player
-      // to know why voice input wasn't working. They can still type their
-      // response instead, so this isn't a dead end, just needs to say so.
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            "Microphone access is off, so voice input isn't available "
-            "right now — you can still type your response below. To use "
-            "voice, allow microphone access for HATI in your device's "
-            "Settings.",
-          ),
-          duration: Duration(seconds: 5),
-        ),
-      );
-    }
-  }
-
-  Future<void> _stopRecording(ScenarioProvider provider) async {
-    final path = await _record.stop();
-    if (!mounted) return;
-    setState(() => _isRecording = false);
-    if (path == null) return;
-
-    setState(() => _isTranscribing = true);
-    final userId = FirebaseAuth.instance.currentUser?.uid ?? '';
-    try {
-      await provider.submitAudio(path, userId: userId);
-    } finally {
-      if (mounted) setState(() => _isTranscribing = false);
-    }
-    if (!mounted) return;
-    setState(() {
-      _lastSentText = provider.lastTranscript?.trim().isNotEmpty == true
-          ? provider.lastTranscript
-          : '[Voice message sent]';
-    });
-  }
-
-  void _sendText(ScenarioProvider provider) {
-    final text = _controller.text.trim();
-    if (text.isEmpty) return;
-    _controller.clear();
-    setState(() => _lastSentText = text);
-    provider.submitText(text);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    _record.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final provider = context.watch<ScenarioProvider>();
-    final step = provider.backendStep;
-    final config = provider.config;
-    final sceneHeight = MediaQuery.sizeOf(context).height;
-    // Mood-specific art (e.g. the professor's annoyed animation) only
-    // swaps in while the backend's latest npc_mood matches — otherwise
-    // falls back to the scenario's default sprite.
-    final activeSpriteAsset =
-        (provider.npcMood == 'angry' && config.spriteAssetAngry != null)
-        ? config.spriteAssetAngry
-        : config.spriteAsset;
-
-    final parsed = provider.messages.map(parseSpeakerMessage).toList();
-    // isHatiSpeaker does a startsWith match (not equality) so variants like
-    // "Hati (sidebar)" — seen in fbop_spotlight's Easy-mode script — still
-    // land in Hati's own lane instead of being mistaken for an NPC line.
-    final hatiLines = parsed
-        .where((p) => isHatiSpeaker(p.speaker))
-        .map((p) => p.text)
-        .where((t) => t.trim().isNotEmpty)
-        .toList();
-    final npcParsed = parsed.where((p) => !isHatiSpeaker(p.speaker)).toList();
-
-    // config.npcCharacters is only populated for the 5 multi/single-NPC
-    // scenarios (fbop_spotlight, fne_stage, fsg_party, fsn_seat,
-    // phys_jeepney) — see scenario_models.dart. Every other scenario
-    // (foa_supervisor, foa_classroom) keeps the original single-bubble +
-    // single-big-sprite rendering further below, untouched.
-    final useMultiSpeakerLayout = config.npcCharacters.isNotEmpty;
-    final speakerBlocks = useMultiSpeakerLayout
-        ? _buildSpeakerBlocks(config, npcParsed, provider.npcMood == 'angry')
-        : const <_SpeakerBlock>[];
-    // A single-NPC scenario (fsn_seat's Stranger, phys_jeepney's Classmate)
-    // otherwise vanishes entirely on any turn where she's only mentioned in
-    // narration ("The stranger continues typing and does not respond.")
-    // rather than actually speaking, since sprites are only attached to
-    // this turn's speaker blocks. Fall back to her idle sprite so she stays
-    // visibly present even on a silent turn.
-    final singleNpcCharacter = config.npcCharacters.length == 1
-        ? config.npcCharacters.first
-        : null;
-    final needsSingleNpcFallback =
-        singleNpcCharacter != null &&
-        !speakerBlocks.any((b) => b.spriteAsset != null);
-    final profText = useMultiSpeakerLayout
-        ? ''
-        : npcParsed
-              .map((p) => p.text)
-              .where((t) => t.trim().isNotEmpty)
-              .join('\n\n');
-    // Every multi/single-NPC scenario (fbop_spotlight, fne_stage,
-    // fsg_party, fsn_seat, phys_jeepney) and foa_supervisor's own sprite
-    // share one size (sceneHeight * 0.34) and one layout — the bubble
-    // stacked above the sprite (stackVertically: true) — by request.
-    //
-    // NOTE: 0.34 was tried once before for fsg_party/fsn_seat/phys_jeepney
-    // and reduced to 0.22 because the NPC dialogue, the player's echoed
-    // line, and Hati all have to fit in the same limited vertical space
-    // without scrolling and started colliding. The OverflowBox/ClipRect
-    // around this block (see npcContentMaxHeight) crops any excess rather
-    // than crashing, but cropped content is still a visual bug on shorter
-    // screens or with longer dialogue — worth checking on a real device.
-    final npcAvatarSize = sceneHeight * 0.34;
-    const matchesFoaLayout = true;
-    // fsn_seat/phys_jeepney only ever have ONE character. A Narrator line
-    // in the middle of her turn ("The stranger moves their bag.") splits
-    // her dialogue into two _SpeakerBlocks either side of it (see
-    // _buildSpeakerBlocks) — each block used to render its own full-size
-    // portrait, so a single turn could stack her picture on screen twice
-    // for no reason. Only the last block gets a sprite for these
-    // single-character scenarios; fbop_spotlight/fne_stage (real
-    // multi-character panels) still show every distinct speaker's sprite.
-    final isSingleNpcScenario = config.npcCharacters.length == 1;
-    // True only when this turn actually has more than one DIFFERENT
-    // character speaking (fbop_spotlight's professors, fne_stage's
-    // students, etc.) — not just one character's own dialogue split into
-    // several blocks by a narrator interruption (isSingleNpcScenario's
-    // case above). Those genuinely-multi-speaker turns used to render
-    // every speaker's block stacked in one Column simultaneously, which
-    // cramped the scene and made it hard to tell whose line was whose at a
-    // glance — see _SequentialSpeakerReveal below.
-    final hasMultipleDistinctSpeakers =
-        speakerBlocks.map((b) => b.key).toSet().length > 1;
-    final hatiText = hatiLines.join('\n\n');
-    final isTextInput = provider.ui.type == ScenarioUIType.textInput;
-    // Some steps' own choice list already includes a free-text escape
-    // hatch ("Custom", "Custom response", "Custom goal", "Custom opening")
-    // that the backend turns into its own text_input follow-up when
-    // tapped (see e.g. scenario_engine.py's foa_r_phase handling) — same
-    // end result as this scene's own "Write your own response" card below.
-    // Showing both offered the player two visually different buttons that
-    // did the same thing; only add the app's own card when the backend
-    // didn't already provide one.
-    final hasBackendCustomOption = provider.ui.options.any(
-      (o) => o.toLowerCase().contains('custom'),
-    );
-    // A mid-scene numeric rating turn (e.g. a SUDS-style "0".."10" distress
-    // check) reads far better as one slider than as a stack of lettered
-    // script cards for every single number — see looksLikeNumericScale.
-    final isNumericScale = looksLikeNumericScale(provider.ui.options);
-
-    final bubbleKey = '$step:$hatiText';
-    if (bubbleKey != _trackedBubbleKey) {
-      _trackedBubbleKey = bubbleKey;
-      _dialogueComplete = false;
-      _useCustomResponse = false;
-    }
-    // No Hati line to wait for on this turn -> nothing blocks "Continue".
-    final dialogueReady = hatiText.isEmpty || _dialogueComplete;
-
-    return Scaffold(
-      backgroundColor: _kApproachBlue,
-      body: HatiTapToAdvance(
-        child: SafeArea(
-          bottom: false,
-          child: Column(
-            children: [
-              // 3 of 7 — the same shared scene numbering every other scene's
-              // SceneTopHeader uses (1=Office, 2=Preparation, 4=Debrief,
-              // 5=Coping, 6=Closing). Previously this varied by step name
-              // within Interaction itself (0.15/0.55/0.9), fractions that
-              // didn't correspond to anything real.
-              const _ApproachTopBar(currentStep: 3, totalSteps: 7),
-              const SceneSpeedToggleRow(),
-              Expanded(
-                // LayoutBuilder just to learn how tall this area actually
-                // is, so Layer 2 below can be capped to a sane fraction of
-                // it — a safety net, not the primary fix (see
-                // isSingleNpcScenario/showSprite above for that): without
-                // any cap, a turn with an unusually long NPC/narrator
-                // exchange could still grow tall enough to crash into the
-                // player's echoed line and Hati beneath it.
-                child: LayoutBuilder(
-                  builder: (context, stackConstraints) {
-                    final npcContentMaxHeight =
-                        stackConstraints.maxHeight * 0.6;
-                    return Stack(
-                      fit: StackFit.expand,
-                      clipBehavior: Clip.none,
-                      // Explicit paint/priority order, back to front: (1)
-                      // the scenario's own background art, (2) the NPC's
-                      // dialogue this turn, (3) Hati himself, (4) the
-                      // player's own echoed last message. Each is its own
-                      // Positioned layer instead of one flex column, so
-                      // none of them are ever scrolled to be read — every
-                      // layer sizes to its own content and simply overlaps
-                      // a layer behind it on the rare turn where there
-                      // isn't room for both. The echoed message is
-                      // deliberately last/frontmost so Hati's own bubble
-                      // (which can still overlap the art/NPC layers behind
-                      // it) never covers what the player actually said.
-                      children: [
-                        // Layer 1 (back): background art.
-                        Image.asset(
-                          config.backgroundAsset,
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                          height: double.infinity,
-                        ),
-                        // Layer 2: the NPC's dialogue this turn — one
-                        // bubble + sprite (or every speaker's block, for
-                        // the 5 multi/single-NPC scenarios), pinned to the
-                        // top of the scene. Clipped (not scrolled) to
-                        // npcContentMaxHeight as a last-resort safety net —
-                        // OverflowBox lets the Column lay out at its real
-                        // (possibly taller) size instead of throwing a
-                        // RenderFlex overflow, and the ClipRect around it
-                        // is what actually crops the excess.
-                        Positioned(
-                          top: 12,
-                          left: 16,
-                          right: 16,
-                          child: SizedBox(
-                            height: npcContentMaxHeight,
-                            child: ClipRect(
-                              child: OverflowBox(
-                                alignment: Alignment.topCenter,
-                                maxHeight: double.infinity,
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: useMultiSpeakerLayout
-                                      ? [
-                                          // Genuinely different characters
-                                          // speaking this turn (the
-                                          // 5-professor panel, fne_stage's
-                                          // students, etc.) reveal one at a
-                                          // time instead of all stacking at
-                                          // once — see
-                                          // _SequentialSpeakerReveal. A
-                                          // single character's own turn
-                                          // split by a narrator interruption
-                                          // (isSingleNpcScenario) still
-                                          // renders as one continuous
-                                          // Column below — it's the same
-                                          // person, not several to cycle
-                                          // through.
-                                          if (hasMultipleDistinctSpeakers)
-                                            _SequentialSpeakerReveal(
-                                              blocks: speakerBlocks,
-                                              avatarSize: npcAvatarSize,
-                                              stackVertically:
-                                                  matchesFoaLayout,
-                                            )
-                                          else
-                                            for (
-                                              var i = 0;
-                                              i < speakerBlocks.length;
-                                              i++
-                                            ) ...[
-                                              _SpeakerBlockWidget(
-                                                block: speakerBlocks[i],
-                                                avatarSize: npcAvatarSize,
-                                                stackVertically:
-                                                    matchesFoaLayout,
-                                                // Single-character scenarios
-                                                // (fsn_seat, phys_jeepney)
-                                                // only show her portrait on
-                                                // the LAST block this turn —
-                                                // see showSprite's doc.
-                                                showSprite:
-                                                    !isSingleNpcScenario ||
-                                                    i ==
-                                                        speakerBlocks.length -
-                                                            1,
-                                              ),
-                                              const SizedBox(height: 10),
-                                            ],
-                                          if (needsSingleNpcFallback)
-                                            Align(
-                                              alignment: Alignment.centerRight,
-                                              child:
-                                                  singleNpcCharacter
-                                                      .sprites
-                                                      .blink
-                                                      .endsWith('.riv')
-                                                  ? NpcRiveSprite(
-                                                      assetPath:
-                                                          singleNpcCharacter
-                                                              .sprites
-                                                              .blink,
-                                                      height: npcAvatarSize,
-                                                    )
-                                                  : Image.asset(
-                                                      singleNpcCharacter
-                                                          .sprites
-                                                          .blink,
-                                                      height: npcAvatarSize,
-                                                      fit: BoxFit.contain,
-                                                    ),
-                                            ),
-                                        ]
-                                      : [
-                                          // foa_supervisor used to be its own
-                                          // bespoke bubble-above-sprite stack
-                                          // (a hand-duplicated copy of
-                                          // _SpeakerBlockWidget's
-                                          // stackVertically:true branch).
-                                          // Routing through
-                                          // _SpeakerBlockWidget directly
-                                          // gives it the same stacked layout
-                                          // and size as every other scenario
-                                          // (npcAvatarSize, set above).
-                                          if (profText.isNotEmpty ||
-                                              activeSpriteAsset != null)
-                                            _SpeakerBlockWidget(
-                                              block: _SpeakerBlock(
-                                                key: 'foa_prof',
-                                                displayName: '',
-                                                isNarrator: false,
-                                                spriteAsset: activeSpriteAsset,
-                                                lines: [profText],
-                                              ),
-                                              avatarSize: npcAvatarSize,
-                                              stackVertically: true,
-                                            ),
-                                        ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        // Layer 3: Hati. Position and size are fixed — left:8/
-                        // bottom:4 every turn, and (as of the alignment fix
-                        // in _ApproachHatiLane) the frog itself no longer
-                        // shifts to re-center under his own bubble. Painted
-                        // *before* the player's echoed message below so his
-                        // bubble — which can still grow wide with a long
-                        // line — never covers the transcript of what the
-                        // player actually said; it only ever overlaps the
-                        // art/NPC layers behind it, and fades away on its own
-                        // a few seconds after typing anyway (dissolveBubble/
-                        // autoAdvance below).
-                        // `bottom` is computed (not a fixed 4px) so his frog
-                        // overlaps up into the NPC content area's lower
-                        // portion, where the NPC's sprite sits — by
-                        // experiment/request — instead of staying tucked in
-                        // the screen's bottom-left corner below it.
-                        Positioned(
-                          left: 8,
-                          bottom:
-                              (stackConstraints.maxHeight -
-                                  12 -
-                                  npcContentMaxHeight) +
-                              _kFrogSize * 0.5,
-                          child: _ApproachHatiLane(
-                            showBubble: hatiText.isNotEmpty,
-                            message: hatiText,
-                            bubbleKey: bubbleKey,
-                            frogSize: _kFrogSize,
-                            onSequenceComplete: () {
-                              if (mounted && !_dialogueComplete) {
-                                setState(() => _dialogueComplete = true);
-                              }
-                            },
-                          ),
-                        ),
-                        // Layer 4 (front): the player's own echoed last
-                        // message. Painted last so it always stays on top of
-                        // Hati's lane behind it — left inset is his frog's
-                        // width plus a margin, not just the frog's width, so
-                        // even a short reply clears his frog instead of
-                        // sitting flush against it.
-                        if (_lastSentText != null && _lastSentText!.isNotEmpty)
-                          Positioned(
-                            left: _kFrogSize + 24,
-                            right: 16,
-                            bottom: 16,
-                            child: Align(
-                              alignment: Alignment.centerRight,
-                              child: _CharacterSpeechBubble(
-                                text: _lastSentText!,
-                              ),
-                            ),
-                          ),
-                        // Difficult Mode's branch points (e.g. "Sorry, I just
-                        // wanted to..." / "Never mind." / continue angrily /
-                        // custom) send several real choices, not one default
-                        // "Continue" — show every option instead of silently
-                        // only offering the first. A draggable sheet overlaying
-                        // the dialogue above (matching HatiSceneShell's own
-                        // header+choices sheet everywhere else) rather than a
-                        // fixed-size panel, so the header and the option cards
-                        // drag up together as one unit.
-                        if (dialogueReady &&
-                            !isTextInput &&
-                            !_useCustomResponse &&
-                            !isNumericScale &&
-                            provider.ui.options.length > 1)
-                          PopIn(
-                            key: ValueKey(bubbleKey),
-                            child: DraggableChoiceSheet(
-                              header: SectionHeader(
-                                title: 'Choose Your Response',
-                                subtitle: hasBackendCustomOption
-                                    ? 'Select one'
-                                    : 'Select one or write your own',
-                              ),
-                              body: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  for (
-                                    var i = 0;
-                                    i < provider.ui.options.length;
-                                    i++
-                                  )
-                                    ScriptOptionCard(
-                                      label: String.fromCharCode(65 + i),
-                                      script: provider.ui.options[i],
-                                      selected: false,
-                                      enabled: !provider.isLoading,
-                                      onTap: provider.isLoading
-                                          ? () {}
-                                          : () => provider.submitText(
-                                              provider.ui.options[i],
-                                            ),
-                                    ),
-                                  // The sheet's own subtitle above promises
-                                  // "write your own" — this is that option:
-                                  // switches to the same textbox+voice bar the
-                                  // free-text turns use instead of submitting
-                                  // one of the pre-written options. Skipped
-                                  // when the backend's own options already
-                                  // include a "Custom..." entry — see
-                                  // hasBackendCustomOption above.
-                                  if (!hasBackendCustomOption)
-                                    _CustomResponseCard(
-                                      enabled: !provider.isLoading,
-                                      onTap: () => setState(
-                                        () => _useCustomResponse = true,
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            ),
-                          ),
-                      ],
-                    );
-                  },
-                ),
-              ),
-              // The input bar / single continue button stay out of the tree
-              // — not just disabled — until Hati's and the NPC's lines this
-              // turn have fully typed out, then pop in via PopIn. The
-              // multi-option case above is handled by the draggable sheet
-              // overlay instead, not this fixed-height bottom slot.
-              if (!dialogueReady)
-                const SizedBox.shrink()
-              else if (isTextInput || _useCustomResponse)
-                PopIn(
-                  key: ValueKey('$bubbleKey:input'),
-                  // SingleChildScrollView as a fallback, not the normal
-                  // path — same reasoning as HatiFixedBottomBar (which this
-                  // scene doesn't use, since it isn't built on
-                  // HatiSceneShell): on most screens the Expanded region
-                  // above simply shrinks to make room and this never
-                  // scrolls. On a short screen where the on-screen keyboard
-                  // eats more height than the Expanded region can give up,
-                  // this bar's own fixed content (back-to-choices link +
-                  // input row) no longer has anywhere to shrink to, which
-                  // hard-overflowed instead of scrolling.
-                  child: SafeArea(
-                    top: false,
-                    child: SingleChildScrollView(
-                      reverse: true,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // Only reachable via "Write your own response" on a
-                          // turn that actually had preset choices — a real
-                          // isTextInput turn has no choice sheet to go back to.
-                          if (_useCustomResponse && !isTextInput)
-                            Container(
-                              color: Colors.white,
-                              width: double.infinity,
-                              padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-                              child: Align(
-                                alignment: Alignment.centerLeft,
-                                child: TextButton.icon(
-                                  onPressed: () => setState(
-                                    () => _useCustomResponse = false,
-                                  ),
-                                  style: TextButton.styleFrom(
-                                    foregroundColor: _kApproachBlue,
-                                    padding: EdgeInsets.zero,
-                                    minimumSize: Size.zero,
-                                    tapTargetSize:
-                                        MaterialTapTargetSize.shrinkWrap,
-                                  ),
-                                  icon: const Icon(
-                                    Icons.arrow_back_rounded,
-                                    size: 16,
-                                  ),
-                                  label: const Text('Back to choices'),
-                                ),
-                              ),
-                            ),
-                          _ApproachInputBar(
-                            controller: _controller,
-                            enabled:
-                                !provider.isLoading &&
-                                !_isRecording &&
-                                !_isTranscribing,
-                            isRecording: _isRecording,
-                            isTranscribing: _isTranscribing,
-                            hintText: _isRecording
-                                ? 'Listening…'
-                                : (_isTranscribing
-                                      ? 'Converting your voice…'
-                                      : 'Type your response...'),
-                            onSend: () => _sendText(provider),
-                            onMicTap: () => _isRecording
-                                ? _stopRecording(provider)
-                                : _startRecording(),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                )
-              else if (isNumericScale)
-                // A mid-scene numeric rating turn (e.g. a SUDS-style
-                // "0".."10" distress check) — one slider + submit button
-                // pinned here instead of the lettered-script overlay sheet
-                // above, which isn't shown for this case (see isNumericScale
-                // in that condition).
-                PopIn(
-                  key: ValueKey(bubbleKey),
-                  child: Container(
-                    color: Colors.white,
-                    child: SafeArea(
-                      top: false,
-                      child: ScaleChoiceCard(
-                        options: provider.ui.options,
-                        isLoading: provider.isLoading,
-                        onSubmit: provider.submitText,
-                      ),
-                    ),
-                  ),
-                )
-              else if (provider.ui.options.length <= 1)
-                PopIn(
-                  key: ValueKey(bubbleKey),
-                  child: Container(
-                    color: Colors.white,
-                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-                    child: SafeArea(
-                      top: false,
-                      child: HatiButton(
-                        label: provider.ui.options.isNotEmpty
-                            ? provider.ui.options.first
-                            : 'Continue',
-                        icon: Icons.arrow_forward_rounded,
-                        onTap: provider.isLoading
-                            ? null
-                            : () => provider.submitText(
-                                provider.ui.options.isNotEmpty
-                                    ? provider.ui.options.first
-                                    : 'Continue',
-                              ),
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ── Hati overlay: frog + bubble, pinned lower-left ──────────────────────────
-/// The caller wraps this in a plain `Positioned(left, bottom)` with a fixed
-/// [frogSize]. Passes `alignment: CrossAxisAlignment.start` down to
-/// [HatiSpeakingBlock] so the frog stays anchored to that same left edge on
-/// every turn instead of re-centering itself under whatever width this
-/// turn's bubble happens to be — only the bubble above him grows or shrinks
-/// with the message, sized by [HatiLayout.bubbleMaxWidth]/[bubbleMaxHeight].
-/// It's still free to extend past the art/NPC layers behind it (this is the
-/// second-frontmost layer in the scene's Stack — see the player's echoed
-/// message painted after it), and fades on its own a few seconds after
-/// typing (dissolveBubble/autoAdvance below).
-class _ApproachHatiLane extends StatelessWidget {
-  final bool showBubble;
-  final String message;
-  final String bubbleKey;
-  final double frogSize;
-  final VoidCallback? onSequenceComplete;
-
-  const _ApproachHatiLane({
-    required this.showBubble,
-    required this.message,
-    required this.bubbleKey,
-    this.frogSize = 100,
-    this.onSequenceComplete,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: HatiLayout.bubbleMaxWidth),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (showBubble && message.isNotEmpty)
-            HatiSpeakingBlock(
-              key: ValueKey(bubbleKey),
-              persistentMessage: message,
-              frogSize: frogSize,
-              mood: HatiMood.encourage,
-              // Keeps the frog itself pinned to this lane's fixed left
-              // edge instead of re-centering under whatever width this
-              // turn's bubble happens to be — see HatiSpeakingBlock's
-              // alignment doc.
-              alignment: CrossAxisAlignment.start,
-              // Fades the bubble out on its own a few seconds after it
-              // finishes typing, leaving just the frog — it used to stay
-              // put indefinitely until the player tapped. autoAdvance adds
-              // this timeout as a fallback only — tapping still dismisses
-              // it (or fast-forwards it while typing) immediately, same as
-              // before.
-              dissolveBubble: true,
-              autoAdvance: true,
-              holdAfterTyping: const Duration(seconds: 3),
-              onSequenceComplete: onSequenceComplete,
-            )
-          else
-            HatiFrogAvatar(size: frogSize, mood: HatiMood.encourage),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Top bar (reference-style) ─────────────────────────────────────────────────
-
-class _ApproachTopBar extends StatelessWidget {
-  final int currentStep;
-  final int totalSteps;
-
-  const _ApproachTopBar({required this.currentStep, required this.totalSteps});
-
-  @override
-  Widget build(BuildContext context) {
-    final progress = currentStep / totalSteps;
-
-    return Container(
-      color: _kApproachBlue,
-      padding: const EdgeInsets.fromLTRB(8, 4, 12, 12),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              // Same back-to-modules navigation every other scene's
-              // SceneTopHeader already has — this scene's header is a
-              // separate widget (its own blue/progress-bar styling
-              // predates SceneTopHeader), so it needs its own back button
-              // rather than inheriting one.
-              SizedBox(
-                width: 40,
-                height: 40,
-                child: IconButton(
-                  onPressed: () => Navigator.maybePop(context),
-                  icon: const Icon(Icons.arrow_back, color: Colors.white),
-                  padding: EdgeInsets.zero,
-                  visualDensity: VisualDensity.compact,
-                ),
-              ),
-              const Expanded(
-                child: Text(
-                  'The Approach',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 40),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Stack(
-            alignment: Alignment.centerRight,
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(20),
-                child: LinearProgressIndicator(
-                  value: progress.clamp(0.05, 1),
-                  minHeight: 22,
-                  backgroundColor: Colors.white.withValues(alpha: 0.35),
-                  color: _kApproachCyan,
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      '$currentStep / $totalSteps',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                      ),
-                    ),
-                    Container(
-                      width: 28,
-                      height: 28,
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.help_outline,
-                        size: 18,
-                        color: _kApproachBlue,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── NPC Rive sprite ────────────────────────────────────────────────────────
-
-/// Plays an NPC's .riv animation. Owns its own [FileLoader], created once in
-/// [initState] rather than inline in a parent build() — RiveWidgetBuilder
-/// reloads the file whenever it's handed a new (by-equality) FileLoader
-/// instance, and this scene's build() runs on every message/state change.
-// NpcRiveSprite now lives in shared_widgets.dart (shared with
-// Scene1OfficePies's setting-introduction overlay).
-
-// ── Multi-speaker turn grouping ─────────────────────────────────────────────
-
-/// One consecutive run of lines from the same speaker within a turn (e.g.
-/// two lines in a row from "Dr. Cruz" become one block; a Narrator line in
-/// between two of Julia's lines splits them into three blocks). Built by
-/// [_buildSpeakerBlocks] and rendered by [_SpeakerBlockWidget].
-class _SpeakerBlock {
-  final String key;
-  final String displayName;
-  final bool isNarrator;
+/// One unit of the turn's dialogue, played in strict order by the beat
+/// director in [_Scene3InteractionState]. `narrator` beats with a null
+/// [characterId] are plain captions (no one named); a non-null
+/// [characterId] means the narration named a character, who appears on
+/// stage like an `npc` beat while this caption plays.
+class _Beat {
+  final _BeatKind kind;
+  final String text;
+  final String? characterId;
+  final String? displayName;
   final String? spriteAsset;
-  final List<String> lines;
-  // Known characters named within a Narrator line's own text (narration has
-  // no speaker prefix to match against, so this is matched against the
-  // line content instead) — e.g. "Sir Reyes nods. Ma'am Lopez listens."
-  // names two professors. Shown as a small avatar row above the narration
-  // instead of leaving a reaction beat with nobody pictured.
-  final List<String> narratorSprites;
-  // Same narration, split one sentence per mentioned character (sprite,
-  // sentence) — e.g. [(reyesSprite, "Sir Reyes nods."), (santosSprite,
-  // "Sir Santos smiles slightly."), ...]. Lets a multi-character reaction
-  // beat reveal one character at a time instead of dumping the whole panel
-  // on screen at once (QA: "make the npc appears then disappear so it
-  // wont cramp up the scenario").
-  final List<(String, String)> narratorBeats;
 
-  _SpeakerBlock({
-    required this.key,
-    required this.displayName,
-    required this.isNarrator,
-    required this.spriteAsset,
-    required this.lines,
-    List<String>? narratorSprites,
-    List<(String, String)>? narratorBeats,
-  }) : narratorSprites = narratorSprites ?? [],
-       narratorBeats = narratorBeats ?? [];
+  const _Beat({
+    required this.kind,
+    required this.text,
+    this.characterId,
+    this.displayName,
+    this.spriteAsset,
+  });
 }
 
 /// Splits a multi-character Narrator line like "Sir Reyes nods. Sir Santos
-/// smiles slightly." into one (sprite, sentence) pair per character
+/// smiles slightly." into one (character, sentence) pair per character
 /// mentioned. A sentence matching no known character is folded into the
-/// previous beat's text (same sprite) instead of being dropped or shown
-/// with nobody pictured.
-List<(String, String)> _splitNarratorBeats(
+/// previous beat's text (same character) instead of being dropped or shown
+/// with nobody named.
+List<(NpcCharacter, String)> _splitNarratorBeats(
   String text,
   List<NpcCharacter> npcCharacters,
 ) {
@@ -895,7 +92,7 @@ List<(String, String)> _splitNarratorBeats(
       .where((s) => s.isNotEmpty)
       .toList();
 
-  final beats = <(String, String)>[];
+  final beats = <(NpcCharacter, String)>[];
   for (final sentence in sentences) {
     NpcCharacter? match;
     for (final ch in npcCharacters) {
@@ -905,7 +102,7 @@ List<(String, String)> _splitNarratorBeats(
       }
     }
     if (match != null) {
-      beats.add((match.sprites.blink, sentence));
+      beats.add((match, sentence));
     } else if (beats.isNotEmpty) {
       final last = beats.removeLast();
       beats.add((last.$1, '${last.$2} $sentence'));
@@ -917,9 +114,8 @@ List<(String, String)> _splitNarratorBeats(
 /// "User (impulse):" / "User:" lines (a couple of fsg_party/fne_stage
 /// branches echo back the player's own scripted line this way) and any
 /// other speaker that isn't a known NpcCharacter and isn't Narrator still
-/// get their own labeled block — just without a sprite. This strips a
-/// trailing parenthetical descriptor for that label, e.g. "User (impulse)"
-/// -> "User".
+/// get their own labeled beat — just without a sprite. Strips a trailing
+/// parenthetical descriptor, e.g. "User (impulse)" -> "User".
 String _fallbackSpeakerName(String? raw) {
   if (raw == null || raw.trim().isEmpty) return '';
   final parenIndex = raw.indexOf('(');
@@ -929,14 +125,7 @@ String _fallbackSpeakerName(String? raw) {
 
 /// Same expression-cue keywords as scenario_engine.py's `_detect_npc_mood`
 /// (frown/glare/stern/annoyed/etc.) — checked here per LINE rather than
-/// relying solely on the backend's turn-wide `npc_mood` flag, which only
-/// says "someone in this turn looked angry," not which character or which
-/// of their lines. A block's own text is the actual source of truth for
-/// its own mood, so this takes priority over the generic
-/// first-line-greet/question-mark-tilt heuristic below — otherwise, e.g.,
-/// Carlo's very first line of a turn reading "*/frowns slightly." still
-/// rendered the generic "greet" pose instead of the frown the line
-/// describes.
+/// relying solely on the backend's turn-wide `npc_mood` flag.
 final _npcMoodAngryPatterns = [
   RegExp(r'\bfrown(s|ed|ing)?\b', caseSensitive: false),
   RegExp(r'\bglare(s|d)?\b', caseSensitive: false),
@@ -961,423 +150,1375 @@ final _npcMoodAngryPatterns = [
 bool _lineIndicatesAngryMood(String text) =>
     _npcMoodAngryPatterns.any((p) => p.hasMatch(text));
 
-/// Groups this turn's non-Hati lines into per-speaker [_SpeakerBlock]s and
-/// picks each block's NPC mood via the heuristic from the task brief:
-/// the line's own text describing an angry/frowning cue -> frown (highest
-/// priority — see [_lineIndicatesAngryMood]); else a character's first
-/// line this turn -> greet; a later line ending in "?" -> tilt; the
-/// backend's angry-turn signal (same npc_mood flag that already drives
-/// foa_supervisor's mood swap) -> frown as a fallback; otherwise -> blink.
-/// Mood is computed from a block's first line and applies to its one
-/// avatar. [npcMoodAngryThisTurn] is `provider.npcMood == 'angry'`.
-List<_SpeakerBlock> _buildSpeakerBlocks(
-  ScenarioConfig config,
-  List<ParsedMessage> npcParsed,
-  bool npcMoodAngryThisTurn,
-) {
-  final blocks = <_SpeakerBlock>[];
-  final seenCharacterIds = <String>{};
-  String? currentKey;
-  _SpeakerBlock? current;
+/// Builds this turn's ordered beat list: Hati first (if he has a line),
+/// then every Narrator/NPC beat in backend order, one beat per
+/// consecutive same-speaker run (mirroring the mood heuristic: a
+/// character's first line this turn -> greet, a later line ending in "?"
+/// -> tilt, an angry-cue line or `npcMoodAngryThisTurn` -> frown, else
+/// blink).
+List<_Beat> _buildBeats({
+  required ScenarioConfig config,
+  required List<ParsedMessage> parsed,
+  required String? activeSpriteAsset,
+  required bool npcMoodAngryThisTurn,
+}) {
+  final beats = <_Beat>[];
 
-  for (final p in npcParsed) {
-    final text = p.text.trim();
-    if (text.isEmpty) continue;
+  final hatiText = parsed
+      .where((p) => isHatiSpeaker(p.speaker))
+      .map((p) => p.text)
+      .where((t) => t.trim().isNotEmpty)
+      .join('\n\n');
+  if (hatiText.isNotEmpty) {
+    beats.add(_Beat(kind: _BeatKind.hati, text: hatiText));
+  }
 
-    final rawSpeaker = p.speaker;
-    final isNarrator = isNarratorSpeaker(rawSpeaker);
-    final character = isNarrator
-        ? null
-        : resolveNpcCharacter(config, rawSpeaker ?? '');
-    final displayName = isNarrator
-        ? 'Narrator'
-        : (character?.displayName ?? _fallbackSpeakerName(rawSpeaker));
-    final key = isNarrator ? 'narrator' : (character?.id ?? 'unk:$displayName');
+  final npcParsed = parsed.where((p) => !isHatiSpeaker(p.speaker)).toList();
 
-    String? spriteAsset;
-    if (character != null) {
-      final NpcMood mood;
-      if (_lineIndicatesAngryMood(text) || npcMoodAngryThisTurn) {
-        mood = NpcMood.frown;
-      } else if (!seenCharacterIds.contains(character.id)) {
-        mood = NpcMood.greet;
-      } else if (text.endsWith('?')) {
-        mood = NpcMood.tilt;
-      } else {
-        mood = NpcMood.blink;
+  if (config.npcCharacters.isEmpty) {
+    if (config.spriteAsset != null) {
+      // foa_supervisor: single implicit NPC — merge all non-Hati text into
+      // one beat, same as the scene's original monolithic rendering.
+      final profText = npcParsed
+          .map((p) => p.text)
+          .where((t) => t.trim().isNotEmpty)
+          .join('\n\n');
+      if (profText.isNotEmpty || activeSpriteAsset != null) {
+        beats.add(
+          _Beat(
+            kind: _BeatKind.npc,
+            text: profText,
+            characterId: _kFoaSupervisorImplicitId,
+            displayName: '',
+            spriteAsset: activeSpriteAsset,
+          ),
+        );
       }
-      seenCharacterIds.add(character.id);
-      spriteAsset = character.sprites.forMood(mood);
-    }
-
-    List<String> mentionedSprites = const [];
-    List<(String, String)> beats = const [];
-    if (isNarrator) {
-      final seenIds = <String>{};
-      mentionedSprites = [
-        for (final ch in config.npcCharacters)
-          if (ch.matches(text) && seenIds.add(ch.id)) ch.sprites.blink,
-      ];
-      beats = _splitNarratorBeats(text, config.npcCharacters);
-    }
-
-    if (key == currentKey && current != null) {
-      current.lines.add(text);
-      for (final sprite in mentionedSprites) {
-        if (!current.narratorSprites.contains(sprite)) {
-          current.narratorSprites.add(sprite);
-        }
-      }
-      current.narratorBeats.addAll(beats);
     } else {
-      current = _SpeakerBlock(
-        key: key,
-        displayName: displayName,
-        isNarrator: isNarrator,
-        spriteAsset: spriteAsset,
-        lines: [text],
-        narratorSprites: mentionedSprites,
-        narratorBeats: beats,
-      );
-      blocks.add(current);
-      currentKey = key;
-    }
-  }
-  return blocks;
-}
+      // foa_classroom: no sprite art at all — group consecutive
+      // same-speaker lines and give each an explicit name tag, since
+      // there's no portrait to identify the speaker otherwise.
+      String? currentKey;
+      String? currentDisplayName;
+      var currentIsNarrator = false;
+      final lines = <String>[];
 
-/// Renders one [_SpeakerBlock]: a Narrator line naming known characters
-/// (e.g. "Sir Reyes nods. Ma'am Lopez listens.") shows a small avatar row
-/// for each of them above the italic narration, rather than no one on
-/// screen; a Narrator line naming nobody stays plain narration. Every other
-/// speaker gets a name-labeled bubble with their small mood sprite beside
-/// it, mirroring how Hati's own avatar always accompanies Hati's bubble
-/// elsewhere in this scene, just at a smaller size so several speakers can
-/// stack in one turn without dominating the screen.
-class _SpeakerBlockWidget extends StatelessWidget {
-  final _SpeakerBlock block;
-  final double avatarSize;
-
-  /// True for the scenarios whose avatar was enlarged to match
-  /// foa_supervisor's sizing — at that size, the default side-by-side Row
-  /// squeezed the bubble's available width down to almost nothing (since
-  /// the now-much-wider sprite ate most of the row), forcing it into a
-  /// tall, narrow wrap that got clipped by the scene below. Stacking the
-  /// bubble above the sprite instead — foa_supervisor's own actual layout
-  /// — gives it the full row width and matches foa's look completely, not
-  /// just its avatar size.
-  final bool stackVertically;
-
-  /// False suppresses this block's own sprite even if [block] has one —
-  /// used by the caller for a single-NPC scenario (fsn_seat, phys_jeepney)
-  /// where a Narrator line in the middle of a turn splits the same
-  /// character's dialogue into two+ blocks (see _buildSpeakerBlocks' own
-  /// doc comment); repeating her full-size portrait once per block stacked
-  /// them into a tall, cluttered column. Only the turn's last block shows
-  /// the sprite there — see the call site's showSprite computation.
-  final bool showSprite;
-
-  const _SpeakerBlockWidget({
-    required this.block,
-    this.avatarSize = defaultAvatarSize,
-    this.stackVertically = false,
-    this.showSprite = true,
-  });
-
-  static const double defaultAvatarSize = 130;
-  // Was 56 — sized on the assumption of several avatars shown side by side
-  // in a row, but _SequentialNarratorReveal only ever shows ONE at a time
-  // (it cycles through reactions instead of dumping them all on screen at
-  // once — see _SequentialNarratorReveal's own doc comment), so there was
-  // no crowding to avoid and the portrait just read as oddly tiny next to
-  // everything else in the scene. Close to defaultAvatarSize now, just
-  // slightly smaller so a reaction beat still reads as lighter-weight than
-  // an actual speaking turn.
-  static const double _narratorAvatarSize = 110;
-
-  @override
-  Widget build(BuildContext context) {
-    final text = block.lines.join('\n');
-    if (block.isNarrator) {
-      // Only for a narration line naming SEVERAL characters at once (e.g.
-      // "Sir Reyes nods. Sir Santos smiles. Sir Cruz remains stern...") —
-      // that's flavor text with no dedicated speaking line of its own per
-      // person, so showing them here is the only place they'd appear. A
-      // single-name mention (e.g. "The stranger removes one earbud.") is
-      // usually right next to that same character's own speaker block,
-      // which already shows their avatar — an avatar here too would just
-      // be a confusing duplicate of the same character right below it.
-      if (block.narratorSprites.length <= 1) {
-        return _CharacterSpeechBubble(text: text, italic: true);
+      void flush() {
+        if (lines.isEmpty) return;
+        final text = lines.join('\n');
+        if (currentIsNarrator) {
+          beats.add(_Beat(kind: _BeatKind.narrator, text: text));
+        } else {
+          beats.add(
+            _Beat(
+              kind: _BeatKind.npc,
+              text: text,
+              characterId: currentKey,
+              displayName: currentDisplayName,
+            ),
+          );
+        }
+        lines.clear();
       }
-      // Several characters react in the same narration beat (e.g. a
-      // 5-professor panel) — reveal one at a time (sprite fades in, holds,
-      // fades out, next one takes its place) instead of showing every
-      // sprite and the whole combined paragraph at once, which cramped the
-      // scene and made it unclear which line belonged to which reaction.
-      return _SequentialNarratorReveal(
-        beats: block.narratorBeats.isNotEmpty
-            ? block.narratorBeats
-            : [for (final s in block.narratorSprites) (s, text)],
-        avatarSize: _narratorAvatarSize,
-      );
-    }
-    final spriteAsset = showSprite ? block.spriteAsset : null;
-    final bubble = _CharacterSpeechBubble(
-      text: text,
-      nameLabel: block.displayName.isNotEmpty ? block.displayName : null,
-    );
-    final sprite = spriteAsset == null
-        ? null
-        : (spriteAsset.endsWith('.riv')
-              ? NpcRiveSprite(
-                  key: ValueKey('${block.key}:$spriteAsset'),
-                  assetPath: spriteAsset,
-                  height: avatarSize,
-                )
-              : Image.asset(
-                  spriteAsset,
-                  height: avatarSize,
-                  fit: BoxFit.contain,
-                ));
 
-    if (stackVertically) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          bubble,
-          if (sprite != null) ...[const SizedBox(height: 8), sprite],
-        ],
-      );
+      for (final p in npcParsed) {
+        final text = p.text.trim();
+        if (text.isEmpty) continue;
+        final isNarrator = isNarratorSpeaker(p.speaker);
+        final displayName = isNarrator ? null : _fallbackSpeakerName(p.speaker);
+        final key = isNarrator ? 'narrator' : 'unk:$displayName';
+        if (key != currentKey) {
+          flush();
+          currentKey = key;
+          currentDisplayName = displayName;
+          currentIsNarrator = isNarrator;
+        }
+        lines.add(text);
+      }
+      flush();
     }
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Flexible(child: bubble),
-        if (sprite != null) ...[const SizedBox(width: 8), sprite],
-      ],
-    );
+  } else {
+    // Multi/single-NPC scenarios: group consecutive same-speaker runs and
+    // resolve each run's mood/sprite the same way the scene always has.
+    final seenCharacterIds = <String>{};
+    String? currentKey;
+    var currentIsNarrator = false;
+    String? currentDisplayName;
+    String? currentSpriteAsset;
+    final lines = <String>[];
+
+    void flush() {
+      if (lines.isEmpty) return;
+      final text = lines.join('\n');
+      if (currentIsNarrator) {
+        final narratorBeats = _splitNarratorBeats(text, config.npcCharacters);
+        final distinctIds = narratorBeats.map((b) => b.$1.id).toSet();
+        if (distinctIds.length > 1) {
+          for (final (character, sentence) in narratorBeats) {
+            beats.add(
+              _Beat(
+                kind: _BeatKind.narrator,
+                text: sentence,
+                characterId: character.id,
+                spriteAsset: character.sprites.blink,
+              ),
+            );
+          }
+        } else {
+          beats.add(_Beat(kind: _BeatKind.narrator, text: text));
+        }
+      } else {
+        beats.add(
+          _Beat(
+            kind: _BeatKind.npc,
+            text: text,
+            characterId: currentKey,
+            displayName: currentDisplayName,
+            spriteAsset: currentSpriteAsset,
+          ),
+        );
+      }
+      lines.clear();
+    }
+
+    for (final p in npcParsed) {
+      final text = p.text.trim();
+      if (text.isEmpty) continue;
+
+      final isNarrator = isNarratorSpeaker(p.speaker);
+      final character = isNarrator
+          ? null
+          : resolveNpcCharacter(config, p.speaker ?? '');
+      final displayName = isNarrator
+          ? 'Narrator'
+          : (character?.displayName ?? _fallbackSpeakerName(p.speaker));
+      final key = isNarrator
+          ? 'narrator'
+          : (character?.id ?? 'unk:$displayName');
+
+      String? spriteAsset;
+      if (character != null) {
+        final NpcMood mood;
+        if (_lineIndicatesAngryMood(text) || npcMoodAngryThisTurn) {
+          mood = NpcMood.frown;
+        } else if (!seenCharacterIds.contains(character.id)) {
+          mood = NpcMood.greet;
+        } else if (text.endsWith('?')) {
+          mood = NpcMood.tilt;
+        } else {
+          mood = NpcMood.blink;
+        }
+        seenCharacterIds.add(character.id);
+        spriteAsset = character.sprites.forMood(mood);
+      }
+
+      if (key == currentKey) {
+        lines.add(text);
+      } else {
+        flush();
+        currentKey = key;
+        currentIsNarrator = isNarrator;
+        currentDisplayName = displayName;
+        currentSpriteAsset = spriteAsset;
+        lines.add(text);
+      }
+    }
+    flush();
   }
+
+  return beats;
 }
 
-/// Auto-advances through a multi-character narration one (sprite, sentence)
-/// pair at a time — each shown for a few seconds, faded out, replaced by
-/// the next — instead of dumping every character and the whole combined
-/// paragraph on screen together. Stops on the last beat (stays visible)
-/// rather than disappearing once the cycle finishes, so there's still
-/// something to read afterward. Respects the scene's existing 2x speed
-/// toggle, same as Hati's own typewriter effect.
-class _SequentialNarratorReveal extends StatefulWidget {
-  final List<(String, String)> beats;
-  final double avatarSize;
+// ── Scene ────────────────────────────────────────────────────────────────
 
-  const _SequentialNarratorReveal({
-    required this.beats,
-    required this.avatarSize,
-  });
+class Scene3Interaction extends StatefulWidget {
+  const Scene3Interaction({super.key});
 
   @override
-  State<_SequentialNarratorReveal> createState() =>
-      _SequentialNarratorRevealState();
+  State<Scene3Interaction> createState() => _Scene3InteractionState();
 }
 
-class _SequentialNarratorRevealState extends State<_SequentialNarratorReveal> {
-  int _index = 0;
-  Timer? _timer;
+class _Scene3InteractionState extends State<Scene3Interaction> {
+  final TextEditingController _controller = TextEditingController();
+  final AudioRecorder _record = AudioRecorder();
+  bool _isRecording = false;
+  bool _isTranscribing = false;
+  String? _lastSentText;
+  bool _echoVisible = false;
+
+  // True once the player taps "Write your own response" on a multi-choice
+  // turn — swaps the DraggableChoiceSheet for the medium-appropriate input
+  // controls instead of only ever offering the backend's pre-written
+  // options. Reset alongside the beat director on every new turn.
+  bool _useCustomResponse = false;
+
+  // Beat director — see _buildBeats/_onBeatDismissed.
+  List<_Beat> _beats = const [];
+  int _beatIndex = 0;
+  String? _turnKey;
+  bool _dialogueComplete = false;
+  Timer? _advanceGapTimer;
+  bool _transitionLocked = false;
+  int _totalBeatsShown = 0;
+
+  // Who's on stage in the NPC slot — survives across turns (Section 4.3):
+  // the character stays put until a beat actually names someone new.
+  String? _onStageCharacterId;
+  String? _onStageSpriteAsset;
+
+  bool _pickerOverrideOpen = false;
+  String? _lastNpcLineForReplay;
+  bool _replayOpen = false;
 
   @override
   void initState() {
     super.initState();
-    _scheduleNext();
-  }
-
-  @override
-  void didUpdateWidget(covariant _SequentialNarratorReveal oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    // `beats` is a fresh List literal built on every parent rebuild (see
-    // _buildSpeakerBlocks), so comparing by reference (`!=`) was true on
-    // EVERY rebuild even with identical content — an unrelated rebuild
-    // elsewhere in the tree (a timer tick, keyboard visibility, provider
-    // notify) kept resetting `_index` back to 0 mid-cycle, which looked
-    // like the reveal restarting/disappearing instead of holding on the
-    // last beat. Compare contents instead, so it only actually resets when
-    // the beats themselves changed (e.g. a new turn's narration).
-    if (!_beatsEqual(widget.beats, oldWidget.beats)) {
-      _index = 0;
-      _scheduleNext();
+    final config = context.read<ScenarioProvider>().config;
+    if (config.npcCharacters.length == 1) {
+      final ch = config.npcCharacters.first;
+      _onStageCharacterId = ch.id;
+      _onStageSpriteAsset = ch.sprites.blink;
+    } else if (config.npcCharacters.isEmpty && config.spriteAsset != null) {
+      _onStageCharacterId = _kFoaSupervisorImplicitId;
+      _onStageSpriteAsset = config.spriteAsset;
     }
   }
 
-  static bool _beatsEqual(
-    List<(String, String)> a,
-    List<(String, String)> b,
+  @override
+  void dispose() {
+    _advanceGapTimer?.cancel();
+    _controller.dispose();
+    _record.dispose();
+    super.dispose();
+  }
+
+  Future<void> _startRecording() async {
+    if (await _record.hasPermission()) {
+      final dir = await getTemporaryDirectory();
+      final path = '${dir.path}/themed_scenario_record.wav';
+
+      // Ducked, not stopped — see TextResponseCard's identical call in
+      // shared_widgets.dart for why (avoid an audible loop-restart gap).
+      await HatiAudioService.instance.duckMusic();
+      await _record.start(
+        const RecordConfig(
+          encoder: AudioEncoder.wav,
+          sampleRate: 16000,
+          numChannels: 1,
+          bitRate: 256000,
+        ),
+        path: path,
+      );
+
+      if (mounted) {
+        HapticFeedback.lightImpact();
+        setState(() => _isRecording = true);
+      }
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            "Microphone access is off, so voice input isn't available "
+            "right now — you can still type your response below. To use "
+            "voice, allow microphone access for HATI in your device's "
+            "Settings.",
+          ),
+          duration: Duration(seconds: 5),
+        ),
+      );
+    }
+  }
+
+  Future<void> _stopRecording(ScenarioProvider provider) async {
+    HapticFeedback.lightImpact();
+    final path = await _record.stop();
+    await HatiAudioService.instance.restoreMusic();
+    if (!mounted) return;
+    setState(() => _isRecording = false);
+    if (path == null) return;
+
+    setState(() => _isTranscribing = true);
+    final userId = FirebaseAuth.instance.currentUser?.uid ?? '';
+    try {
+      await provider.submitAudio(path, userId: userId);
+    } finally {
+      if (mounted) setState(() => _isTranscribing = false);
+    }
+    if (!mounted) return;
+    setState(() {
+      _lastSentText = provider.lastTranscript?.trim().isNotEmpty == true
+          ? provider.lastTranscript
+          : '[Voice message sent]';
+      _echoVisible = true;
+    });
+  }
+
+  void _sendText(ScenarioProvider provider) {
+    final text = _controller.text.trim();
+    if (text.isEmpty) return;
+    _controller.clear();
+    setState(() {
+      _lastSentText = text;
+      _echoVisible = true;
+    });
+    provider.submitText(text);
+  }
+
+  Future<void> _handleMediumChosen(ResponseMedium medium) async {
+    var finalMedium = medium;
+    if (medium != ResponseMedium.type) {
+      final granted = await _record.hasPermission();
+      if (!mounted) return;
+      if (!granted) {
+        finalMedium = ResponseMedium.type;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              "Microphone access is off, so voice input isn't available "
+              "right now — you can still type your response below. To use "
+              "voice, allow microphone access for HATI in your device's "
+              "Settings.",
+            ),
+            duration: Duration(seconds: 5),
+          ),
+        );
+      }
+    }
+    if (!mounted) return;
+    context.read<ScenarioProvider>().setResponseMedium(finalMedium);
+    setState(() => _pickerOverrideOpen = false);
+  }
+
+  void _syncOnStageForBeat(_Beat? beat) {
+    if (beat == null) return;
+    final isCharacterBeat =
+        beat.kind == _BeatKind.npc ||
+        (beat.kind == _BeatKind.narrator && beat.characterId != null);
+    if (!isCharacterBeat) return;
+    _onStageCharacterId = beat.characterId;
+    _onStageSpriteAsset = beat.spriteAsset;
+  }
+
+  /// Single advance entry point for every beat kind — Hati's own bubble
+  /// calls this via onSequenceComplete once it dissolves itself; the
+  /// narrator/NPC bubble (HatiCoachSpeech) and plain caption (_TypedCaption)
+  /// call it via onDismissed/onSequenceComplete too. Only one bubble is
+  /// ever mounted at a time, so only one of them is ever listening to
+  /// HatiDialogueTapController at once — the director itself never taps
+  /// into that controller directly.
+  void _onBeatDismissed() {
+    if (!mounted || _transitionLocked) return;
+    _transitionLocked = true;
+    HapticFeedback.selectionClick();
+    final isLast = _beatIndex + 1 >= _beats.length;
+    _advanceGapTimer = Timer(Duration(milliseconds: isLast ? 150 : 120), () {
+      if (!mounted) return;
+      setState(() {
+        _beatIndex++;
+        _totalBeatsShown++;
+        _syncOnStageForBeat(
+          _beatIndex < _beats.length ? _beats[_beatIndex] : null,
+        );
+        if (_beatIndex >= _beats.length) _dialogueComplete = true;
+        _transitionLocked = false;
+      });
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.watch<ScenarioProvider>();
+    final step = provider.backendStep;
+    final config = provider.config;
+    final activeSpriteAsset =
+        (provider.npcMood == 'angry' && config.spriteAssetAngry != null)
+        ? config.spriteAssetAngry
+        : config.spriteAsset;
+    final parsed = provider.messages.map(parseSpeakerMessage).toList();
+
+    if (_onStageCharacterId == _kFoaSupervisorImplicitId) {
+      _onStageSpriteAsset = activeSpriteAsset;
+    }
+
+    final turnKey = '$step:${provider.messages.join('|')}';
+    if (turnKey != _turnKey) {
+      _turnKey = turnKey;
+      _advanceGapTimer?.cancel();
+      _transitionLocked = false;
+      _beatIndex = 0;
+      _useCustomResponse = false;
+      _replayOpen = false;
+      _echoVisible = false;
+      _beats = _buildBeats(
+        config: config,
+        parsed: parsed,
+        activeSpriteAsset: activeSpriteAsset,
+        npcMoodAngryThisTurn: provider.npcMood == 'angry',
+      );
+      _dialogueComplete = _beats.isEmpty;
+      _syncOnStageForBeat(_beats.isNotEmpty ? _beats.first : null);
+    }
+
+    final pickerVisible =
+        provider.responseMedium == null || _pickerOverrideOpen;
+    final isTextInput = provider.ui.type == ScenarioUIType.textInput;
+    final hasBackendCustomOption = provider.ui.options.any(
+      (o) => o.toLowerCase().contains('custom'),
+    );
+    final isNumericScale = looksLikeNumericScale(provider.ui.options);
+    final currentBeat = _beatIndex < _beats.length ? _beats[_beatIndex] : null;
+
+    return Scaffold(
+      backgroundColor: _kApproachBlue,
+      body: HatiTapToAdvance(
+        child: SafeArea(
+          bottom: false,
+          child: Column(
+            children: [
+              const SceneTopHeader(
+                sceneLabel: 'The Approach',
+                currentStep: 3,
+                totalSteps: 7,
+              ),
+              const SceneSpeedToggleRow(),
+              Expanded(
+                child: LayoutBuilder(
+                  builder: (context, c) {
+                    final stageW = c.maxWidth;
+                    final stageH = c.maxHeight;
+                    // Hati gets his own dedicated floor band at the bottom
+                    // of the stage — background art is cropped to the
+                    // space above it, so he stands on a clear, uncluttered
+                    // strip of his own instead of sharing the scenic
+                    // background with the NPC. This is what keeps the two
+                    // from visually colliding: they occupy separate bands,
+                    // not just separate corners of the same busy image.
+                    final floorH = (stageH * 0.20).clamp(110.0, 160.0);
+                    final backgroundH = stageH - floorH;
+                    final hatiH = (floorH - 24).clamp(72.0, 120.0);
+                    // The scenario's NPC art is a bust/portrait sprite (head
+                    // + shoulders), not a full-body figure — sizing it off
+                    // the full stage height blew it up into an oversized,
+                    // badly cropped close-up that crowded into Hati's
+                    // corner. Sized off the (now shorter) background band
+                    // instead, and anchored above the floor band rather
+                    // than at the very bottom, for clear separation.
+                    final npcH = (backgroundH * 0.42).clamp(140.0, 210.0);
+                    final npcBaseBottom = floorH + 20;
+
+                    return Stack(
+                      fit: StackFit.expand,
+                      clipBehavior: Clip.none,
+                      children: [
+                        // Layer 1: background art, cropped to the space
+                        // above Hati's floor band (layer 1b below) rather
+                        // than the full stage.
+                        Positioned(
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          height: backgroundH,
+                          child: Image.asset(
+                            config.backgroundAsset,
+                            fit: BoxFit.cover,
+                            width: double.infinity,
+                            height: backgroundH,
+                          ),
+                        ),
+                        // Layer 1b: Hati's floor — his own dedicated space,
+                        // separate from the scenic background/NPC above it.
+                        Positioned(
+                          bottom: 0,
+                          left: 0,
+                          right: 0,
+                          height: floorH,
+                          child: const _HatiFloor(),
+                        ),
+                        // Layer 2: scrims for legibility only.
+                        const IgnorePointer(child: _StageScrim()),
+                        if (!pickerVisible) ...[
+                          // Layer 3: NPC sprite, fixed bottom-right, resting
+                          // just above Hati's floor band.
+                          if (_onStageSpriteAsset != null)
+                            Positioned(
+                              right: 12,
+                              bottom: npcBaseBottom,
+                              child: _NpcStageSprite(
+                                characterId: _onStageCharacterId,
+                                spriteAsset: _onStageSpriteAsset,
+                                height: npcH,
+                              ),
+                            ),
+                          // Layer 4: Hati, fixed bottom-left within his own
+                          // floor band, never moves.
+                          Positioned(
+                            left: 8,
+                            bottom: 12,
+                            child: currentBeat?.kind == _BeatKind.hati
+                                ? HatiSpeakingBlock(
+                                    key: ValueKey(_turnKey),
+                                    persistentMessage: currentBeat!.text,
+                                    frogSize: hatiH,
+                                    mood: HatiMood.encourage,
+                                    alignment: CrossAxisAlignment.start,
+                                    dissolveBubble: true,
+                                    autoAdvance: _kAutoAdvanceBeats,
+                                    holdAfterTyping: const Duration(seconds: 3),
+                                    showAdvanceCue: true,
+                                    onSequenceComplete: _onBeatDismissed,
+                                  )
+                                : HatiFrogAvatar(
+                                    size: hatiH,
+                                    mood: HatiMood.idle,
+                                  ),
+                          ),
+                          // Layer 5: the one active speech bubble/caption.
+                          if (currentBeat != null &&
+                              currentBeat.kind != _BeatKind.hati &&
+                              !(currentBeat.kind == _BeatKind.narrator &&
+                                  currentBeat.characterId == null))
+                            _buildNpcOrNarratorBubble(
+                              currentBeat,
+                              stageW,
+                              npcH,
+                              npcBaseBottom,
+                            ),
+                          if (currentBeat != null &&
+                              currentBeat.kind == _BeatKind.narrator &&
+                              currentBeat.characterId == null)
+                            Positioned(
+                              top: 56,
+                              left: 16,
+                              right: 16,
+                              child: Center(
+                                child: _TypedCaption(
+                                  key: ValueKey('${_turnKey}_$_beatIndex'),
+                                  text: currentBeat.text,
+                                  onDismissed: _onBeatDismissed,
+                                ),
+                              ),
+                            ),
+                          if (provider.isLoading &&
+                              _lastSentText != null &&
+                              _lastSentText!.isNotEmpty)
+                            Positioned(
+                              right: 24,
+                              // Above the sprite's head (not partway down
+                              // it) so the bubble/indicator never covers
+                              // the NPC's face.
+                              bottom: npcBaseBottom + npcH + 8,
+                              child: const _TypingIndicator(),
+                            ),
+                          if (_replayOpen && _lastNpcLineForReplay != null)
+                            Positioned(
+                              right: 16,
+                              bottom: npcBaseBottom + npcH + 8,
+                              child: GestureDetector(
+                                onTap: () =>
+                                    setState(() => _replayOpen = false),
+                                child: SizedBox(
+                                  width: math.min(
+                                    HatiLayout.bubbleMaxWidth,
+                                    stageW - 32,
+                                  ),
+                                  child: _CharacterSpeechBubble(
+                                    text: _lastNpcLineForReplay!,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          // Layer 8: player's echoed answer, frontmost.
+                          Positioned(
+                            left: hatiH + 24,
+                            right: 16,
+                            bottom: 16,
+                            child: AnimatedOpacity(
+                              opacity: _echoVisible ? 1 : 0,
+                              duration: const Duration(milliseconds: 220),
+                              child:
+                                  (_lastSentText != null &&
+                                      _lastSentText!.isNotEmpty)
+                                  ? Align(
+                                      alignment: Alignment.centerRight,
+                                      child: _CharacterSpeechBubble(
+                                        text: _lastSentText!,
+                                      ),
+                                    )
+                                  : const SizedBox.shrink(),
+                            ),
+                          ),
+                          if (_dialogueComplete &&
+                              !isTextInput &&
+                              !_useCustomResponse &&
+                              !isNumericScale &&
+                              provider.ui.options.length > 1)
+                            PopIn(
+                              key: ValueKey(_turnKey),
+                              child: DraggableChoiceSheet(
+                                header: SectionHeader(
+                                  title: 'Choose Your Response',
+                                  subtitle: hasBackendCustomOption
+                                      ? 'Select one'
+                                      : 'Select one or write your own',
+                                ),
+                                body: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    for (
+                                      var i = 0;
+                                      i < provider.ui.options.length;
+                                      i++
+                                    )
+                                      ScriptOptionCard(
+                                        label: String.fromCharCode(65 + i),
+                                        script: provider.ui.options[i],
+                                        selected: false,
+                                        enabled: !provider.isLoading,
+                                        onTap: provider.isLoading
+                                            ? () {}
+                                            : () => provider.submitText(
+                                                provider.ui.options[i],
+                                              ),
+                                      ),
+                                    if (!hasBackendCustomOption)
+                                      _CustomResponseCard(
+                                        enabled: !provider.isLoading,
+                                        onTap: () => setState(
+                                          () => _useCustomResponse = true,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                        ],
+                        // Layer 7: HUD. Progress now lives in the header
+                        // band (SceneTopHeader) like every other scene —
+                        // no floating pill duplicating it over the art.
+                        if (!pickerVisible &&
+                            _totalBeatsShown < 2 &&
+                            currentBeat != null)
+                          const Positioned(
+                            bottom: 8,
+                            left: 0,
+                            right: 0,
+                            child: Center(child: _TapAnywhereHint()),
+                          ),
+                        if (pickerVisible)
+                          Positioned(
+                            left: 8,
+                            bottom: 12,
+                            child: HatiSpeakingBlock(
+                              persistentMessage:
+                                  'How would you like to respond?',
+                              frogSize: hatiH,
+                              mood: HatiMood.thinking,
+                              alignment: CrossAxisAlignment.start,
+                              dissolveBubble: false,
+                              autoAdvance: false,
+                            ),
+                          ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+              if (pickerVisible)
+                _buildMediumPickerPanel(context)
+              else
+                _buildBottomSlot(
+                  context,
+                  provider,
+                  isTextInput: isTextInput,
+                  isNumericScale: isNumericScale,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNpcOrNarratorBubble(
+    _Beat beat,
+    double stageW,
+    double npcH,
+    double npcBaseBottom,
   ) {
-    if (identical(a, b)) return true;
-    if (a.length != b.length) return false;
-    for (var i = 0; i < a.length; i++) {
-      if (a[i] != b[i]) return false;
+    return Positioned(
+      right: 16,
+      bottom: npcBaseBottom + npcH + 8,
+      child: SizedBox(
+        width: math.min(HatiLayout.bubbleMaxWidth, stageW - 32),
+        child: _NpcBubbleWithNameTag(
+          nameLabel: beat.displayName,
+          child: HatiCoachSpeech(
+            key: ValueKey('${_turnKey}_$_beatIndex'),
+            persistentMessage: beat.text,
+            dissolveBubble: true,
+            bubbleAlignment: Alignment.bottomRight,
+            tailTargetX: HatiLayout.bubbleMaxWidth,
+            textAlign: TextAlign.right,
+            autoAdvance: _kAutoAdvanceBeats,
+            showAdvanceCue: true,
+            // NPC/narrator line, not Hati — no "Hati talk" voice cue here.
+            playTalkSound: false,
+            onBubbleDismissed: () {
+              if (beat.kind == _BeatKind.npc) _lastNpcLineForReplay = beat.text;
+            },
+            onSequenceComplete: _onBeatDismissed,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMediumPickerPanel(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black26,
+            blurRadius: 12,
+            offset: Offset(0, -4),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'How would you like to respond?',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              const SizedBox(height: 14),
+              _MediumTile(
+                icon: Icons.mic_none_rounded,
+                label: 'Voice',
+                caption: 'Speak your answer',
+                onTap: () => _handleMediumChosen(ResponseMedium.voice),
+              ),
+              const SizedBox(height: 10),
+              _MediumTile(
+                icon: Icons.keyboard_alt_outlined,
+                label: 'Type',
+                caption: 'Write your answer',
+                onTap: () => _handleMediumChosen(ResponseMedium.type),
+              ),
+              const SizedBox(height: 10),
+              _MediumTile(
+                icon: Icons.forum_outlined,
+                label: 'Both',
+                caption: 'Speak or write',
+                onTap: () => _handleMediumChosen(ResponseMedium.both),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBottomSlot(
+    BuildContext context,
+    ScenarioProvider provider, {
+    required bool isTextInput,
+    required bool isNumericScale,
+  }) {
+    if (isTextInput || _useCustomResponse) {
+      return _buildTextInputPanel(context, provider);
     }
-    return true;
-  }
-
-  void _scheduleNext() {
-    _timer?.cancel();
-    if (_index >= widget.beats.length - 1) return;
-    final sentence = widget.beats[_index].$2;
-    // Roughly reading-time-scaled (base + per-character), clamped to a
-    // sane range so a short "Sir Cruz nods." and a longer sentence both
-    // get an appropriate hold before advancing.
-    final baseMs = 1400 + sentence.length * 35;
-    final clampedMs = baseMs.clamp(1800, 4200);
-    final ms = HatiSpeechSpeedController.isFast.value
-        ? clampedMs ~/ 2
-        : clampedMs;
-    _timer = Timer(Duration(milliseconds: ms), () {
-      if (!mounted) return;
-      setState(() => _index++);
-      _scheduleNext();
-    });
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (widget.beats.isEmpty) return const SizedBox.shrink();
-    final (sprite, sentence) = widget.beats[_index];
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        AnimatedSwitcher(
-          duration: const Duration(milliseconds: 350),
-          child: KeyedSubtree(
-            key: ValueKey(_index),
-            child: sprite.endsWith('.riv')
-                ? NpcRiveSprite(assetPath: sprite, height: widget.avatarSize)
-                : Image.asset(
-                    sprite,
-                    height: widget.avatarSize,
-                    fit: BoxFit.contain,
-                  ),
+    if (!_dialogueComplete) {
+      return const SizedBox.shrink();
+    }
+    if (isNumericScale) {
+      return PopIn(
+        key: ValueKey(_turnKey),
+        child: Container(
+          color: Colors.white,
+          child: SafeArea(
+            top: false,
+            child: ScaleChoiceCard(
+              options: provider.ui.options,
+              isLoading: provider.isLoading,
+              onSubmit: provider.submitText,
+            ),
           ),
         ),
-        const SizedBox(height: 6),
-        AnimatedSwitcher(
-          duration: const Duration(milliseconds: 350),
-          child: KeyedSubtree(
-            key: ValueKey(_index),
-            child: _CharacterSpeechBubble(text: sentence, italic: true),
+      );
+    }
+    if (provider.ui.options.length <= 1) {
+      return PopIn(
+        key: ValueKey(_turnKey),
+        child: Container(
+          color: Colors.white,
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+          child: SafeArea(
+            top: false,
+            child: HatiButton(
+              label: provider.ui.options.isNotEmpty
+                  ? provider.ui.options.first
+                  : 'Continue',
+              icon: Icons.arrow_forward_rounded,
+              onTap: provider.isLoading
+                  ? null
+                  : () => provider.submitText(
+                      provider.ui.options.isNotEmpty
+                          ? provider.ui.options.first
+                          : 'Continue',
+                    ),
+            ),
           ),
         ),
-      ],
+      );
+    }
+    return const SizedBox.shrink();
+  }
+
+  Widget _buildTextInputPanel(BuildContext context, ScenarioProvider provider) {
+    final medium = provider.responseMedium ?? ResponseMedium.both;
+    final panelHeight =
+        (medium == ResponseMedium.voice ? 168.0 : 132.0) +
+        MediaQuery.paddingOf(context).bottom;
+    final showBackToChoices =
+        _useCustomResponse && provider.ui.type != ScenarioUIType.textInput;
+
+    return Container(
+      height: panelHeight,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black26,
+            blurRadius: 12,
+            offset: Offset(0, -4),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
+                child: Row(
+                  children: [
+                    if (showBackToChoices)
+                      TextButton.icon(
+                        onPressed: () =>
+                            setState(() => _useCustomResponse = false),
+                        style: TextButton.styleFrom(
+                          foregroundColor: _kApproachBlue,
+                          padding: EdgeInsets.zero,
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        icon: const Icon(Icons.arrow_back_rounded, size: 16),
+                        label: const Text('Back to choices'),
+                      ),
+                    const Spacer(),
+                    if (_lastNpcLineForReplay != null)
+                      Semantics(
+                        button: true,
+                        label: 'Replay what they said',
+                        child: TextButton(
+                          onPressed: () =>
+                              setState(() => _replayOpen = !_replayOpen),
+                          style: TextButton.styleFrom(
+                            foregroundColor: _kApproachBlue,
+                            padding: const EdgeInsets.symmetric(horizontal: 6),
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          child: const Text(
+                            'What did they say?',
+                            style: TextStyle(fontSize: 12),
+                          ),
+                        ),
+                      ),
+                    if (_dialogueComplete)
+                      Semantics(
+                        button: true,
+                        label: 'Change how you respond',
+                        child: TextButton(
+                          onPressed: () =>
+                              setState(() => _pickerOverrideOpen = true),
+                          style: TextButton.styleFrom(
+                            foregroundColor: _kApproachBlue,
+                            padding: const EdgeInsets.symmetric(horizontal: 6),
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          child: const Text(
+                            'Change',
+                            style: TextStyle(fontSize: 12),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const Text(
+                'What would you like to say?',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+              ),
+              Expanded(
+                child: Center(
+                  child: _dialogueComplete
+                      ? PopIn(
+                          key: ValueKey('${_turnKey}_$_beatIndex:input'),
+                          child: _buildInputControls(context, provider, medium),
+                        )
+                      : const SizedBox.shrink(),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInputControls(
+    BuildContext context,
+    ScenarioProvider provider,
+    ResponseMedium medium,
+  ) {
+    if (medium == ResponseMedium.voice) {
+      return _VoiceOnlyInputPanel(
+        enabled: !provider.isLoading && !_isTranscribing,
+        isRecording: _isRecording,
+        isTranscribing: _isTranscribing,
+        onMicTap: () =>
+            _isRecording ? _stopRecording(provider) : _startRecording(),
+      );
+    }
+    return _ApproachInputBar(
+      controller: _controller,
+      enabled: !provider.isLoading && !_isRecording && !_isTranscribing,
+      isRecording: _isRecording,
+      isTranscribing: _isTranscribing,
+      showMic: medium == ResponseMedium.both,
+      hintText: _isRecording
+          ? 'Listening…'
+          : (_isTranscribing
+                ? 'Converting your voice…'
+                : (provider.ui.placeholder?.isNotEmpty == true
+                      ? provider.ui.placeholder!
+                      : 'Type your response...')),
+      onSend: () => _sendText(provider),
+      onMicTap: () =>
+          _isRecording ? _stopRecording(provider) : _startRecording(),
     );
   }
 }
 
-/// Multiple different NPCs actually speaking within the same turn (the
-/// 5-professor panel, fne_stage's students, etc.) used to all render
-/// stacked in one Column at once — cramped, and made it hard to tell whose
-/// line was whose at a glance. Reveals one speaker's full block (bubble +
-/// name label + sprite, via _SpeakerBlockWidget) at a time instead — fades
-/// in, holds for a reading-time-scaled duration, fades out, the next
-/// speaker takes its place — same pattern as _SequentialNarratorReveal.
-/// Doesn't loop: stays on the last speaker's block once the sequence
-/// finishes, so there's still something on screen to read afterward.
-class _SequentialSpeakerReveal extends StatefulWidget {
-  final List<_SpeakerBlock> blocks;
-  final double avatarSize;
-  final bool stackVertically;
+// ── Stage chrome ─────────────────────────────────────────────────────────
 
-  const _SequentialSpeakerReveal({
-    required this.blocks,
-    required this.avatarSize,
-    required this.stackVertically,
-  });
-
-  @override
-  State<_SequentialSpeakerReveal> createState() =>
-      _SequentialSpeakerRevealState();
-}
-
-class _SequentialSpeakerRevealState extends State<_SequentialSpeakerReveal> {
-  int _index = 0;
-  Timer? _timer;
-
-  @override
-  void initState() {
-    super.initState();
-    _scheduleNext();
-  }
-
-  @override
-  void didUpdateWidget(covariant _SequentialSpeakerReveal oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.blocks != oldWidget.blocks) {
-      _index = 0;
-      _scheduleNext();
-    }
-  }
-
-  void _scheduleNext() {
-    _timer?.cancel();
-    if (_index >= widget.blocks.length - 1) return;
-    // Roughly reading-time-scaled (base + per-character), same formula as
-    // _SequentialNarratorReveal, clamped to a sane range so a short "Yes."
-    // and a full paragraph both get an appropriate hold before advancing.
-    final text = widget.blocks[_index].lines.join('\n');
-    final baseMs = 1400 + text.length * 35;
-    final clampedMs = baseMs.clamp(1800, 4200);
-    final ms = HatiSpeechSpeedController.isFast.value
-        ? clampedMs ~/ 2
-        : clampedMs;
-    _timer = Timer(Duration(milliseconds: ms), () {
-      if (!mounted) return;
-      setState(() => _index++);
-      _scheduleNext();
-    });
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
+class _StageScrim extends StatelessWidget {
+  const _StageScrim();
 
   @override
   Widget build(BuildContext context) {
-    if (widget.blocks.isEmpty) return const SizedBox.shrink();
-    final index = _index.clamp(0, widget.blocks.length - 1);
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 350),
-      child: KeyedSubtree(
-        key: ValueKey(index),
-        child: _SpeakerBlockWidget(
-          block: widget.blocks[index],
-          avatarSize: widget.avatarSize,
-          stackVertically: widget.stackVertically,
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.black26,
+            Colors.transparent,
+            Colors.transparent,
+            Colors.black26,
+          ],
+          stops: [0, 0.22, 0.78, 1],
         ),
       ),
     );
   }
 }
 
-// ── Character speech bubble (prof / user) ─────────────────────────────────────
+class _TapAnywhereHint extends StatelessWidget {
+  const _TapAnywhereHint();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: const Text(
+        'Tap anywhere to continue',
+        style: TextStyle(color: Colors.white, fontSize: 12),
+      ),
+    );
+  }
+}
+
+class _TypingIndicator extends StatefulWidget {
+  const _TypingIndicator();
+
+  @override
+  State<_TypingIndicator> createState() => _TypingIndicatorState();
+}
+
+class _TypingIndicatorState extends State<_TypingIndicator>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 900),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, _) {
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: List.generate(3, (i) {
+              final t = (_controller.value - i * 0.2) % 1.0;
+              final phase = t < 0.5 ? t * 2 : (1 - t) * 2;
+              final scale = 0.6 + 0.4 * phase.clamp(0.0, 1.0);
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2),
+                child: Transform.scale(
+                  scale: scale,
+                  child: Container(
+                    width: 7,
+                    height: 7,
+                    decoration: const BoxDecoration(
+                      color: _kApproachBlue,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+              );
+            }),
+          );
+        },
+      ),
+    );
+  }
+}
+
+// ── Hati's floor ─────────────────────────────────────────────────────────
+
+/// The dedicated strip at the stage's bottom edge that belongs to Hati
+/// alone — a plain, uncluttered ground separate from the scenic background
+/// (and the NPC standing on it), so he and the player's echoed answer
+/// always have clear, unobstructed space instead of competing with the
+/// background art and the NPC's portrait for the same corner.
+class _HatiFloor extends StatelessWidget {
+  const _HatiFloor();
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            _kApproachBlue.withValues(alpha: 0.55),
+            _kApproachBlue.withValues(alpha: 0.85),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── NPC on-stage sprite ──────────────────────────────────────────────────
+
+/// One character at a time in the stage's NPC slot. A character-id change
+/// fades+slides in the new sprite; a same-character mood change just
+/// cross-fades. Static PNG sprites get a subtle idle breathing loop;
+/// `.riv` sprites already animate on their own.
+class _NpcStageSprite extends StatefulWidget {
+  final String? characterId;
+  final String? spriteAsset;
+  final double height;
+
+  const _NpcStageSprite({
+    required this.characterId,
+    required this.spriteAsset,
+    required this.height,
+  });
+
+  @override
+  State<_NpcStageSprite> createState() => _NpcStageSpriteState();
+}
+
+class _NpcStageSpriteState extends State<_NpcStageSprite> {
+  bool _characterSwap = false;
+
+  @override
+  void didUpdateWidget(covariant _NpcStageSprite oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _characterSwap = oldWidget.characterId != widget.characterId;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final sprite = widget.spriteAsset;
+    if (sprite == null) return const SizedBox.shrink();
+    final reduceMotion =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    final key = ValueKey('${widget.characterId}::$sprite');
+    final child = sprite.endsWith('.riv')
+        ? NpcRiveSprite(key: key, assetPath: sprite, height: widget.height)
+        : _BreathingSprite(key: key, assetPath: sprite, height: widget.height);
+
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 250),
+      transitionBuilder: (child, animation) {
+        if (reduceMotion || !_characterSwap) {
+          return FadeTransition(opacity: animation, child: child);
+        }
+        final slide =
+            Tween<Offset>(
+              begin: const Offset(0.16, 0),
+              end: Offset.zero,
+            ).animate(
+              CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+            );
+        return FadeTransition(
+          opacity: animation,
+          child: SlideTransition(position: slide, child: child),
+        );
+      },
+      child: child,
+    );
+  }
+}
+
+class _BreathingSprite extends StatefulWidget {
+  final String assetPath;
+  final double height;
+
+  const _BreathingSprite({
+    super.key,
+    required this.assetPath,
+    required this.height,
+  });
+
+  @override
+  State<_BreathingSprite> createState() => _BreathingSpriteState();
+}
+
+class _BreathingSpriteState extends State<_BreathingSprite>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(seconds: 3),
+  )..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final image = Image.asset(
+      widget.assetPath,
+      height: widget.height,
+      fit: BoxFit.contain,
+      alignment: Alignment.bottomRight,
+    );
+    final reduceMotion =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    if (reduceMotion) return image;
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) => Transform.scale(
+        scale: 1.0 + 0.015 * _controller.value,
+        alignment: Alignment.bottomCenter,
+        child: child,
+      ),
+      child: image,
+    );
+  }
+}
+
+// ── Narrator/NPC bubble chrome ───────────────────────────────────────────
+
+class _NpcBubbleWithNameTag extends StatelessWidget {
+  final String? nameLabel;
+  final Widget child;
+
+  const _NpcBubbleWithNameTag({this.nameLabel, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    if (nameLabel == null || nameLabel!.isEmpty) return child;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          margin: const EdgeInsets.only(bottom: 4, right: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+          decoration: BoxDecoration(
+            color: _kApproachBlue,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Text(
+            nameLabel!,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        child,
+      ],
+    );
+  }
+}
+
+/// Plain narration with no character named — a distinct dark caption (no
+/// tail), separate from the white speaker bubbles above. Runs its own
+/// small typewriter/tap-advance loop rather than reusing the shared
+/// speech-bubble painter, since that painter always draws a bubble+tail
+/// shape unsuitable for a tailless caption.
+class _TypedCaption extends StatefulWidget {
+  final String text;
+  final VoidCallback? onDismissed;
+
+  const _TypedCaption({super.key, required this.text, this.onDismissed});
+
+  @override
+  State<_TypedCaption> createState() => _TypedCaptionState();
+}
+
+class _TypedCaptionState extends State<_TypedCaption> {
+  int _visibleChars = 0;
+  Timer? _timer;
+  bool _dismissing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    HatiDialogueTapController.addListener(_handleTap);
+    _scheduleNext();
+  }
+
+  void _scheduleNext() {
+    _timer?.cancel();
+    if (_visibleChars >= widget.text.length) return;
+    _timer = Timer(HatiSpeechSpeedController.charInterval, () {
+      if (!mounted) return;
+      setState(() => _visibleChars++);
+      _scheduleNext();
+    });
+  }
+
+  void _handleTap() {
+    if (!mounted || _dismissing) return;
+    if (_visibleChars < widget.text.length) {
+      _timer?.cancel();
+      setState(() => _visibleChars = widget.text.length);
+      return;
+    }
+    setState(() => _dismissing = true);
+    Future.delayed(const Duration(milliseconds: 180), () {
+      if (mounted) widget.onDismissed?.call();
+    });
+  }
+
+  @override
+  void dispose() {
+    HatiDialogueTapController.removeListener(_handleTap);
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final displayed = widget.text.substring(
+      0,
+      _visibleChars.clamp(0, widget.text.length),
+    );
+    return AnimatedOpacity(
+      opacity: _dismissing ? 0 : 1,
+      duration: const Duration(milliseconds: 180),
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0, end: 1),
+        duration: const Duration(milliseconds: 240),
+        curve: Curves.easeOut,
+        builder: (context, v, child) => Opacity(
+          opacity: v,
+          child: Transform.translate(
+            offset: Offset(0, (1 - v) * -12),
+            child: child,
+          ),
+        ),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.55),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Text(
+            displayed,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Colors.white,
+              fontStyle: FontStyle.italic,
+              fontSize: 14,
+              height: 1.4,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Character speech bubble (echoed answer / replay) ─────────────────────
 
 class _CharacterSpeechBubble extends StatelessWidget {
   final String text;
-  final String? nameLabel;
-  final bool italic;
 
-  const _CharacterSpeechBubble({
-    required this.text,
-    this.nameLabel,
-    this.italic = false,
-  });
+  const _CharacterSpeechBubble({required this.text});
 
   @override
   Widget build(BuildContext context) {
@@ -1398,47 +1539,114 @@ class _CharacterSpeechBubble extends StatelessWidget {
             ),
           ],
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            if (nameLabel != null && nameLabel!.isNotEmpty) ...[
-              Text(
-                nameLabel!,
-                textAlign: TextAlign.right,
-                style: const TextStyle(
-                  color: _kApproachBlue,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.2,
-                ),
-              ),
-              const SizedBox(height: 4),
-            ],
-            Text(
-              text,
-              textAlign: TextAlign.right,
-              style: TextStyle(
-                color: Colors.black,
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
-                fontStyle: italic ? FontStyle.italic : FontStyle.normal,
-                height: 1.35,
-              ),
-            ),
-          ],
+        child: Text(
+          text,
+          textAlign: TextAlign.right,
+          style: const TextStyle(
+            color: Colors.black,
+            fontSize: 15,
+            fontWeight: FontWeight.bold,
+            height: 1.35,
+          ),
         ),
       ),
     );
   }
 }
 
-// ── Bottom input bar ──────────────────────────────────────────────────────────
+// ── Medium picker tile ───────────────────────────────────────────────────
+
+class _MediumTile extends StatefulWidget {
+  final IconData icon;
+  final String label;
+  final String caption;
+  final VoidCallback onTap;
+
+  const _MediumTile({
+    required this.icon,
+    required this.label,
+    required this.caption,
+    required this.onTap,
+  });
+
+  @override
+  State<_MediumTile> createState() => _MediumTileState();
+}
+
+class _MediumTileState extends State<_MediumTile> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: '${widget.label}: ${widget.caption}',
+      child: GestureDetector(
+        onTapDown: (_) => setState(() => _pressed = true),
+        onTapCancel: () => setState(() => _pressed = false),
+        onTapUp: (_) => setState(() => _pressed = false),
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          constraints: const BoxConstraints(minHeight: 56),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: _pressed
+                ? _kApproachBlue.withValues(alpha: 0.12)
+                : _kApproachBlue.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: _kApproachBlue.withValues(alpha: _pressed ? 0.6 : 0.3),
+              width: _pressed ? 2 : 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: _kApproachBlue.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(widget.icon, color: _kApproachBlue),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.label,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                        color: _kApproachBlue,
+                      ),
+                    ),
+                    Text(
+                      widget.caption,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Bottom input controls ────────────────────────────────────────────────
 
 /// The "write your own" option at the end of the choice sheet's option
 /// list — a lighter outlined style (pencil icon, no lettered badge) than
-/// the [ScriptOptionCard]s above it so it reads as "compose something new"
-/// rather than "option D".
+/// the [ScriptOptionCard]s above it.
 class _CustomResponseCard extends StatelessWidget {
   final bool enabled;
   final VoidCallback onTap;
@@ -1495,6 +1703,77 @@ class _CustomResponseCard extends StatelessWidget {
   }
 }
 
+class _VoiceOnlyInputPanel extends StatelessWidget {
+  final bool enabled;
+  final bool isRecording;
+  final bool isTranscribing;
+  final VoidCallback onMicTap;
+
+  const _VoiceOnlyInputPanel({
+    required this.enabled,
+    required this.isRecording,
+    required this.isTranscribing,
+    required this.onMicTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final label = isTranscribing
+        ? 'Converting your voice…'
+        : (isRecording ? 'Listening… tap to stop' : 'Tap to speak');
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Semantics(
+          button: true,
+          label: isRecording ? 'Stop recording' : 'Start recording',
+          child: GestureDetector(
+            onTap: enabled ? onMicTap : null,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: 88,
+              height: 88,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isRecording
+                    ? Colors.red.withValues(alpha: 0.08)
+                    : _kApproachBlue.withValues(alpha: 0.06),
+                border: Border.all(
+                  color: isRecording ? Colors.red : _kApproachBlue,
+                  width: 3,
+                ),
+              ),
+              child: Center(
+                child: isTranscribing
+                    ? const SizedBox(
+                        width: 28,
+                        height: 28,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.6,
+                          color: _kApproachBlue,
+                        ),
+                      )
+                    : Icon(
+                        isRecording
+                            ? Icons.stop_rounded
+                            : Icons.graphic_eq_rounded,
+                        size: 36,
+                        color: isRecording ? Colors.red : _kApproachBlue,
+                      ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          label,
+          style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+        ),
+      ],
+    );
+  }
+}
+
 class _ApproachInputBar extends StatelessWidget {
   final TextEditingController controller;
   final bool enabled;
@@ -1504,6 +1783,10 @@ class _ApproachInputBar extends StatelessWidget {
   final VoidCallback onSend;
   final VoidCallback onMicTap;
 
+  /// False hides the mic icon/recording affordances entirely — used for
+  /// [ResponseMedium.type], which never offers voice input.
+  final bool showMic;
+
   const _ApproachInputBar({
     required this.controller,
     required this.enabled,
@@ -1512,16 +1795,11 @@ class _ApproachInputBar extends StatelessWidget {
     required this.hintText,
     required this.onSend,
     required this.onMicTap,
+    this.showMic = true,
   });
 
   @override
   Widget build(BuildContext context) {
-    // SafeArea(top: false) — without it, a phone using gesture navigation
-    // (no physical/on-screen button bar reserving its own space) draws its
-    // nav bar directly on top of this fixed 12px bottom padding, covering
-    // part of the text field and send button. The sibling single-button
-    // "Continue" branch right below this one in scene3_interaction.dart
-    // already wraps in SafeArea for the same reason.
     return Container(
       color: Colors.white,
       child: SafeArea(
@@ -1530,39 +1808,40 @@ class _ApproachInputBar extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
           child: Row(
             children: [
-              SizedBox(
-                width: 48,
-                height: 48,
-                child: isTranscribing
-                    ? const Center(
-                        child: SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.4,
-                            color: _kApproachBlue,
-                          ),
-                        ),
-                      )
-                    // While recording, the right-side button (below) is the
-                    // one stop control — dim and disable this one instead of
-                    // also wiring it to onMicTap, so there's only one active
-                    // stop affordance on screen at a time.
-                    : IgnorePointer(
-                        ignoring: isRecording,
-                        child: Opacity(
-                          opacity: isRecording ? 0.35 : 1.0,
-                          child: IconButton(
-                            icon: Icon(
-                              Icons.mic_none_rounded,
-                              color: enabled ? _kApproachBlue : Colors.grey,
-                              size: 28,
+              if (showMic)
+                SizedBox(
+                  width: 48,
+                  height: 48,
+                  child: isTranscribing
+                      ? const Center(
+                          child: SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.4,
+                              color: _kApproachBlue,
                             ),
-                            onPressed: enabled ? onMicTap : null,
+                          ),
+                        )
+                      : IgnorePointer(
+                          ignoring: isRecording,
+                          child: Opacity(
+                            opacity: isRecording ? 0.35 : 1.0,
+                            child: Semantics(
+                              button: true,
+                              label: 'Record voice message',
+                              child: IconButton(
+                                icon: Icon(
+                                  Icons.mic_none_rounded,
+                                  color: enabled ? _kApproachBlue : Colors.grey,
+                                  size: 28,
+                                ),
+                                onPressed: enabled ? onMicTap : null,
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-              ),
+                ),
               Expanded(
                 child: TextField(
                   controller: controller,
@@ -1588,23 +1867,22 @@ class _ApproachInputBar extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 4),
-              // While recording, this becomes the stop control too — not
-              // just the mic button on the left. Users kept not realizing
-              // the mic was still running or that tapping it again was
-              // what stopped it; putting a second, obvious stop affordance
-              // where they'd naturally look next (the button they'd
-              // otherwise tap to send) fixes that without removing the
-              // mic button's own toggle behavior.
-              IconButton(
-                icon: Icon(
-                  isRecording ? Icons.stop_circle_rounded : Icons.send_rounded,
-                  color: isRecording
-                      ? Colors.red
-                      : (enabled ? _kApproachBlue : Colors.grey),
+              Semantics(
+                button: true,
+                label: showMic && isRecording ? 'Stop recording' : 'Send',
+                child: IconButton(
+                  icon: Icon(
+                    showMic && isRecording
+                        ? Icons.stop_circle_rounded
+                        : Icons.send_rounded,
+                    color: showMic && isRecording
+                        ? Colors.red
+                        : (enabled ? _kApproachBlue : Colors.grey),
+                  ),
+                  onPressed: showMic && isRecording
+                      ? onMicTap
+                      : (enabled ? onSend : null),
                 ),
-                onPressed: isRecording
-                    ? onMicTap
-                    : (enabled ? onSend : null),
               ),
             ],
           ),

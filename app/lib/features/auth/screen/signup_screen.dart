@@ -4,6 +4,16 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'email_verification_screen.dart';
 
+// Brand tokens shared with the loading screen and onboarding/consent flow —
+// keep these in sync with lib/features/onboarding/consent_flow_screen.dart
+// so auth doesn't visually diverge from the rest of the app.
+const _kBrand = Color(0xFF0B28D9);
+const _kBrandTint = Color(0xFFF8F9FF);
+const _kBrandBorder = Color(0xFFE2E6FF);
+const _kTextDark = Color(0xFF1A1A2E);
+const _kTextMuted = Color(0xFF6B7280);
+const _kFieldBorder = Color(0xFFE2E8F0);
+
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
 
@@ -97,7 +107,7 @@ class _SignupScreenState extends State<SignupScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: _kBrandTint,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
@@ -106,24 +116,34 @@ class _SignupScreenState extends State<SignupScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const SizedBox(height: 40),
+                const SizedBox(height: 24),
+                const _BrandMark(),
+                const SizedBox(height: 28),
                 // Title
                 Text(
-                  'Sign Up',
+                  'Create your account',
                   textAlign: TextAlign.center,
                   style: theme.textTheme.headlineLarge?.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                    fontSize: 32,
+                    color: _kTextDark,
+                    fontSize: 30,
                   ),
                 ),
-                const SizedBox(height: 48),
+                const SizedBox(height: 8),
+                Text(
+                  'Sign up to start your journey with Hati',
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: _kTextMuted,
+                  ),
+                ),
+                const SizedBox(height: 36),
                 // Email Field
                 Text(
                   'Email',
                   style: theme.textTheme.bodyMedium?.copyWith(
-                    color: Colors.black,
-                    fontWeight: FontWeight.w500,
+                    color: _kTextDark,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -131,31 +151,7 @@ class _SignupScreenState extends State<SignupScreen> {
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
                   autocorrect: false,
-                  decoration: InputDecoration(
-                    hintText: 'Enter your email',
-                    hintStyle: TextStyle(
-                      color: Colors.grey.shade400,
-                      fontSize: 16,
-                    ),
-                    filled: true,
-                    fillColor: Colors.white,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.grey.shade300),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.grey.shade300),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.grey.shade400, width: 1.5),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 16,
-                    ),
-                  ),
+                  decoration: _fieldDecoration(hintText: 'Enter your email'),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
                       return 'Please enter your email';
@@ -167,47 +163,27 @@ class _SignupScreenState extends State<SignupScreen> {
                     return null;
                   },
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 20),
                 // Password Field
                 Text(
                   'Password',
                   style: theme.textTheme.bodyMedium?.copyWith(
-                    color: Colors.black,
-                    fontWeight: FontWeight.w500,
+                    color: _kTextDark,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: _passwordController,
                   obscureText: _obscurePassword,
-                  decoration: InputDecoration(
+                  decoration: _fieldDecoration(
                     hintText: 'Enter at least 8 characters',
-                    hintStyle: TextStyle(
-                      color: Colors.grey.shade400,
-                      fontSize: 16,
-                    ),
-                    filled: true,
-                    fillColor: Colors.white,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.grey.shade300),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.grey.shade300),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.grey.shade400, width: 1.5),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 16,
-                    ),
                     suffixIcon: IconButton(
                       icon: Icon(
-                        _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                        color: Colors.grey.shade600,
+                        _obscurePassword
+                            ? Icons.visibility_off_rounded
+                            : Icons.visibility_rounded,
+                        color: _kTextMuted,
                       ),
                       onPressed: () {
                         setState(() {
@@ -226,47 +202,27 @@ class _SignupScreenState extends State<SignupScreen> {
                     return null;
                   },
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 20),
                 // Confirm Password Field
                 Text(
                   'Confirm Password',
                   style: theme.textTheme.bodyMedium?.copyWith(
-                    color: Colors.black,
-                    fontWeight: FontWeight.w500,
+                    color: _kTextDark,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: _confirmPasswordController,
                   obscureText: _obscureConfirmPassword,
-                  decoration: InputDecoration(
+                  decoration: _fieldDecoration(
                     hintText: 'Confirm your password',
-                    hintStyle: TextStyle(
-                      color: Colors.grey.shade400,
-                      fontSize: 16,
-                    ),
-                    filled: true,
-                    fillColor: Colors.white,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.grey.shade300),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.grey.shade300),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.grey.shade400, width: 1.5),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 16,
-                    ),
                     suffixIcon: IconButton(
                       icon: Icon(
-                        _obscureConfirmPassword ? Icons.visibility_off : Icons.visibility,
-                        color: Colors.grey.shade600,
+                        _obscureConfirmPassword
+                            ? Icons.visibility_off_rounded
+                            : Icons.visibility_rounded,
+                        color: _kTextMuted,
                       ),
                       onPressed: () {
                         setState(() {
@@ -285,15 +241,18 @@ class _SignupScreenState extends State<SignupScreen> {
                     return null;
                   },
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 28),
                 // Sign Up Button
                 SizedBox(
                   height: 52,
-                  child: FilledButton(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF0056FF),
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _kBrand,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      disabledBackgroundColor: _kBrand.withOpacity(0.35),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(26),
                       ),
                     ),
                     onPressed: _isLoading ? null : _handleSignup,
@@ -307,16 +266,15 @@ class _SignupScreenState extends State<SignupScreen> {
                             ),
                           )
                         : const Text(
-                      'Sign Up',
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
+                            'Sign Up',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                   ),
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 28),
                 // Login Link
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -324,7 +282,7 @@ class _SignupScreenState extends State<SignupScreen> {
                     Text(
                       'Already have an account? ',
                       style: theme.textTheme.bodyMedium?.copyWith(
-                        color: Colors.grey.shade700,
+                        color: _kTextMuted,
                       ),
                     ),
                     GestureDetector(
@@ -334,8 +292,8 @@ class _SignupScreenState extends State<SignupScreen> {
                       child: Text(
                         'Login',
                         style: theme.textTheme.bodyMedium?.copyWith(
-                          color: const Color(0xFF4CAF50),
-                          fontWeight: FontWeight.w600,
+                          color: _kBrand,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
@@ -346,6 +304,76 @@ class _SignupScreenState extends State<SignupScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+InputDecoration _fieldDecoration({required String hintText, Widget? suffixIcon}) {
+  return InputDecoration(
+    hintText: hintText,
+    hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 16),
+    filled: true,
+    fillColor: Colors.white,
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: const BorderSide(color: _kFieldBorder),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: const BorderSide(color: _kFieldBorder),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: const BorderSide(color: _kBrand, width: 1.6),
+    ),
+    errorBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: BorderSide(color: Colors.red.shade300),
+    ),
+    focusedErrorBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: BorderSide(color: Colors.red.shade400, width: 1.6),
+    ),
+    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+    suffixIcon: suffixIcon,
+  );
+}
+
+/// Small brand badge shared by login/signup — echoes the "HATI" wordmark
+/// shown on the splash screen so auth doesn't feel like a separate app.
+class _BrandMark extends StatelessWidget {
+  const _BrandMark();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            width: 64,
+            height: 64,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: _kBrandBorder, width: 1.2),
+            ),
+            child: Image.asset(
+              'assets/icon/app_icon.png',
+              fit: BoxFit.cover,
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        const Text(
+          'HATI',
+          style: TextStyle(
+            color: _kBrand,
+            fontSize: 14,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 3,
+          ),
+        ),
+      ],
     );
   }
 }

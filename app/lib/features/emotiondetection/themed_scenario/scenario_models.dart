@@ -23,6 +23,11 @@ enum SceneId {
 
 enum ScenarioUIType { buttons, textInput }
 
+/// Player's chosen input mode for Scene 3's free-text turns, picked once via
+/// the medium picker before the scene's turns begin. See
+/// ScenarioProvider.responseMedium.
+enum ResponseMedium { voice, type, both }
+
 /// Mirrors the `ui` object on `/scenario/start` and `/scenario/step`
 /// responses: `{type: "buttons" | "text_input", options: [...]}`.
 class ScenarioUI {

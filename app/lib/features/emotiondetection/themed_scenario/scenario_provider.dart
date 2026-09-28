@@ -20,7 +20,7 @@ import 'scenario_models.dart';
 
 class ScenarioProvider extends ChangeNotifier {
   ScenarioProvider({required this.config, ScenarioApi? api})
-      : _api = api ?? ScenarioApi();
+    : _api = api ?? ScenarioApi();
 
   final ScenarioConfig config;
   final ScenarioApi _api;
@@ -41,6 +41,18 @@ class ScenarioProvider extends ChangeNotifier {
   /// sprite/animation falls back to its default outside the specific turns
   /// that set it.
   String? npcMood;
+
+  /// Player's chosen input mode for Scene 3, asked once per scenario run via
+  /// the medium picker. Null until chosen; reset to null at the top of
+  /// [start] so every fresh run (including [discardResume]'s forceNew) is
+  /// asked again. A resumed run (see [confirmResume]) keeps whatever the
+  /// player already chose, since that path never calls [start] again.
+  ResponseMedium? responseMedium;
+
+  void setResponseMedium(ResponseMedium medium) {
+    responseMedium = medium;
+    notifyListeners();
+  }
 
   /// Set when `/scenario/start` returns `resumed: true` and the caller did
   /// not force a new session. The shell should show a "Resume scenario?"
@@ -96,6 +108,7 @@ class ScenarioProvider extends ChangeNotifier {
     String? userName,
     bool forceNew = false,
   }) async {
+    responseMedium = null;
     _userId = userId;
     _userName = userName;
 

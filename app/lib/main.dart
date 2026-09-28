@@ -4,6 +4,7 @@ import 'features/onboarding/loading_screen.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
+import 'shared/audio/hati_audio_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -47,6 +48,10 @@ void main() async {
     providerAndroid: const AndroidDebugProvider(debugToken: testDebugToken),
     providerApple: const AppleDebugProvider(debugToken: testDebugToken),
   );
+  // Loads persisted music/SFX on-off + volume before anything can play, so
+  // the very first scenario a player opens already respects whatever they
+  // last set in Sound & Music instead of a brief flash of default volume.
+  await HatiAudioService.instance.init();
   runApp(const MyApp());
 }
 

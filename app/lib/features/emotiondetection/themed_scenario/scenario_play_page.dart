@@ -18,6 +18,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../shared/audio/hati_audio_service.dart';
 import 'app_theme.dart';
 import 'scenario_models.dart';
 import 'scenario_provider.dart';
@@ -61,6 +62,10 @@ class _ScenarioPlayPageState extends State<ScenarioPlayPage> {
     );
     _provider = ScenarioProvider(config: config);
     _bootstrap();
+    // Fire-and-forget: music starting a beat late (while the cold-start
+    // bootstrap above is still loading) is fine — never worth blocking
+    // scenario startup on.
+    HatiAudioService.instance.playScenarioMusic();
   }
 
   Future<String?> _loadUserDisplayNameFromFirestore(User user) async {
@@ -100,6 +105,7 @@ class _ScenarioPlayPageState extends State<ScenarioPlayPage> {
   @override
   void dispose() {
     _provider.dispose();
+    HatiAudioService.instance.stopScenarioMusic();
     super.dispose();
   }
 
