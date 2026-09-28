@@ -91,7 +91,7 @@ class _LoadingScreenState extends State<LoadingScreen> {
           child: Text(
             'HATI',
             style: TextStyle(
-              color: Colors.white,
+              color: const Color(0xFFF5F1E8),
               fontSize: 48,
               fontWeight: FontWeight.w900,
               letterSpacing: 2,

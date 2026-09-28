@@ -89,7 +89,7 @@ class _LowScoreExitScreenState extends State<LowScoreExitScreen> {
         _retakeEligibleAt != null && !now.isBefore(_retakeEligibleAt!);
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF5F1E8),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -168,7 +168,7 @@ class _LowScoreExitScreenState extends State<LowScoreExitScreen> {
                           style: TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.w600,
-                            color: Colors.white,
+                            color: const Color(0xFFF5F1E8),
                           ),
                         ),
                       ),
@@ -187,7 +187,7 @@ class _LowScoreExitScreenState extends State<LowScoreExitScreen> {
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(26),
                               ),
-                              backgroundColor: Colors.white,
+                              backgroundColor: const Color(0xFFF5F1E8),
                             ),
                             onPressed: _dialogueComplete
                                 ? () => SystemNavigator.pop()
@@ -216,7 +216,7 @@ class _LowScoreExitScreenState extends State<LowScoreExitScreen> {
                               style: TextStyle(
                                 fontSize: 17,
                                 fontWeight: FontWeight.w600,
-                                color: Colors.white,
+                                color: const Color(0xFFF5F1E8),
                               ),
                             ),
                           ),
@@ -230,7 +230,7 @@ class _LowScoreExitScreenState extends State<LowScoreExitScreen> {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(26),
                         ),
-                        backgroundColor: Colors.white,
+                        backgroundColor: const Color(0xFFF5F1E8),
                       ),
                       onPressed:
                           _dialogueComplete ? _handleReviewResult : null,

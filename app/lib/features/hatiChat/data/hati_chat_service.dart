@@ -1,4 +1,5 @@
 import 'dart:async' show unawaited;
+import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_ai/firebase_ai.dart';
@@ -78,6 +79,12 @@ class HatiChatService {
   final String sessionId;
   final ChatSession _chat;
 
+  /// Separate one-off model, not [_chat] — a transcription request should
+  /// never become part of the ongoing conversation's turn history.
+  static final _transcriptionModel = FirebaseAI.googleAI().generativeModel(
+    model: 'gemini-3.1-flash-lite',
+  );
+
   CollectionReference<Map<String, dynamic>> get _chatLogs => FirebaseFirestore
       .instance
       .collection('users')
@@ -103,6 +110,27 @@ class HatiChatService {
 
     unawaited(_log(sender: 'hati', text: reply));
     return reply;
+  }
+
+  /// Transcribes a recorded WAV voice message to plain text, so the caller
+  /// can show it in the input box for the user to review/edit before
+  /// sending — this never sends anything itself. Returns an empty string
+  /// if nothing intelligible was said; throws on network/API failure the
+  /// same way [send] does, for the caller to handle.
+  Future<String> transcribeAudio(String filePath) async {
+    final bytes = await File(filePath).readAsBytes();
+    final response = await _transcriptionModel.generateContent([
+      Content.multi([
+        InlineDataPart('audio/wav', bytes),
+        TextPart(
+          'Transcribe this voice recording verbatim as plain text. Output '
+          'only the spoken words, with no commentary, labels, or '
+          'quotation marks. If nothing intelligible was said, output '
+          'nothing.',
+        ),
+      ]),
+    ]);
+    return response.text?.trim() ?? '';
   }
 
   Future<void> _log({required String sender, required String text}) async {

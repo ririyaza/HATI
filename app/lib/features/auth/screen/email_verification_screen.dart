@@ -189,7 +189,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen>
     final email = FirebaseAuth.instance.currentUser?.email ?? 'your email';
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF5F1E8),
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -319,7 +319,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen>
                                   width: 24,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
-                                    color: Colors.white,
+                                    color: const Color(0xFFF5F1E8),
                                   ),
                                 )
                               : const Text(
@@ -327,7 +327,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen>
                                   style: TextStyle(
                                     fontSize: 17,
                                     fontWeight: FontWeight.bold,
-                                    color: Colors.white,
+                                    color: const Color(0xFFF5F1E8),
                                   ),
                                 ),
                         ),
@@ -341,7 +341,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen>
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            backgroundColor: Colors.white,
+                            backgroundColor: const Color(0xFFF5F1E8),
                           ),
                           onPressed: (_resendCooldown > 0 || _isResending)
                               ? null
@@ -469,7 +469,7 @@ class _EmailVerifiedDialog extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(28),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: const Color(0xFFF5F1E8),
           borderRadius: BorderRadius.circular(28),
           boxShadow: [
             BoxShadow(
@@ -522,7 +522,7 @@ class _EmailVerifiedDialog extends StatelessWidget {
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF0056FF),
-                  foregroundColor: Colors.white,
+                  foregroundColor: const Color(0xFFF5F1E8),
                   elevation: 0,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(25),

@@ -99,7 +99,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
             ),
             content: const Text(
               'An error occurred while saving your profile.',
-              style: TextStyle(color: Colors.white),
+              style: TextStyle(color: const Color(0xFFF5F1E8)),
             ),
           ),
         );
@@ -113,7 +113,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
   Future<void> _pickAvatar() async {
     final selected = await showModalBottomSheet<String>(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF5F1E8),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -150,7 +150,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
                   Text(
                     'HATI',
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.55),
+                      color: const Color(0xFFF5F1E8).withOpacity(0.55),
                       fontSize: 13,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 3.5,
@@ -160,7 +160,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
                   const Text(
                     'Set Up Your Profile',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: const Color(0xFFF5F1E8),
                       fontSize: 26,
                       fontWeight: FontWeight.w800,
                       height: 1.15,
@@ -170,7 +170,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
                   Text(
                     'Tell us a little about yourself so Hati\ncan personalise your experience.',
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.72),
+                      color: const Color(0xFFF5F1E8).withOpacity(0.72),
                       fontSize: 14,
                       height: 1.45,
                     ),
@@ -190,7 +190,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
                 // Scrollable white body
                 Container(
                   decoration: const BoxDecoration(
-                    color: Colors.white,
+                    color: const Color(0xFFF5F1E8),
                     borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
                   ),
                   child: FadeTransition(
@@ -256,7 +256,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
                                 child: ElevatedButton(
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: const Color(0xFF0B28D9),
-                                    foregroundColor: Colors.white,
+                                    foregroundColor: const Color(0xFFF5F1E8),
                                     disabledBackgroundColor:
                                         const Color(0xFF0B28D9).withOpacity(0.4),
                                     elevation: 0,
@@ -271,7 +271,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
                                           height: 22,
                                           child: CircularProgressIndicator(
                                             strokeWidth: 2.5,
-                                            color: Colors.white,
+                                            color: const Color(0xFFF5F1E8),
                                           ),
                                         )
                                       : const Text(
@@ -345,7 +345,7 @@ class _AvatarPicker extends StatelessWidget {
             height: 108,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: Colors.white,
+              color: const Color(0xFFF5F1E8),
               boxShadow: [
                 BoxShadow(
                   color: const Color(0xFF0B28D9).withOpacity(0.22),
@@ -353,7 +353,7 @@ class _AvatarPicker extends StatelessWidget {
                   offset: const Offset(0, 8),
                 ),
               ],
-              border: Border.all(color: Colors.white, width: 4),
+              border: Border.all(color: const Color(0xFFF5F1E8), width: 4),
             ),
             child: ClipOval(
               child: Container(
@@ -379,7 +379,7 @@ class _AvatarPicker extends StatelessWidget {
                 color: onTap == null
                     ? const Color(0xFF94A3B8)
                     : const Color(0xFF0B28D9),
-                border: Border.all(color: Colors.white, width: 2.5),
+                border: Border.all(color: const Color(0xFFF5F1E8), width: 2.5),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.14),
@@ -391,7 +391,7 @@ class _AvatarPicker extends StatelessWidget {
               child: const Icon(
                 Icons.face_retouching_natural_rounded,
                 size: 15,
-                color: Colors.white,
+                color: const Color(0xFFF5F1E8),
               ),
             ),
           ),
@@ -642,7 +642,7 @@ class _PronounsSelector extends StatelessWidget {
                 Icon(
                   icon,
                   size: 15,
-                  color: isSelected ? Colors.white : const Color(0xFF94A3B8),
+                  color: isSelected ? const Color(0xFFF5F1E8) : const Color(0xFF94A3B8),
                 ),
                 const SizedBox(width: 7),
                 Text(
@@ -650,7 +650,7 @@ class _PronounsSelector extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 13.5,
                     fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                    color: isSelected ? Colors.white : const Color(0xFF475569),
+                    color: isSelected ? const Color(0xFFF5F1E8) : const Color(0xFF475569),
                   ),
                 ),
               ],

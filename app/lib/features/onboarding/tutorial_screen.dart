@@ -188,7 +188,7 @@ class _TutorialScreenState extends State<TutorialScreen>
                   const Text(
                     'HATI',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: const Color(0xFFF5F1E8),
                       fontSize: 22,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 1.5,
@@ -205,13 +205,13 @@ class _TutorialScreenState extends State<TutorialScreen>
                           vertical: 6,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.18),
+                          color: const Color(0xFFF5F1E8).withValues(alpha: 0.18),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: const Text(
                           'Skip',
                           style: TextStyle(
-                            color: Colors.white,
+                            color: const Color(0xFFF5F1E8),
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
                           ),
@@ -252,8 +252,8 @@ class _TutorialScreenState extends State<TutorialScreen>
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(4),
                           color: i == _currentPage
-                              ? Colors.white
-                              : Colors.white.withValues(alpha: 0.35),
+                              ? const Color(0xFFF5F1E8)
+                              : const Color(0xFFF5F1E8).withValues(alpha: 0.35),
                         ),
                       ),
                     ),
@@ -266,7 +266,7 @@ class _TutorialScreenState extends State<TutorialScreen>
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       decoration: BoxDecoration(
-                        color: isLast ? slide.accentColor : Colors.white,
+                        color: isLast ? slide.accentColor : const Color(0xFFF5F1E8),
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
@@ -284,7 +284,7 @@ class _TutorialScreenState extends State<TutorialScreen>
                             isLast ? "Let's Get Started" : 'Next',
                             style: TextStyle(
                               color: isLast
-                                  ? Colors.white
+                                  ? const Color(0xFFF5F1E8)
                                   : const Color(0xFF0B28D9),
                               fontSize: 16,
                               fontWeight: FontWeight.w700,
@@ -294,7 +294,7 @@ class _TutorialScreenState extends State<TutorialScreen>
                           Icon(
                             Icons.arrow_forward_rounded,
                             color: isLast
-                                ? Colors.white
+                                ? const Color(0xFFF5F1E8)
                                 : const Color(0xFF0B28D9),
                             size: 18,
                           ),
@@ -339,7 +339,7 @@ class _TutorialSlideView extends StatelessWidget {
                 ),
               ),
               child: Center(
-                child: Icon(slide.icon, size: 56, color: Colors.white),
+                child: Icon(slide.icon, size: 56, color: const Color(0xFFF5F1E8)),
               ),
             ),
             const SizedBox(height: 36),
@@ -347,7 +347,7 @@ class _TutorialSlideView extends StatelessWidget {
               slide.title,
               textAlign: TextAlign.center,
               style: const TextStyle(
-                color: Colors.white,
+                color: const Color(0xFFF5F1E8),
                 fontSize: 26,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 0.2,
@@ -368,7 +368,7 @@ class _TutorialSlideView extends StatelessWidget {
                 slide.subtitle,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.9),
+                  color: const Color(0xFFF5F1E8).withValues(alpha: 0.9),
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                 ),
@@ -379,7 +379,7 @@ class _TutorialSlideView extends StatelessWidget {
               slide.description,
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.78),
+                color: const Color(0xFFF5F1E8).withValues(alpha: 0.78),
                 fontSize: 15,
                 fontWeight: FontWeight.w400,
                 height: 1.6,

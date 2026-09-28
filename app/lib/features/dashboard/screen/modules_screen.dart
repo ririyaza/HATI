@@ -194,7 +194,7 @@ class _ModulesScreenState extends State<ModulesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF5F1E8),
       body: Column(
         children: [
           Container(
@@ -210,17 +210,17 @@ class _ModulesScreenState extends State<ModulesScreen> {
                     const Text(
                       'HATI',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: const Color(0xFFF5F1E8),
                         fontSize: 28,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 1.2,
                       ),
                     ),
                     const SizedBox(height: 6),
-                    const Text(
+                    Text(
                       'Practice Scenarios',
                       style: TextStyle(
-                        color: Colors.white70,
+                        color: Color(0xFFF5F1E8).withValues(alpha: 0.70),
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
                       ),
@@ -229,29 +229,29 @@ class _ModulesScreenState extends State<ModulesScreen> {
                     Container(
                       height: 44,
                       decoration: BoxDecoration(
-                        color: Colors.white.withAlpha(64),
+                        color: const Color(0xFFF5F1E8).withAlpha(64),
                         borderRadius: BorderRadius.circular(22),
                       ),
                       child: TextField(
                         controller: _searchController,
                         style: const TextStyle(
-                          color: Colors.white,
+                          color: const Color(0xFFF5F1E8),
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
                         ),
-                        cursorColor: Colors.white,
+                        cursorColor: const Color(0xFFF5F1E8),
                         textAlignVertical: TextAlignVertical.center,
                         decoration: InputDecoration(
                           isDense: true,
                           hintText: 'Search',
-                          hintStyle: const TextStyle(
-                            color: Colors.white70,
+                          hintStyle: TextStyle(
+                            color: Color(0xFFF5F1E8).withValues(alpha: 0.70),
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
                           ),
                           prefixIcon: const Icon(
                             Icons.search_rounded,
-                            color: Colors.white,
+                            color: const Color(0xFFF5F1E8),
                             size: 20,
                           ),
                           prefixIconConstraints: const BoxConstraints(
@@ -261,9 +261,9 @@ class _ModulesScreenState extends State<ModulesScreen> {
                           suffixIcon: _query.isEmpty
                               ? null
                               : IconButton(
-                                  icon: const Icon(
+                                  icon: Icon(
                                     Icons.close_rounded,
-                                    color: Colors.white70,
+                                    color: Color(0xFFF5F1E8).withValues(alpha: 0.70),
                                     size: 18,
                                   ),
                                   padding: EdgeInsets.zero,
@@ -295,7 +295,7 @@ class _ModulesScreenState extends State<ModulesScreen> {
             child: Container(
               width: double.infinity,
               decoration: const BoxDecoration(
-                color: Colors.white,
+                color: const Color(0xFFF5F1E8),
                 borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
               ),
               transform: Matrix4.translationValues(0, -20, 0),
@@ -424,17 +424,17 @@ Widget _recentActivityCard(BuildContext context) {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      color: Colors.white,
+                      color: const Color(0xFFF5F1E8),
                       fontWeight: FontWeight.w800,
                       fontSize: 20,
                       height: 1.15,
                     ),
                   ),
                   const SizedBox(height: 6),
-                  const Text(
+                  Text(
                     'Hop back in with Hati!',
                     style: TextStyle(
-                      color: Colors.white70,
+                      color: Color(0xFFF5F1E8).withValues(alpha: 0.70),
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
                     ),
@@ -468,7 +468,7 @@ Widget _recentActivityCard(BuildContext context) {
                         vertical: 10,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: const Color(0xFFF5F1E8),
                         borderRadius: BorderRadius.circular(24),
                       ),
                       child: Row(
@@ -745,7 +745,7 @@ Widget _scenarioGrid(
           child: Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: const Color(0xFFF5F1E8),
               borderRadius: BorderRadius.circular(18),
               border: Border.all(color: const Color(0xFFE0E0E0)),
               boxShadow: [

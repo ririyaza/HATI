@@ -170,7 +170,7 @@ class _TriggersAndCopingScreenState extends State<TriggersAndCopingScreen>
                   Text(
                     'HATI',
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.55),
+                      color: const Color(0xFFF5F1E8).withOpacity(0.55),
                       fontSize: 13,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 3.5,
@@ -180,7 +180,7 @@ class _TriggersAndCopingScreenState extends State<TriggersAndCopingScreen>
                   const Text(
                     'Coping Strategies',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: const Color(0xFFF5F1E8),
                       fontSize: 26,
                       fontWeight: FontWeight.w800,
                       height: 1.2,
@@ -190,7 +190,7 @@ class _TriggersAndCopingScreenState extends State<TriggersAndCopingScreen>
                   Text(
                     'What helps you feel better when you\'re stressed or anxious?',
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.72),
+                      color: const Color(0xFFF5F1E8).withOpacity(0.72),
                       fontSize: 14,
                       height: 1.45,
                     ),
@@ -206,7 +206,7 @@ class _TriggersAndCopingScreenState extends State<TriggersAndCopingScreen>
               borderRadius:
                   const BorderRadius.vertical(top: Radius.circular(28)),
               child: Container(
-                color: Colors.white,
+                color: const Color(0xFFF5F1E8),
                 child: FadeTransition(
                   opacity: _fadeAnim,
                   child: SlideTransition(
@@ -381,7 +381,7 @@ class _TriggersAndCopingScreenState extends State<TriggersAndCopingScreen>
                         // ── Bottom action bar — pinned, never clipped ──
                         Container(
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: const Color(0xFFF5F1E8),
                             border: Border(
                               top: BorderSide(
                                 color: Colors.black.withOpacity(0.06),
@@ -447,7 +447,7 @@ class _TriggersAndCopingScreenState extends State<TriggersAndCopingScreen>
                                               child:
                                                   CircularProgressIndicator(
                                                 strokeWidth: 2.5,
-                                                color: Colors.white,
+                                                color: const Color(0xFFF5F1E8),
                                               ),
                                             )
                                           : const Text(
@@ -455,7 +455,7 @@ class _TriggersAndCopingScreenState extends State<TriggersAndCopingScreen>
                                               style: TextStyle(
                                                 fontSize: 15,
                                                 fontWeight: FontWeight.w700,
-                                                color: Colors.white,
+                                                color: const Color(0xFFF5F1E8),
                                               ),
                                             ),
                                     ),
@@ -550,7 +550,7 @@ class _CopingChip extends StatelessWidget {
               icon,
               size: 15,
               color: selected
-                  ? Colors.white
+                  ? const Color(0xFFF5F1E8)
                   : const Color(0xFF94A3B8),
             ),
             const SizedBox(width: 7),
@@ -561,7 +561,7 @@ class _CopingChip extends StatelessWidget {
                 fontWeight:
                     selected ? FontWeight.w700 : FontWeight.w500,
                 color: selected
-                    ? Colors.white
+                    ? const Color(0xFFF5F1E8)
                     : const Color(0xFF475569),
               ),
             ),

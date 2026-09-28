@@ -199,7 +199,7 @@ class UserBubble extends StatelessWidget {
             ),
             child: Text(
               text,
-              style: HatiTextStyles.bodyLarge.copyWith(color: Colors.white),
+              style: HatiTextStyles.bodyLarge.copyWith(color: const Color(0xFFF5F1E8)),
             ),
           ),
         ),
@@ -211,7 +211,7 @@ class UserBubble extends StatelessWidget {
             color: HatiColors.mossGreen,
             shape: BoxShape.circle,
           ),
-          child: const Icon(Icons.person, color: Colors.white, size: 18),
+          child: const Icon(Icons.person, color: const Color(0xFFF5F1E8), size: 18),
         ),
       ],
     );
@@ -273,7 +273,7 @@ class PIESChip extends StatelessWidget {
           child: Text(
             label,
             style: HatiTextStyles.buttonSmall.copyWith(
-              color: selected ? Colors.white : HatiColors.textMedium,
+              color: selected ? const Color(0xFFF5F1E8) : HatiColors.textMedium,
             ),
           ),
         ),
@@ -313,7 +313,7 @@ class ScriptOptionCard extends StatelessWidget {
           margin: const EdgeInsets.only(bottom: 10),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: selected ? const Color(0xFF0B28D9) : Colors.white,
+            color: selected ? const Color(0xFF0B28D9) : const Color(0xFFF5F1E8),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: selected ? const Color(0xFF0B28D9) : HatiColors.divider,
@@ -335,10 +335,10 @@ class ScriptOptionCard extends StatelessWidget {
                 width: 32,
                 height: 32,
                 decoration: BoxDecoration(
-                  color: selected ? Colors.white : HatiColors.surface,
+                  color: selected ? const Color(0xFFF5F1E8) : HatiColors.surface,
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: selected ? Colors.white : HatiColors.divider,
+                    color: selected ? const Color(0xFFF5F1E8) : HatiColors.divider,
                   ),
                 ),
                 child: Center(
@@ -359,12 +359,12 @@ class ScriptOptionCard extends StatelessWidget {
                 child: Text(
                   script,
                   style: HatiTextStyles.bodyMedium.copyWith(
-                    color: selected ? Colors.white : HatiColors.textMedium,
+                    color: selected ? const Color(0xFFF5F1E8) : HatiColors.textMedium,
                   ),
                 ),
               ),
               if (selected)
-                const Icon(Icons.check_circle, color: Colors.white, size: 20),
+                const Icon(Icons.check_circle, color: const Color(0xFFF5F1E8), size: 20),
             ],
           ),
         ),
@@ -402,7 +402,7 @@ class HatiButton extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         if (icon != null) ...[
-          Icon(icon, size: 20, color: Colors.white),
+          Icon(icon, size: 20, color: const Color(0xFFF5F1E8)),
           const SizedBox(width: 8),
         ],
         Flexible(
@@ -519,6 +519,12 @@ class SliderQuestion extends StatefulWidget {
   final int initial;
   final int min;
   final int max;
+  // When set, this word (matched case-insensitively, first occurrence only)
+  // is rendered bold within [question] — e.g. "expect" vs "actually" in
+  // Scene 4's two anxiety-rating questions, which are otherwise identical
+  // text and easy to answer on autopilot without the distinction standing
+  // out.
+  final String? boldWord;
 
   const SliderQuestion({
     super.key,
@@ -527,6 +533,7 @@ class SliderQuestion extends StatefulWidget {
     this.initial = 5,
     this.min = 0,
     this.max = 10,
+    this.boldWord,
   });
 
   @override
@@ -544,12 +551,35 @@ class _SliderQuestionState extends State<SliderQuestion> {
 
   static const _blue = Color(0xFF0B28D9);
 
+  Widget _buildQuestionText() {
+    final word = widget.boldWord;
+    final question = widget.question;
+    final index =
+        word == null ? -1 : question.toLowerCase().indexOf(word.toLowerCase());
+    if (index == -1) {
+      return Text(question, style: HatiTextStyles.bodyLarge);
+    }
+    return Text.rich(
+      TextSpan(
+        style: HatiTextStyles.bodyLarge,
+        children: [
+          TextSpan(text: question.substring(0, index)),
+          TextSpan(
+            text: question.substring(index, index + word!.length),
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          TextSpan(text: question.substring(index + word.length)),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(widget.question, style: HatiTextStyles.bodyLarge),
+        _buildQuestionText(),
         const SizedBox(height: 12),
         Row(
           children: [
@@ -581,11 +611,11 @@ class _SliderQuestionState extends State<SliderQuestion> {
                   overlayShape: const RoundSliderOverlayShape(
                     overlayRadius: 22,
                   ),
-                  activeTickMarkColor: Colors.white.withValues(alpha: 0.7),
+                  activeTickMarkColor: const Color(0xFFF5F1E8).withValues(alpha: 0.7),
                   inactiveTickMarkColor: _blue.withValues(alpha: 0.3),
                   valueIndicatorColor: _blue,
                   valueIndicatorTextStyle: const TextStyle(
-                    color: Colors.white,
+                    color: const Color(0xFFF5F1E8),
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -737,12 +767,12 @@ class SceneProgressBar extends StatelessWidget {
           children: [
             Text(
               sceneLabel,
-              style: HatiTextStyles.caption.copyWith(color: Colors.white),
+              style: HatiTextStyles.caption.copyWith(color: const Color(0xFFF5F1E8)),
             ),
             Text(
               '$currentStep / $totalSteps',
               style: HatiTextStyles.caption.copyWith(
-                color: Colors.white,
+                color: const Color(0xFFF5F1E8),
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -757,7 +787,7 @@ class SceneProgressBar extends StatelessWidget {
             // top bar (_kApproachBlue background + cyan fill in
             // scene3_interaction.dart), so the progress bar reads the same
             // across every scene instead of switching palettes mid-flow.
-            backgroundColor: Colors.white.withValues(alpha: 0.35),
+            backgroundColor: const Color(0xFFF5F1E8).withValues(alpha: 0.35),
             color: const Color(0xFF00D4FF),
             minHeight: 6,
           ),
@@ -801,7 +831,7 @@ class SceneTopHeader extends StatelessWidget {
           children: [
             IconButton(
               onPressed: () => Navigator.maybePop(context),
-              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              icon: const Icon(Icons.arrow_back, color: const Color(0xFFF5F1E8)),
               visualDensity: VisualDensity.compact,
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(),
@@ -1445,12 +1475,12 @@ class HatiSpeedToggle extends StatelessWidget {
             decoration: BoxDecoration(
               color: isFast
                   ? HatiColors.softGold
-                  : Colors.white.withValues(alpha: 0.12),
+                  : const Color(0xFFF5F1E8).withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
                 color: isFast
                     ? HatiColors.softGold
-                    : Colors.white.withValues(alpha: 0.45),
+                    : const Color(0xFFF5F1E8).withValues(alpha: 0.45),
                 width: 1.2,
               ),
               boxShadow: isFast
@@ -1925,7 +1955,7 @@ class _HatiSpeechBubblePainter extends CustomPainter {
       ..close();
 
     final paint = Paint()
-      ..color = Colors.white
+      ..color = const Color(0xFFF5F1E8)
       ..style = PaintingStyle.fill;
 
     canvas.drawPath(
@@ -2206,13 +2236,27 @@ class HatiSpeakingBlock extends StatelessWidget {
       );
     }
 
-    return Column(
-      crossAxisAlignment: alignment,
-      mainAxisSize: MainAxisSize.min,
+    // A Column here would size itself to bubble-height + frog-height, so
+    // whenever a caller embeds this block in normal document flow (not
+    // wrapped in its own Positioned(bottom:) — see scene0_pre_setup.dart,
+    // scene5_coping.dart) a longer message growing the bubble pushes the
+    // frog, which comes after it, further down the screen — and a shorter
+    // one pulls it back up. A Stack fixes the frog's slot instead: with
+    // only the frog as a non-Positioned child, the Stack's own reported
+    // size is just the frog's fixed size, so callers laying this block out
+    // in-flow never see it move. The bubble is Positioned above that slot
+    // and grows upward under Clip.none, painted outside the Stack's layout
+    // box without affecting it.
+    return Stack(
+      alignment: pinnedLeft ? Alignment.bottomLeft : Alignment.bottomCenter,
+      clipBehavior: Clip.none,
       children: [
-        bubble,
-        const SizedBox(height: 8),
         HatiFrogAvatar(size: frogSize, mood: mood),
+        Positioned(
+          bottom: frogSize + 8,
+          left: pinnedLeft ? 0 : null,
+          child: bubble,
+        ),
       ],
     );
   }
@@ -2394,7 +2438,7 @@ class HatiFixedBottomBar extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(20, 6, 20, 6),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFFF5F1E8),
         border: Border(top: BorderSide(color: HatiColors.divider)),
         boxShadow: [
           BoxShadow(
@@ -2510,7 +2554,7 @@ class HatiSceneShell extends StatelessWidget {
                       DraggableChoiceSheet(
                         header: fixedHeader,
                         body: body,
-                        backgroundColor: contentBackgroundColor ?? Colors.white,
+                        backgroundColor: contentBackgroundColor ?? const Color(0xFFF5F1E8),
                       ),
                   ],
                 );
@@ -2549,7 +2593,7 @@ class DraggableChoiceSheet extends StatefulWidget {
     super.key,
     this.header,
     this.body,
-    this.backgroundColor = Colors.white,
+    this.backgroundColor = const Color(0xFFF5F1E8),
     this.minChildSize = defaultMinChildSize,
     this.maxChildSize = 0.9,
   });

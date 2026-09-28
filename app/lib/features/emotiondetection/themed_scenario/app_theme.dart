@@ -28,7 +28,7 @@ class HatiColors {
   // UI
   static const Color surface = Color(0xFFF9F6F0);
   static const Color surfaceDark = Color(0xFF1C2B1C);
-  static const Color cardBg = Color(0xFFFFFFFF);
+  static const Color cardBg = Color(0xFFF5F1E8);
   static const Color dialogBg = Color(0xFFE8F5E9);
   static const Color hatiSpeech = Color(0xFFE8F5E9);
   // NPC dialogue bubble color — used for whichever character the current
@@ -98,7 +98,7 @@ class HatiTextStyles {
     fontSize: 16,
     fontWeight: FontWeight.w600,
     letterSpacing: 0.5,
-    color: Colors.white,
+    color: const Color(0xFFF5F1E8),
   );
 
   static const TextStyle buttonSmall = TextStyle(
@@ -131,7 +131,7 @@ class HatiTheme {
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
             backgroundColor: HatiColors.mossGreen,
-            foregroundColor: Colors.white,
+            foregroundColor: const Color(0xFFF5F1E8),
             padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

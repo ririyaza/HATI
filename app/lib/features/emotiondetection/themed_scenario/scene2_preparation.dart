@@ -96,7 +96,7 @@ class _Scene2PreparationState extends State<Scene2Preparation> {
         // same SectionHeader + HatiOutlineButton pattern Scene4Debrief uses
         // for its own non-script multi-option steps), not the lettered
         // script cards below.
-        contentBackgroundColor = Colors.white;
+        contentBackgroundColor = const Color(0xFFF5F1E8);
         fixedHeader = const SectionHeader(
           title: 'Choose Your Difficulty',
           subtitle: 'Both are valid ways to practice',
@@ -131,7 +131,7 @@ class _Scene2PreparationState extends State<Scene2Preparation> {
         // is a route/action choice — "Choose Your Script" read wrong for
         // both. Everything else here (opening lines, excuses, practice
         // lines) genuinely is a script choice, so that stays the default.
-        contentBackgroundColor = Colors.white;
+        contentBackgroundColor = const Color(0xFFF5F1E8);
         fixedHeader = SectionHeader(
           title: _prepChoiceTitle(step),
           subtitle: _prepChoiceSubtitle(step),

@@ -165,7 +165,7 @@ class _Scene0PreSetupState extends State<Scene0PreSetup>
               height: 200,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.08),
+                color: const Color(0xFFF5F1E8).withValues(alpha: 0.08),
               ),
             ),
           ),
@@ -177,7 +177,7 @@ class _Scene0PreSetupState extends State<Scene0PreSetup>
               height: 160,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.06),
+                color: const Color(0xFFF5F1E8).withValues(alpha: 0.06),
               ),
             ),
           ),
@@ -280,16 +280,30 @@ class _Scene0PreSetupState extends State<Scene0PreSetup>
                                   // dialog above is dismissed.
                                   const HatiFrogAvatar(size: 180)
                                 else
-                                  HatiSpeakingBlock(
-                                    introMessage: introMessage,
-                                    persistentMessage: persistentMessage,
-                                    frogSize: 180,
-                                    mood: HatiMood.thinking,
-                                    onSequenceComplete: () {
-                                      if (mounted && !_dialogueComplete) {
-                                        setState(() => _dialogueComplete = true);
-                                      }
-                                    },
+                                  // Reserves room for the bubble to grow into
+                                  // above the frog (bottom-aligned within
+                                  // this fixed box) instead of letting it
+                                  // paint outside its layout box and cover
+                                  // the scenario title above — same
+                                  // HatiLayout.coachZoneHeight formula
+                                  // HatiCoachZone already relies on for this
+                                  // exact reason.
+                                  SizedBox(
+                                    height: 180 + HatiLayout.bubbleMaxHeight + 28,
+                                    child: Align(
+                                      alignment: Alignment.bottomCenter,
+                                      child: HatiSpeakingBlock(
+                                        introMessage: introMessage,
+                                        persistentMessage: persistentMessage,
+                                        frogSize: 180,
+                                        mood: HatiMood.thinking,
+                                        onSequenceComplete: () {
+                                          if (mounted && !_dialogueComplete) {
+                                            setState(() => _dialogueComplete = true);
+                                          }
+                                        },
+                                      ),
+                                    ),
                                   ),
 
                                 const Spacer(),
@@ -402,7 +416,7 @@ class _ScenarioTutorialDialog extends StatelessWidget {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.15),
+                      color: const Color(0xFFF5F1E8).withValues(alpha: 0.15),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
@@ -416,7 +430,7 @@ class _ScenarioTutorialDialog extends StatelessWidget {
                     child: Text(
                       'How This Scenario Works',
                       style: HatiTextStyles.heading3.copyWith(
-                        color: Colors.white,
+                        color: const Color(0xFFF5F1E8),
                       ),
                     ),
                   ),

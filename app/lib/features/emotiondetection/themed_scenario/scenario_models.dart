@@ -525,6 +525,10 @@ const Map<String, SceneId> kStepToScene = {
 
   'scene5_coping': SceneId.coping,
   'scene5_coping_done': SceneId.coping,
+  // "Apply coping preferences" path from Scene 2's grounding step — see
+  // scene5_coping.dart's handling of these two step names.
+  'scene5_coping_pref_pick': SceneId.coping,
+  'scene5_coping_pref_wait': SceneId.coping,
 
   'scene6_closing': SceneId.closing,
 

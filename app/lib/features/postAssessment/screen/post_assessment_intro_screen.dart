@@ -13,7 +13,7 @@ class PostAssessmentIntroScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF5F1E8),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -22,12 +22,12 @@ class PostAssessmentIntroScreen extends StatelessWidget {
               width: double.infinity,
               color: _blue,
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-              child: const Column(
+              child: Column(
                 children: [
                   Text(
                     'HATI',
                     style: TextStyle(
-                      color: Colors.white60,
+                      color: Color(0xFFF5F1E8).withValues(alpha: 0.60),
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 3,
@@ -37,7 +37,7 @@ class PostAssessmentIntroScreen extends StatelessWidget {
                   Text(
                     'Your 2-Week Check-in',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: const Color(0xFFF5F1E8),
                       fontSize: 22,
                       fontWeight: FontWeight.w700,
                     ),
@@ -98,7 +98,7 @@ class PostAssessmentIntroScreen extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
-                          color: Colors.white,
+                          color: const Color(0xFFF5F1E8),
                         ),
                       ),
                     ),

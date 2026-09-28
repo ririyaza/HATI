@@ -29,7 +29,7 @@ Future<void> showAvatarPickerSheet(
 }) async {
   final selected = await showModalBottomSheet<String>(
     context: context,
-    backgroundColor: Colors.white,
+    backgroundColor: const Color(0xFFF5F1E8),
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
     ),
@@ -138,7 +138,7 @@ Future<void> showEditNameAndPronounsSheet(
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
-    backgroundColor: Colors.white,
+    backgroundColor: const Color(0xFFF5F1E8),
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
     ),
@@ -312,7 +312,7 @@ class _EditNamePronounsSheetState extends State<_EditNamePronounsSheet> {
                             icon,
                             size: 15,
                             color: selected
-                                ? Colors.white
+                                ? const Color(0xFFF5F1E8)
                                 : const Color(0xFF94A3B8),
                           ),
                           const SizedBox(width: 7),
@@ -324,7 +324,7 @@ class _EditNamePronounsSheetState extends State<_EditNamePronounsSheet> {
                                   ? FontWeight.w700
                                   : FontWeight.w500,
                               color: selected
-                                  ? Colors.white
+                                  ? const Color(0xFFF5F1E8)
                                   : const Color(0xFF475569),
                             ),
                           ),
@@ -351,7 +351,7 @@ class _EditNamePronounsSheetState extends State<_EditNamePronounsSheet> {
                           height: 20,
                           child: CircularProgressIndicator(
                             strokeWidth: 2.5,
-                            color: Colors.white,
+                            color: const Color(0xFFF5F1E8),
                           ),
                         )
                       : const Text(
@@ -359,7 +359,7 @@ class _EditNamePronounsSheetState extends State<_EditNamePronounsSheet> {
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
-                            color: Colors.white,
+                            color: const Color(0xFFF5F1E8),
                           ),
                         ),
                 ),
@@ -382,7 +382,7 @@ Future<void> showEditGoalSheet(
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
-    backgroundColor: Colors.white,
+    backgroundColor: const Color(0xFFF5F1E8),
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
     ),
@@ -510,7 +510,7 @@ class _EditGoalSheetState extends State<_EditGoalSheet> {
                           height: 20,
                           child: CircularProgressIndicator(
                             strokeWidth: 2.5,
-                            color: Colors.white,
+                            color: const Color(0xFFF5F1E8),
                           ),
                         )
                       : const Text(
@@ -518,7 +518,7 @@ class _EditGoalSheetState extends State<_EditGoalSheet> {
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
-                            color: Colors.white,
+                            color: const Color(0xFFF5F1E8),
                           ),
                         ),
                 ),
@@ -555,7 +555,7 @@ Future<void> showEditCopingSheet(
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
-    backgroundColor: Colors.white,
+    backgroundColor: const Color(0xFFF5F1E8),
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
     ),
@@ -708,7 +708,7 @@ class _EditCopingSheetState extends State<_EditCopingSheet> {
                               icon,
                               size: 15,
                               color: selected
-                                  ? Colors.white
+                                  ? const Color(0xFFF5F1E8)
                                   : const Color(0xFF94A3B8),
                             ),
                             const SizedBox(width: 7),
@@ -720,7 +720,7 @@ class _EditCopingSheetState extends State<_EditCopingSheet> {
                                     ? FontWeight.w700
                                     : FontWeight.w500,
                                 color: selected
-                                    ? Colors.white
+                                    ? const Color(0xFFF5F1E8)
                                     : const Color(0xFF475569),
                               ),
                             ),
@@ -791,7 +791,7 @@ class _EditCopingSheetState extends State<_EditCopingSheet> {
                             height: 20,
                             child: CircularProgressIndicator(
                               strokeWidth: 2.5,
-                              color: Colors.white,
+                              color: const Color(0xFFF5F1E8),
                             ),
                           )
                         : const Text(
@@ -799,7 +799,7 @@ class _EditCopingSheetState extends State<_EditCopingSheet> {
                             style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w700,
-                              color: Colors.white,
+                              color: const Color(0xFFF5F1E8),
                             ),
                           ),
                   ),

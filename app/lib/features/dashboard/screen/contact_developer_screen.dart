@@ -86,9 +86,9 @@ class _ContactDeveloperScreenState extends State<ContactDeveloperScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF5F1E8),
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: const Color(0xFFF5F1E8),
         elevation: 0,
         foregroundColor: Colors.black,
         title: const Text(
@@ -126,7 +126,7 @@ class _ContactDeveloperScreenState extends State<ContactDeveloperScreen> {
                     hintText: 'Type your message...',
                     hintStyle: TextStyle(color: Colors.grey.shade400),
                     filled: true,
-                    fillColor: Colors.white,
+                    fillColor: const Color(0xFFF5F1E8),
                     contentPadding: const EdgeInsets.all(16),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -168,7 +168,7 @@ class _ContactDeveloperScreenState extends State<ContactDeveloperScreen> {
                           width: 22,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            color: Colors.white,
+                            color: const Color(0xFFF5F1E8),
                           ),
                         )
                       : const Text(
@@ -176,7 +176,7 @@ class _ContactDeveloperScreenState extends State<ContactDeveloperScreen> {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
-                            color: Colors.white,
+                            color: const Color(0xFFF5F1E8),
                           ),
                         ),
                 ),
