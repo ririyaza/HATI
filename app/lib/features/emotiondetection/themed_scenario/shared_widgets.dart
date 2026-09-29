@@ -31,6 +31,7 @@ import 'package:rive/rive.dart'
         RiveWidgetBuilder;
 import '../../../shared/audio/hati_audio_service.dart';
 import 'app_theme.dart';
+import 'scenario_replay_view.dart';
 
 // ── Hati Dialogue Bubble ─────────────────────────────────────────────────────
 class HatiBubble extends StatefulWidget {
@@ -1553,7 +1554,17 @@ class SceneSpeedToggleRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Padding(
       padding: EdgeInsets.fromLTRB(20, 10, 20, 0),
-      child: Align(alignment: Alignment.centerLeft, child: HatiSpeedToggle()),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ScenarioRewindButton(),
+            SizedBox(width: 8),
+            HatiSpeedToggle(),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -24,6 +24,7 @@ import '../../dashboard/widgets/draggable_help_button.dart';
 import 'app_theme.dart';
 import 'scenario_models.dart';
 import 'scenario_provider.dart';
+import 'scenario_replay_view.dart';
 import 'scene0_pre_setup.dart';
 import 'scene1_office_pies.dart';
 import 'scene2_preparation.dart';
@@ -119,6 +120,9 @@ class _ScenarioShellState extends State<ScenarioShell> {
           switchOutCurve: Curves.easeOut,
           child: _buildScene(scene),
         ),
+        // Covers the live scene (and its choices) while rewound.
+        if (provider.isReplaying)
+          const Positioned.fill(child: ScenarioReplayView()),
         const Positioned.fill(child: DraggableHelpButton()),
       ],
     );

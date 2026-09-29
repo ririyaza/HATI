@@ -378,6 +378,30 @@ class _Scene0PreSetupState extends State<Scene0PreSetup>
                                                         size: 150,
                                                         mood: HatiMood.thinking,
                                                       )
+                                                    : config.scenarioKey ==
+                                                          'fbop_spotlight'
+                                                    ? _FbopProfessorIntro(
+                                                        key: const ValueKey(
+                                                          'speaking',
+                                                        ),
+                                                        messages: parsed,
+                                                        npcCharacters:
+                                                            config
+                                                                .npcCharacters,
+                                                        frogSize: 150,
+                                                        mood: HatiMood.thinking,
+                                                        onSequenceComplete: () {
+                                                          if (mounted &&
+                                                              !_dialogueComplete) {
+                                                            setState(
+                                                              () =>
+                                                                  _dialogueComplete =
+                                                                      true,
+                                                            );
+                                                            _startBubbleHideTimer();
+                                                          }
+                                                        },
+                                                      )
                                                     : HatiSpeakingBlock(
                                                         key: const ValueKey(
                                                           'speaking',
@@ -470,6 +494,96 @@ class _Scene0PreSetupState extends State<Scene0PreSetup>
           ),
         ),
       ),
+    );
+  }
+}
+
+// ── fbop_spotlight professor introductions ──────────────────────────────────
+/// fbop_spotlight-only: shows its professor-introduction lines one at a
+/// time (instead of HatiSpeakingBlock's single intro-line-then-everything-
+/// else-merged reveal), with whichever professor a line currently names
+/// shown as a portrait above Hati's bubble — general lines that don't name
+/// anyone show no portrait. Built on the same public tap-to-advance/
+/// typewriter/dissolve bubble (HatiCoachSpeech) every other Hati line uses,
+/// just sequenced turn-by-turn here instead of intro+persistent.
+class _FbopProfessorIntro extends StatefulWidget {
+  final List<String> messages;
+  final List<NpcCharacter> npcCharacters;
+  final double frogSize;
+  final HatiMood mood;
+  final VoidCallback onSequenceComplete;
+
+  const _FbopProfessorIntro({
+    super.key,
+    required this.messages,
+    required this.npcCharacters,
+    required this.frogSize,
+    required this.mood,
+    required this.onSequenceComplete,
+  });
+
+  @override
+  State<_FbopProfessorIntro> createState() => _FbopProfessorIntroState();
+}
+
+class _FbopProfessorIntroState extends State<_FbopProfessorIntro> {
+  int _turnIndex = 0;
+
+  NpcCharacter? _matchedNpc(String text) {
+    for (final npc in widget.npcCharacters) {
+      if (npc.matches(text)) return npc;
+    }
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.messages.isEmpty) return const SizedBox.shrink();
+    final index = _turnIndex.clamp(0, widget.messages.length - 1);
+    final text = widget.messages[index];
+    final isLast = index == widget.messages.length - 1;
+    final npc = _matchedNpc(text);
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Fixed height (rather than sized to content) so the layout doesn't
+        // jump as turns alternate between naming a professor and not.
+        SizedBox(
+          height: 90,
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 250),
+            child: npc == null
+                ? const SizedBox.shrink(key: ValueKey('no-npc'))
+                : NpcRiveSprite(
+                    key: ValueKey(npc.id),
+                    assetPath: npc.sprites.blink,
+                    height: 90,
+                  ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Stack(
+          alignment: Alignment.bottomCenter,
+          clipBehavior: Clip.none,
+          children: [
+            HatiFrogAvatar(size: widget.frogSize, mood: widget.mood),
+            Positioned(
+              bottom: widget.frogSize + 8,
+              child: HatiCoachSpeech(
+                key: ValueKey('turn-$index'),
+                replacementMessage: text,
+                dissolveBubble: !isLast,
+                showAdvanceCue: true,
+                onBubbleDismissed: isLast
+                    ? null
+                    : () => setState(() => _turnIndex++),
+                onSequenceComplete: isLast ? widget.onSequenceComplete : null,
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

@@ -751,3 +751,127 @@ String joinMessageText(List<String> messages, {String separator = '\n\n'}) {
       .where((t) => t.trim().isNotEmpty)
       .join(separator);
 }
+
+// ── Dialogue replay ─────────────────────────────────────────────────────────
+
+enum ReplayLineKind { hati, npc, narrator, user }
+
+/// One past line the dialogue replay (scenario_replay_view.dart) can step
+/// back to.
+class ReplayLine {
+  final ReplayLineKind kind;
+
+  /// Raw speaker prefix as the backend sent it (e.g. "Professor 2 (Sir
+  /// Cruz, stern)"), resolved to a character at display time.
+  final String? speaker;
+  final String text;
+
+  /// Backend step the line was said in. Null for sessions saved before
+  /// history entries recorded it — the replay then falls back to the
+  /// current scene's look.
+  final String? step;
+  final String? npcMood;
+
+  const ReplayLine({
+    required this.kind,
+    required this.text,
+    this.speaker,
+    this.step,
+    this.npcMood,
+  });
+}
+
+/// Mirrors app.py's NAV_ONLY_LABELS: taps that only advance the flow, not
+/// anything the player actually said, so they're left out of the replay.
+const Set<String> _kNavOnlyReplies = {
+  'continue',
+  'proceed',
+  'begin',
+  'begin presentation',
+  'begin scenario',
+  'close',
+  'finish',
+  'open progress',
+  "i'm ready",
+  "i'm done",
+  'done',
+  'next',
+  "i've got it—thanks, hati",
+};
+
+List<ReplayLine> replayLinesFromMessages(
+  List<String> messages, {
+  String? step,
+  String? npcMood,
+}) {
+  final lines = <ReplayLine>[];
+  for (final raw in messages) {
+    final parsed = parseSpeakerMessage(raw);
+    if (parsed.text.trim().isEmpty) continue;
+    final ReplayLineKind kind;
+    if (parsed.speaker == null || isHatiSpeaker(parsed.speaker)) {
+      // Unprefixed lines are Hati's own prompts ("Type your goal:").
+      kind = ReplayLineKind.hati;
+    } else if (isNarratorSpeaker(parsed.speaker)) {
+      kind = ReplayLineKind.narrator;
+    } else {
+      kind = ReplayLineKind.npc;
+    }
+    lines.add(
+      ReplayLine(
+        kind: kind,
+        speaker: parsed.speaker,
+        text: parsed.text,
+        step: step,
+        npcMood: npcMood,
+      ),
+    );
+  }
+  return lines;
+}
+
+ReplayLine? _userReplayLine(Object? text, String? step) {
+  final reply = text?.toString().trim() ?? '';
+  if (reply.isEmpty || _kNavOnlyReplies.contains(reply.toLowerCase())) {
+    return null;
+  }
+  return ReplayLine(kind: ReplayLineKind.user, text: reply, step: step);
+}
+
+/// Builds the replay log from the backend's session `history` — the same
+/// list the backend persists to Firestore under
+/// users/{uid}/scenarios/{sessionId}. A player's reply is tagged with the
+/// step of the line it answered, since that's the screen it was given on.
+List<ReplayLine> buildReplayLog(List<dynamic> history) {
+  final lines = <ReplayLine>[];
+  String? lastStep;
+  for (final entry in history) {
+    if (entry is! Map) continue;
+    final payload = entry['payload'];
+    if (payload is! Map) continue;
+
+    if (entry['role'] == 'user') {
+      final line = _userReplayLine(
+        payload['text'] ?? payload['transcript'],
+        lastStep,
+      );
+      if (line != null) lines.add(line);
+      continue;
+    }
+
+    final step = entry['step']?.toString();
+    lastStep = step;
+    final msgs = payload['messages'];
+    final messageList = msgs is List && msgs.isNotEmpty
+        ? msgs.map((m) => m.toString()).toList()
+        : [if (payload['message'] != null) payload['message'].toString()];
+    lines.addAll(
+      replayLinesFromMessages(
+        messageList,
+        step: step,
+        npcMood: payload['npc_mood']?.toString(),
+      ),
+    );
+  }
+  return lines;
+}

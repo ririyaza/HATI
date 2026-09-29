@@ -86,6 +86,46 @@ class ScenarioProvider extends ChangeNotifier {
 
   SceneId get currentScene => sceneForStep(backendStep);
 
+  /// Every line said so far this run, oldest first, rebuilt from the
+  /// backend's session history on each response.
+  List<ReplayLine> replayLog = const [];
+
+  /// Index into [replayLog] currently shown by the replay view; null when
+  /// not replaying.
+  int? replayIndex;
+
+  bool get isReplaying => replayIndex != null;
+  bool get canReplay => replayLog.isNotEmpty && !isLoading;
+
+  /// Enters replay at the most recent line; each [replayBack] steps one
+  /// line further into the past.
+  void startReplay() {
+    if (!canReplay) return;
+    replayIndex = replayLog.length - 1;
+    notifyListeners();
+  }
+
+  void replayBack() {
+    final i = replayIndex;
+    if (i == null || i == 0) return;
+    replayIndex = i - 1;
+    notifyListeners();
+  }
+
+  /// Steps toward the present; stepping past the latest line leaves replay.
+  void replayForward() {
+    final i = replayIndex;
+    if (i == null) return;
+    replayIndex = i + 1 < replayLog.length ? i + 1 : null;
+    notifyListeners();
+  }
+
+  void exitReplay() {
+    if (replayIndex == null) return;
+    replayIndex = null;
+    notifyListeners();
+  }
+
   @override
   void dispose() {
     _disposed = true;
@@ -111,6 +151,8 @@ class ScenarioProvider extends ChangeNotifier {
     responseMedium = null;
     _userId = userId;
     _userName = userName;
+    replayLog = const [];
+    replayIndex = null;
 
     isLoading = true;
     errorMessage = null;
@@ -240,7 +282,23 @@ class ScenarioProvider extends ChangeNotifier {
 
     ui = ScenarioUI.fromJson(data["ui"]);
     npcMood = data["npc_mood"]?.toString();
-    history = data["history"];
+    final responseHistory = data["history"];
+    history = responseHistory;
+    if (responseHistory is List) {
+      replayLog = buildReplayLog(responseHistory);
+    } else {
+      // A brand-new /scenario/start response carries no history yet — seed
+      // from its own lines; the next step's full history replaces this.
+      replayLog = [
+        ...replayLog,
+        ...replayLinesFromMessages(
+          messages,
+          step: backendStep,
+          npcMood: npcMood,
+        ),
+      ];
+    }
+    replayIndex = null;
 
     final badges = data["newly_unlocked_badges"];
     if (badges is List && badges.isNotEmpty) {
