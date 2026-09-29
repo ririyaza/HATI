@@ -23,12 +23,18 @@ class HatiSpriteAnimation extends StatefulWidget {
     this.holdAfterTyping = const Duration(seconds: 2),
     this.onDismissed,
     this.onTypingComplete,
+    this.bubbleGap = 8,
   });
 
   final double size;
   final String message;
   final Duration startDelay;
   final bool persistBubble;
+
+  /// Forwarded to [HatiSpeakingBlock.bubbleGap] — see its doc comment.
+  /// Defaults to the same 8 [HatiSpeakingBlock] itself defaults to, so
+  /// existing callers are unaffected.
+  final double bubbleGap;
 
   /// When true, the bubble advances through the message and dismisses on
   /// its own after [holdAfterTyping] instead of waiting for a tap anywhere
@@ -87,6 +93,7 @@ class _HatiSpriteAnimationState extends State<HatiSpriteAnimation> {
                 key: const ValueKey('hati-speaking'),
                 persistentMessage: widget.message,
                 frogSize: widget.size,
+                bubbleGap: widget.bubbleGap,
                 dissolveBubble: !widget.persistBubble,
                 autoAdvance: widget.autoAdvance,
                 holdAfterTyping: widget.holdAfterTyping,

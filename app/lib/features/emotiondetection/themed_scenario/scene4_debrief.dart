@@ -25,9 +25,50 @@ class Scene4Debrief extends StatefulWidget {
   State<Scene4Debrief> createState() => _Scene4DebriefState();
 }
 
+/// Keyword-based read of a tapped debrief option (e.g. "goal_check"'s
+/// "Yes, I did!" vs "Not quite" style choices), since the backend doesn't
+/// send a separate positive/negative flag for these turns the way scene3's
+/// npc_mood does. Negative words are checked first so a phrase like
+/// "didn't achieve it" (which also contains "did") reads as negative.
+bool _looksPositiveAnswer(String text) {
+  final t = text.toLowerCase();
+  const negativeWords = [
+    'no',
+    "n't",
+    'not',
+    'bad',
+    'worse',
+    'anxious',
+    'nervous',
+    'worried',
+    'failed',
+    'fail',
+    'struggl',
+  ];
+  const positiveWords = [
+    'yes',
+    'did',
+    'achieved',
+    'good',
+    'great',
+    'proud',
+    'confident',
+    'calm',
+    'better',
+    'well',
+    'succeed',
+  ];
+  if (negativeWords.any((w) => t.contains(w))) return false;
+  return positiveWords.any((w) => t.contains(w));
+}
+
 class _Scene4DebriefState extends State<Scene4Debrief> {
   String? _trackedStep;
   bool _dialogueComplete = false;
+  // Reflects the last debrief choice the player tapped (e.g. did they
+  // achieve their goal), so Hati can react to it — null/false stays on the
+  // default encourage mood, same as before any choice-style answer.
+  bool _lastAnswerPositive = false;
 
   @override
   Widget build(BuildContext context) {
@@ -103,7 +144,10 @@ class _Scene4DebriefState extends State<Scene4Debrief> {
           key: ValueKey(step),
           options: ui.options,
           isLoading: provider.isLoading,
-          onSubmit: provider.submitText,
+          onSubmit: (opt) {
+            setState(() => _lastAnswerPositive = _looksPositiveAnswer(opt));
+            provider.submitText(opt);
+          },
         );
       }
     } else {
@@ -143,25 +187,19 @@ class _Scene4DebriefState extends State<Scene4Debrief> {
               currentStep: 4,
               totalSteps: 7,
               sceneLabel: 'Post-Interaction Reflection',
-              showUndo: true,
             ),
             const SceneSpeedToggleRow(),
             Expanded(
               child: HatiSceneShell(
                 showCoach: true,
                 persistentMessage: hatiText,
-                mood: HatiMood.encourage,
+                mood: _lastAnswerPositive ? HatiMood.happy : HatiMood.encourage,
                 onSequenceComplete: () {
                   if (mounted && !_dialogueComplete) {
                     setState(() => _dialogueComplete = true);
                   }
                 },
                 showIdleReminder: !_dialogueComplete,
-                onUndoRestored: () {
-                  if (mounted && _dialogueComplete) {
-                    setState(() => _dialogueComplete = false);
-                  }
-                },
                 body: body,
                 bottomBar: bottomBar,
                 contentBackgroundColor: contentBackgroundColor,

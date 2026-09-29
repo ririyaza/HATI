@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../emotiondetection/themed_scenario/scenario_models.dart';
 import '../data/dashboard_user_data.dart';
 import 'scenario_progress_detail_screen.dart';
+import 'weekly_progress_data.dart';
 import 'weekly_progress_detail_screen.dart';
 
 /// Legacy module-progress doc IDs that predate the current scenario-key
@@ -35,7 +36,8 @@ class ProgressScreen extends StatelessWidget {
           return const _StateScaffold.loading();
         }
         final user = authSnapshot.data;
-        if (user == null) return const _StateScaffold(message: 'Please log in.');
+        if (user == null)
+          return const _StateScaffold(message: 'Please log in.');
 
         return StreamBuilder<DashboardUserData>(
           stream: DashboardDataService.watchForUser(user),
@@ -118,12 +120,13 @@ class _ProgressContent extends StatelessWidget {
                                 CircularProgressIndicator(
                                   value: data.overallProgress,
                                   strokeWidth: 7,
-                                  backgroundColor:
-                                      const Color(0xFFF5F1E8).withOpacity(0.25),
+                                  backgroundColor: const Color(
+                                    0xFFF5F1E8,
+                                  ).withOpacity(0.25),
                                   valueColor:
                                       const AlwaysStoppedAnimation<Color>(
-                                    const Color(0xFFF5F1E8),
-                                  ),
+                                        const Color(0xFFF5F1E8),
+                                      ),
                                 ),
                                 Center(
                                   child: Text(
@@ -155,7 +158,9 @@ class _ProgressContent extends StatelessWidget {
                                 Text(
                                   '${data.scenariosCompleted} of ${data.totalScenarios} scenarios done',
                                   style: TextStyle(
-                                    color: Color(0xFFF5F1E8).withValues(alpha: 0.70),
+                                    color: Color(
+                                      0xFFF5F1E8,
+                                    ).withValues(alpha: 0.70),
                                     fontSize: 13,
                                     fontWeight: FontWeight.w500,
                                   ),
@@ -225,10 +230,7 @@ class _ProgressContent extends StatelessWidget {
                             ],
                           ),
                           const SizedBox(height: 12),
-                          _WeeklyStreak(
-                            streak: data.currentStreak,
-                            completedDays: data.weeklyActivity,
-                          ),
+                          _WeeklyStreakCard(currentStreak: data.currentStreak),
                         ],
                       ),
                     ),
@@ -286,81 +288,241 @@ class _ProgressContent extends StatelessWidget {
   }
 }
 
+/// Fetches the user's emotion logs once and lets them page back through past
+/// weeks (never forward past the current one) via [_WeeklyStreak]'s two nav
+/// arrows — each past week's day circles come from real logged activity
+/// ([activeDaysInWeek]), the same source [WeeklyProgressDetailScreen] uses,
+/// rather than [DashboardUserData.weeklyActivity] (module *last*-completion
+/// dates only, which can't reconstruct any week but the current one).
+class _WeeklyStreakCard extends StatefulWidget {
+  const _WeeklyStreakCard({required this.currentStreak});
+
+  final int currentStreak;
+
+  @override
+  State<_WeeklyStreakCard> createState() => _WeeklyStreakCardState();
+}
+
+class _WeeklyStreakCardState extends State<_WeeklyStreakCard> {
+  late final Future<List<EmotionLogEntry>> _logsFuture;
+
+  /// 0 = the current week; each decrement steps one week further into the
+  /// past. Clamped at 0 so the user can't page into the future.
+  int _weekOffset = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _logsFuture = fetchAllEmotionLogs();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final weekStart = startOfWeekMonday(
+      DateTime.now(),
+    ).add(Duration(days: 7 * _weekOffset));
+
+    return FutureBuilder<List<EmotionLogEntry>>(
+      future: _logsFuture,
+      builder: (context, snapshot) {
+        final logs = snapshot.data ?? const [];
+        return _WeeklyStreak(
+          streak: widget.currentStreak,
+          completedDays: activeDaysInWeek(logs, weekStart),
+          weekStart: weekStart,
+          isCurrentWeek: _weekOffset == 0,
+          onPreviousWeek: () => setState(() => _weekOffset -= 1),
+          onNextWeek: _weekOffset < 0
+              ? () => setState(() => _weekOffset += 1)
+              : null,
+        );
+      },
+    );
+  }
+}
+
 class _WeeklyStreak extends StatelessWidget {
-  const _WeeklyStreak({required this.streak, required this.completedDays});
+  const _WeeklyStreak({
+    required this.streak,
+    required this.completedDays,
+    required this.weekStart,
+    required this.isCurrentWeek,
+    required this.onPreviousWeek,
+    required this.onNextWeek,
+  });
 
   final int streak;
   final List<bool> completedDays;
+  final DateTime weekStart;
+  final bool isCurrentWeek;
+  final VoidCallback onPreviousWeek;
+
+  /// Null (and rendered disabled) once already on the current week — there's
+  /// no future week to page forward into.
+  final VoidCallback? onNextWeek;
 
   static const _days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+  static const _months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+
+  String get _weekRangeLabel {
+    final weekEnd = weekStart.add(const Duration(days: 6));
+    final start = '${_months[weekStart.month - 1]} ${weekStart.day}';
+    final end = weekStart.month == weekEnd.month
+        ? '${weekEnd.day}'
+        : '${_months[weekEnd.month - 1]} ${weekEnd.day}';
+    return '$start – $end';
+  }
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F1E8),
+        // Same blue as the "Continue" card on the Modules screen.
+        color: const Color(0xFF0B28D9),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE0E0E0)),
+        border: Border.all(
+          color: const Color(0xFFF5F1E8).withValues(alpha: 0.18),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '$streak-Day Streak',
-            style: const TextStyle(
-              fontWeight: FontWeight.w700,
-              fontSize: 15,
-              color: Colors.black87,
-            ),
-          ),
-          const SizedBox(height: 2),
-          const Text(
-            'Built from completed scenarios',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.black45,
-              fontWeight: FontWeight.w500,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Row(
+              children: [
+                _WeekNavButton(
+                  icon: Icons.chevron_left_rounded,
+                  onTap: onPreviousWeek,
+                ),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Text(
+                        isCurrentWeek ? '$streak-Day Streak' : _weekRangeLabel,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                          color: Color(0xFFF5F1E8),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        isCurrentWeek
+                            ? 'Built from completed scenarios'
+                            : 'Days with a logged scenario',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: const Color(0xFFF5F1E8).withValues(alpha: 0.7),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                _WeekNavButton(
+                  icon: Icons.chevron_right_rounded,
+                  onTap: onNextWeek,
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 14),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: List.generate(_days.length, (i) {
-              final active = i < completedDays.length && completedDays[i];
-              return Column(
-                children: [
-                  Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: active
-                          ? const Color(0xFF0B28D9)
-                          : const Color(0xFFE8ECFF),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: List.generate(_days.length, (i) {
+                final active = i < completedDays.length && completedDays[i];
+                return Column(
+                  children: [
+                    Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        // Solid cream for a completed day (pops against the
+                        // card's dark blue), a barely-there tint of it
+                        // otherwise — same on/off treatment as the badge
+                        // tiles above.
+                        color: active
+                            ? const Color(0xFFF5F1E8)
+                            : const Color(0xFFF5F1E8).withValues(alpha: 0.15),
+                      ),
+                      child: Icon(
+                        active ? Icons.check : Icons.remove,
+                        size: 16,
+                        color: active
+                            ? const Color(0xFF0B28D9)
+                            : const Color(0xFFF5F1E8).withValues(alpha: 0.35),
+                      ),
                     ),
-                    child: Icon(
-                      active ? Icons.check : Icons.remove,
-                      size: 16,
-                      color: active ? const Color(0xFFF5F1E8) : Colors.black26,
+                    const SizedBox(height: 4),
+                    Text(
+                      _days[i],
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: active
+                            ? const Color(0xFFF5F1E8)
+                            : const Color(0xFFF5F1E8).withValues(alpha: 0.35),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    _days[i],
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: active
-                          ? const Color(0xFF0B28D9)
-                          : Colors.black38,
-                    ),
-                  ),
-                ],
-              );
-            }),
+                  ],
+                );
+              }),
+            ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Left/right week-page arrow inside [_WeeklyStreak]'s header — nested
+/// inside that whole card's own tap-to-open-detail-screen [InkWell], so it
+/// needs its own ink response to win the gesture arena over the parent's
+/// (which it does: Flutter resolves a tap to the innermost recognizer),
+/// otherwise tapping an arrow would also have opened the detail screen.
+class _WeekNavButton extends StatelessWidget {
+  const _WeekNavButton({required this.icon, required this.onTap});
+
+  final IconData icon;
+
+  /// Null renders a disabled (greyed-out, untappable) arrow — used for "next
+  /// week" once already viewing the current week.
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onTap != null;
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.all(4),
+        child: Icon(
+          icon,
+          size: 22,
+          color: const Color(0xFFF5F1E8).withValues(alpha: enabled ? 1 : 0.25),
+        ),
       ),
     );
   }
@@ -758,8 +920,8 @@ class _BadgeDescriptionDialog extends StatelessWidget {
 class _StateScaffold extends StatelessWidget {
   const _StateScaffold({required this.message}) : loading = false;
   const _StateScaffold.loading()
-      : message = 'Loading progress...',
-        loading = true;
+    : message = 'Loading progress...',
+      loading = true;
 
   final String message;
   final bool loading;

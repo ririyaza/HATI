@@ -199,7 +199,9 @@ class UserBubble extends StatelessWidget {
             ),
             child: Text(
               text,
-              style: HatiTextStyles.bodyLarge.copyWith(color: const Color(0xFFF5F1E8)),
+              style: HatiTextStyles.bodyLarge.copyWith(
+                color: const Color(0xFFF5F1E8),
+              ),
             ),
           ),
         ),
@@ -211,7 +213,11 @@ class UserBubble extends StatelessWidget {
             color: HatiColors.mossGreen,
             shape: BoxShape.circle,
           ),
-          child: const Icon(Icons.person, color: const Color(0xFFF5F1E8), size: 18),
+          child: const Icon(
+            Icons.person,
+            color: const Color(0xFFF5F1E8),
+            size: 18,
+          ),
         ),
       ],
     );
@@ -335,10 +341,14 @@ class ScriptOptionCard extends StatelessWidget {
                 width: 32,
                 height: 32,
                 decoration: BoxDecoration(
-                  color: selected ? const Color(0xFFF5F1E8) : HatiColors.surface,
+                  color: selected
+                      ? const Color(0xFFF5F1E8)
+                      : HatiColors.surface,
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: selected ? const Color(0xFFF5F1E8) : HatiColors.divider,
+                    color: selected
+                        ? const Color(0xFFF5F1E8)
+                        : HatiColors.divider,
                   ),
                 ),
                 child: Center(
@@ -359,12 +369,18 @@ class ScriptOptionCard extends StatelessWidget {
                 child: Text(
                   script,
                   style: HatiTextStyles.bodyMedium.copyWith(
-                    color: selected ? const Color(0xFFF5F1E8) : HatiColors.textMedium,
+                    color: selected
+                        ? const Color(0xFFF5F1E8)
+                        : HatiColors.textMedium,
                   ),
                 ),
               ),
               if (selected)
-                const Icon(Icons.check_circle, color: const Color(0xFFF5F1E8), size: 20),
+                const Icon(
+                  Icons.check_circle,
+                  color: const Color(0xFFF5F1E8),
+                  size: 20,
+                ),
             ],
           ),
         ),
@@ -554,8 +570,9 @@ class _SliderQuestionState extends State<SliderQuestion> {
   Widget _buildQuestionText() {
     final word = widget.boldWord;
     final question = widget.question;
-    final index =
-        word == null ? -1 : question.toLowerCase().indexOf(word.toLowerCase());
+    final index = word == null
+        ? -1
+        : question.toLowerCase().indexOf(word.toLowerCase());
     if (index == -1) {
       return Text(question, style: HatiTextStyles.bodyLarge);
     }
@@ -611,7 +628,9 @@ class _SliderQuestionState extends State<SliderQuestion> {
                   overlayShape: const RoundSliderOverlayShape(
                     overlayRadius: 22,
                   ),
-                  activeTickMarkColor: const Color(0xFFF5F1E8).withValues(alpha: 0.7),
+                  activeTickMarkColor: const Color(
+                    0xFFF5F1E8,
+                  ).withValues(alpha: 0.7),
                   inactiveTickMarkColor: _blue.withValues(alpha: 0.3),
                   valueIndicatorColor: _blue,
                   valueIndicatorTextStyle: const TextStyle(
@@ -767,7 +786,9 @@ class SceneProgressBar extends StatelessWidget {
           children: [
             Text(
               sceneLabel,
-              style: HatiTextStyles.caption.copyWith(color: const Color(0xFFF5F1E8)),
+              style: HatiTextStyles.caption.copyWith(
+                color: const Color(0xFFF5F1E8),
+              ),
             ),
             Text(
               '$currentStep / $totalSteps',
@@ -808,17 +829,11 @@ class SceneTopHeader extends StatelessWidget {
   final int currentStep;
   final int totalSteps;
 
-  /// When true, shows a [HatiUndoButton] in the header's top-right corner —
-  /// an always-available "go back to the previous dialogue" affordance.
-  /// False (the default) keeps every existing caller's look unchanged.
-  final bool showUndo;
-
   const SceneTopHeader({
     super.key,
     required this.sceneLabel,
     required this.currentStep,
     required this.totalSteps,
-    this.showUndo = false,
   });
 
   @override
@@ -835,18 +850,12 @@ class SceneTopHeader extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                IconButton(
-                  onPressed: () => Navigator.maybePop(context),
-                  icon: const Icon(Icons.arrow_back, color: Colors.white),
-                  visualDensity: VisualDensity.compact,
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                ),
-                if (showUndo) const HatiUndoButton(color: Colors.white),
-              ],
+            IconButton(
+              onPressed: () => Navigator.maybePop(context),
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              visualDensity: VisualDensity.compact,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
             ),
             const SizedBox(height: 8),
             Padding(
@@ -1185,6 +1194,9 @@ class HatiSpeechSequence extends StatefulWidget {
   /// Forwarded to [_AnimatedHatiSpeechBubble.playTalkSound].
   final bool playTalkSound;
 
+  /// Forwarded to [_AnimatedHatiSpeechBubble.showAdvanceCue].
+  final bool showAdvanceCue;
+
   const HatiSpeechSequence({
     super.key,
     required this.introMessage,
@@ -1193,6 +1205,7 @@ class HatiSpeechSequence extends StatefulWidget {
     this.autoAdvance = false,
     this.holdAfterTyping = const Duration(seconds: 2),
     this.playTalkSound = true,
+    this.showAdvanceCue = false,
   });
 
   @override
@@ -1217,6 +1230,7 @@ class _HatiSpeechSequenceState extends State<HatiSpeechSequence> {
         autoAdvance: widget.autoAdvance,
         holdAfterTyping: widget.holdAfterTyping,
         playTalkSound: widget.playTalkSound,
+        showAdvanceCue: widget.showAdvanceCue,
       );
     }
 
@@ -1230,6 +1244,7 @@ class _HatiSpeechSequenceState extends State<HatiSpeechSequence> {
       autoAdvance: widget.autoAdvance,
       holdAfterTyping: widget.holdAfterTyping,
       playTalkSound: widget.playTalkSound,
+      showAdvanceCue: widget.showAdvanceCue,
     );
   }
 }
@@ -1403,22 +1418,6 @@ class HatiDialogueTapController {
 
   static void removeListener(VoidCallback listener) =>
       _ticks.removeListener(listener);
-
-  // ── Undo channel ──────────────────────────────────────────────────────
-  // Mirrors the tap channel above but signals "go back" instead of
-  // "advance" — every mounted dialogue bubble also listens for these and
-  // steps itself backward (replaying the previous sentence, or undoing its
-  // own dismiss) rather than forward. See
-  // _AnimatedHatiSpeechBubbleState._handleUndo and [HatiUndoButton].
-  static final ValueNotifier<int> _undoTicks = ValueNotifier<int>(0);
-
-  static void undo() => _undoTicks.value++;
-
-  static void addUndoListener(VoidCallback listener) =>
-      _undoTicks.addListener(listener);
-
-  static void removeUndoListener(VoidCallback listener) =>
-      _undoTicks.removeListener(listener);
 }
 
 /// Wraps a scene's body so a tap anywhere on screen advances whichever Hati
@@ -1631,19 +1630,6 @@ class _AnimatedHatiSpeechBubble extends StatefulWidget {
   /// own lines get the voice cue.
   final bool playTalkSound;
 
-  /// Fired when [HatiDialogueTapController.undo] brought a dissolved/
-  /// dismissed bubble back on screen — the caller should undo whatever it
-  /// did in response to the original dismissal (e.g. flip its own
-  /// "dialogue complete" flag back to false so input controls hide again).
-  final VoidCallback? onUndoRestored;
-
-  /// Fired when undo has nothing left to rewind to within this bubble
-  /// (already showing its first sentence, not dissolved). Most callers
-  /// leave this null — there being nothing earlier in the current message
-  /// is the correct end of undo for them. Scene 3's beat-driven dialogue
-  /// uses it to step back to the previous beat.
-  final VoidCallback? onUndoExhausted;
-
   const _AnimatedHatiSpeechBubble({
     super.key,
     required this.message,
@@ -1659,8 +1645,6 @@ class _AnimatedHatiSpeechBubble extends StatefulWidget {
     this.textAlign = TextAlign.center,
     this.showAdvanceCue = false,
     this.playTalkSound = true,
-    this.onUndoRestored,
-    this.onUndoExhausted,
   });
 
   @override
@@ -1743,7 +1727,6 @@ class _AnimatedHatiSpeechBubbleState extends State<_AnimatedHatiSpeechBubble>
     });
 
     HatiDialogueTapController.addListener(_handleTap);
-    HatiDialogueTapController.addUndoListener(_handleUndo);
   }
 
   void _startTypewriter() {
@@ -1865,54 +1848,9 @@ class _AnimatedHatiSpeechBubbleState extends State<_AnimatedHatiSpeechBubble>
     _advance();
   }
 
-  /// Handles a [HatiDialogueTapController] undo tick: composable so
-  /// repeated presses step back further each time — undoing a dismiss
-  /// brings back and replays the last sentence; stepping back mid-message
-  /// replays the previous sentence; already typing the current one just
-  /// restarts it; with nothing earlier in this message, hands off to
-  /// [_AnimatedHatiSpeechBubble.onUndoExhausted]. Always replays from the
-  /// start of typing rather than instantly restoring — simpler, and "undo"
-  /// reads as "go back and see it again," not a state teleport.
-  void _handleUndo() {
-    if (!mounted || _sentences.isEmpty) return;
-    _typewriterTimer?.cancel();
-    _autoAdvanceTimer?.cancel();
-
-    if (_dissolved || _dissolving) {
-      _dissolveController.value = 0;
-      setState(() {
-        _dissolved = false;
-        _dissolving = false;
-        _visibleChars = 0;
-      });
-      _typeCurrentSentence();
-      widget.onUndoRestored?.call();
-      return;
-    }
-
-    final sentence = _sentences[_sentenceIndex.clamp(0, _sentences.length - 1)];
-    if (_visibleChars < sentence.length) {
-      setState(() => _visibleChars = 0);
-      _typeCurrentSentence();
-      return;
-    }
-
-    if (_sentenceIndex > 0) {
-      setState(() {
-        _sentenceIndex--;
-        _visibleChars = 0;
-      });
-      _typeCurrentSentence();
-      return;
-    }
-
-    widget.onUndoExhausted?.call();
-  }
-
   @override
   void dispose() {
     HatiDialogueTapController.removeListener(_handleTap);
-    HatiDialogueTapController.removeUndoListener(_handleUndo);
     _typewriterTimer?.cancel();
     _autoAdvanceTimer?.cancel();
     _entranceController.dispose();
@@ -2001,17 +1939,6 @@ class _AnimatedHatiSpeechBubbleState extends State<_AnimatedHatiSpeechBubble>
                         bottom: -12,
                         child: _AdvanceCueChevron(),
                       ),
-                    const Positioned(
-                      // This Positioned sits inside the bubble's own text
-                      // padding (_ScaledBubbleText._padding: 24 left, 22
-                      // top), so a small offset like -8 lands the button
-                      // well inside the bubble instead of at its corner —
-                      // needs to cancel most of that padding to actually
-                      // reach the visual edge.
-                      left: -22,
-                      top: -20,
-                      child: HatiBubbleUndoButton(),
-                    ),
                   ],
                 ),
               ),
@@ -2071,39 +1998,6 @@ class _HatiSpeechBubblePainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _HatiSpeechBubblePainter oldDelegate) =>
       oldDelegate.tailTargetX != tailTargetX;
-}
-
-/// Small always-visible "go back" icon meant to pin to a dialogue bubble's
-/// own top-left corner — deliberately on the bubble itself, not just the
-/// scene header (see [HatiUndoButton]), so it's impossible to miss
-/// regardless of what's happening elsewhere on screen. Tapping it broadcasts
-/// the same [HatiDialogueTapController.undo] signal as the header button.
-/// Public (unlike most of this bubble's internals) so Scene 3's own
-/// [_TypedCaption] — a separate small typewriter that doesn't go through
-/// [_AnimatedHatiSpeechBubble] — can pin the same icon to itself.
-class HatiBubbleUndoButton extends StatelessWidget {
-  const HatiBubbleUndoButton({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: 'Undo — go back to the previous dialogue',
-      child: Material(
-        color: Colors.white,
-        shape: const CircleBorder(),
-        elevation: 2,
-        child: InkWell(
-          customBorder: const CircleBorder(),
-          onTap: HatiDialogueTapController.undo,
-          child: const Padding(
-            padding: EdgeInsets.all(6),
-            child: Icon(Icons.undo_rounded, size: 16, color: Color(0xFF4A8FD4)),
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 /// Small pulsing "tap to continue" chevron shown at a fully-typed bubble's
@@ -2256,37 +2150,6 @@ class _HatiIdleTapReminderState extends State<HatiIdleTapReminder>
   }
 }
 
-/// Small reusable "go back" affordance for any scene with Hati dialogue —
-/// always enabled, always tappable. Pressing it broadcasts
-/// [HatiDialogueTapController.undo], which whichever dialogue bubble is
-/// currently mounted reacts to (replaying its previous sentence, or undoing
-/// its own dismiss); if there's genuinely nothing left to rewind within the
-/// current turn, it's a harmless no-op (see `onUndoExhausted` on
-/// [HatiSpeakingBlock]/[HatiCoachSpeech]) — this button deliberately has no
-/// enabled/disabled state of its own, since tracking "is there something to
-/// undo" per scene isn't worth the added state for what's meant to be a
-/// simple, always-present reassurance that going back is possible.
-class HatiUndoButton extends StatelessWidget {
-  final Color color;
-
-  const HatiUndoButton({super.key, this.color = Colors.white});
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: 'Undo — go back to the previous dialogue',
-      child: IconButton(
-        onPressed: HatiDialogueTapController.undo,
-        icon: Icon(Icons.undo_rounded, color: color),
-        visualDensity: VisualDensity.compact,
-        padding: EdgeInsets.zero,
-        constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-      ),
-    );
-  }
-}
-
 // ── Hati Frog Character ───────────────────────────────────────────────────────
 
 const int hatiFrogFrameCount = 12;
@@ -2427,11 +2290,16 @@ class HatiSpeakingBlock extends StatelessWidget {
   /// Forwarded to [_AnimatedHatiSpeechBubble.showAdvanceCue].
   final bool showAdvanceCue;
 
-  /// Forwarded to [_AnimatedHatiSpeechBubble.onUndoRestored].
-  final VoidCallback? onUndoRestored;
-
-  /// Forwarded to [_AnimatedHatiSpeechBubble.onUndoExhausted].
-  final VoidCallback? onUndoExhausted;
+  /// Vertical gap between the tip of the bubble's tail and the top of the
+  /// frog's own bounding box. Defaults to 8 — tight already at the sizes
+  /// most callers use, but [HatiFrogAvatar]'s Rive artwork doesn't fill its
+  /// box edge-to-edge (there's headroom above Hati's actual head before the
+  /// box border), so that empty margin scales up right along with
+  /// [frogSize] and reads as a growing gap at larger sizes even though this
+  /// value doesn't change. Callers using a big [frogSize] (e.g. the
+  /// dashboard's 300) should pass a negative value here to pull the bubble
+  /// down over that headroom and keep Hati and his bubble visually close.
+  final double bubbleGap;
 
   const HatiSpeakingBlock({
     super.key,
@@ -2448,8 +2316,7 @@ class HatiSpeakingBlock extends StatelessWidget {
     this.alignment = CrossAxisAlignment.center,
     this.textAlign = TextAlign.center,
     this.showAdvanceCue = false,
-    this.onUndoRestored,
-    this.onUndoExhausted,
+    this.bubbleGap = 8,
   });
 
   @override
@@ -2487,8 +2354,6 @@ class HatiSpeakingBlock extends StatelessWidget {
         tailTargetX: tailTargetX,
         textAlign: textAlign,
         showAdvanceCue: showAdvanceCue,
-        onUndoRestored: onUndoRestored,
-        onUndoExhausted: onUndoExhausted,
       );
     } else if (dissolveBubble) {
       bubble = _AnimatedHatiSpeechBubble(
@@ -2507,8 +2372,6 @@ class HatiSpeakingBlock extends StatelessWidget {
         tailTargetX: tailTargetX,
         textAlign: textAlign,
         showAdvanceCue: showAdvanceCue,
-        onUndoRestored: onUndoRestored,
-        onUndoExhausted: onUndoExhausted,
       );
     } else {
       bubble = HatiSpeechSequence(
@@ -2517,6 +2380,7 @@ class HatiSpeakingBlock extends StatelessWidget {
         onSequenceComplete: onSequenceComplete,
         autoAdvance: autoAdvance,
         holdAfterTyping: holdAfterTyping,
+        showAdvanceCue: showAdvanceCue,
       );
     }
 
@@ -2537,7 +2401,7 @@ class HatiSpeakingBlock extends StatelessWidget {
       children: [
         HatiFrogAvatar(size: frogSize, mood: mood),
         Positioned(
-          bottom: frogSize + 8,
+          bottom: frogSize + bubbleGap,
           left: pinnedLeft ? 0 : null,
           child: bubble,
         ),
@@ -2573,12 +2437,6 @@ class HatiCoachSpeech extends StatelessWidget {
   /// passes false, since this same widget doubles as their speech bubble.
   final bool playTalkSound;
 
-  /// Forwarded to [_AnimatedHatiSpeechBubble.onUndoRestored].
-  final VoidCallback? onUndoRestored;
-
-  /// Forwarded to [_AnimatedHatiSpeechBubble.onUndoExhausted].
-  final VoidCallback? onUndoExhausted;
-
   const HatiCoachSpeech({
     super.key,
     this.introMessage = '',
@@ -2594,8 +2452,6 @@ class HatiCoachSpeech extends StatelessWidget {
     this.textAlign = TextAlign.center,
     this.showAdvanceCue = false,
     this.playTalkSound = true,
-    this.onUndoRestored,
-    this.onUndoExhausted,
   });
 
   @override
@@ -2621,8 +2477,6 @@ class HatiCoachSpeech extends StatelessWidget {
         textAlign: textAlign,
         showAdvanceCue: showAdvanceCue,
         playTalkSound: playTalkSound,
-        onUndoRestored: onUndoRestored,
-        onUndoExhausted: onUndoExhausted,
       );
     }
     if (dissolveBubble) {
@@ -2643,8 +2497,6 @@ class HatiCoachSpeech extends StatelessWidget {
         textAlign: textAlign,
         showAdvanceCue: showAdvanceCue,
         playTalkSound: playTalkSound,
-        onUndoRestored: onUndoRestored,
-        onUndoExhausted: onUndoExhausted,
       );
     }
     return HatiSpeechSequence(
@@ -2652,6 +2504,7 @@ class HatiCoachSpeech extends StatelessWidget {
       persistentMessage: persistentMessage,
       onSequenceComplete: onSequenceComplete,
       playTalkSound: playTalkSound,
+      showAdvanceCue: showAdvanceCue,
     );
   }
 }
@@ -2669,12 +2522,6 @@ class HatiCoachZone extends StatelessWidget {
   final double frogWidthScale;
   final HatiMood mood;
 
-  /// Forwarded to [HatiCoachSpeech.onUndoRestored].
-  final VoidCallback? onUndoRestored;
-
-  /// Forwarded to [HatiCoachSpeech.onUndoExhausted].
-  final VoidCallback? onUndoExhausted;
-
   const HatiCoachZone({
     super.key,
     this.introMessage = '',
@@ -2687,8 +2534,6 @@ class HatiCoachZone extends StatelessWidget {
     this.showBubble = true,
     this.frogWidthScale = 1,
     this.mood = HatiMood.idle,
-    this.onUndoRestored,
-    this.onUndoExhausted,
   });
 
   @override
@@ -2716,8 +2561,6 @@ class HatiCoachZone extends StatelessWidget {
                   onBubbleDismissed: onBubbleDismissed,
                   dissolveBubble: dissolveBubble,
                   holdAfterTyping: holdAfterTyping,
-                  onUndoRestored: onUndoRestored,
-                  onUndoExhausted: onUndoExhausted,
                   // Every HatiCoachZone caller is Hati talking, tap (or
                   // wait) to continue — always show the cue rather than
                   // making each of the 4+ scenes that use this opt in
@@ -2794,12 +2637,6 @@ class HatiSceneShell extends StatelessWidget {
   final Color? contentBackgroundColor;
   final HatiMood mood;
 
-  /// Forwarded to [HatiCoachZone.onUndoRestored].
-  final VoidCallback? onUndoRestored;
-
-  /// Forwarded to [HatiCoachZone.onUndoExhausted].
-  final VoidCallback? onUndoExhausted;
-
   /// Shows a [HatiIdleTapReminder] near the bottom of the coach area once
   /// the player's been idle a while. Callers pass their own "still waiting
   /// on the player to tap through Hati's dialogue" flag (e.g.
@@ -2821,8 +2658,6 @@ class HatiSceneShell extends StatelessWidget {
     this.bottomBar,
     this.contentBackgroundColor,
     this.mood = HatiMood.idle,
-    this.onUndoRestored,
-    this.onUndoExhausted,
     this.showIdleReminder = false,
   });
 
@@ -2870,8 +2705,6 @@ class HatiSceneShell extends StatelessWidget {
                             showBubble: showBubble,
                             frogWidthScale: frogWidthScale,
                             mood: mood,
-                            onUndoRestored: onUndoRestored,
-                            onUndoExhausted: onUndoExhausted,
                           ),
                         ),
                       ),
@@ -2894,7 +2727,8 @@ class HatiSceneShell extends StatelessWidget {
                       DraggableChoiceSheet(
                         header: fixedHeader,
                         body: body,
-                        backgroundColor: contentBackgroundColor ?? const Color(0xFFF5F1E8),
+                        backgroundColor:
+                            contentBackgroundColor ?? const Color(0xFFF5F1E8),
                       ),
                   ],
                 );

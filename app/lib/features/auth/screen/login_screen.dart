@@ -335,7 +335,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: _kBrand,
-                      foregroundColor: const Color(0xFFF5F1E8),
+                      foregroundColor: Colors.white,
                       elevation: 0,
                       disabledBackgroundColor: _kBrand.withOpacity(0.35),
                       shape: RoundedRectangleBorder(
@@ -349,7 +349,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             width: 24,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              color: const Color(0xFFF5F1E8),
+                              color: Colors.white,
                             ),
                           )
                         : const Text(
@@ -392,7 +392,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
                       ),
-                      backgroundColor: const Color(0xFFF5F1E8),
+                      backgroundColor: Colors.white,
                     ),
                     onPressed: _anyLoading ? null : _handleFacebookSignIn,
                     child: _isFacebookLoading
@@ -430,7 +430,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
                       ),
-                      backgroundColor: const Color(0xFFF5F1E8),
+                      backgroundColor: Colors.white,
                     ),
                     onPressed: _anyLoading ? null : _handleGoogleSignIn,
                     child: _isGoogleLoading
@@ -503,7 +503,7 @@ InputDecoration _fieldDecoration({required String hintText, Widget? suffixIcon})
     hintText: hintText,
     hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 16),
     filled: true,
-    fillColor: const Color(0xFFF5F1E8),
+    fillColor: Colors.white,
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(14),
       borderSide: const BorderSide(color: _kFieldBorder),

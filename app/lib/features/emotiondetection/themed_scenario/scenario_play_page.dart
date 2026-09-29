@@ -153,9 +153,10 @@ class _ScenarioLoadingScreenState extends State<_ScenarioLoadingScreen>
     // Fast at first (server likely already warm, most loads finish in this
     // window), then decelerating hard — Curves.easeOutExpo reaches ~92% by
     // the end rather than 100%, so it never visually lies about being done.
-    _progress = Tween<double>(begin: 0, end: 0.92).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOutExpo),
-    );
+    _progress = Tween<double>(
+      begin: 0,
+      end: 0.92,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutExpo));
   }
 
   @override
@@ -181,13 +182,15 @@ class _ScenarioLoadingScreenState extends State<_ScenarioLoadingScreen>
               Text(
                 'Getting things ready…',
                 textAlign: TextAlign.center,
-                style: HatiTextStyles.heading3.copyWith(color: const Color(0xFFF5F1E8)),
+                style: HatiTextStyles.heading3.copyWith(
+                  color: const Color(0xFFF5F1E8),
+                ),
               ),
               const SizedBox(height: 12),
               Text(
-                "The server wakes up when it hasn't been used in a while — "
-                "this can take up to a minute. Hang tight, no need to back "
-                "out.",
+                "HATI takes a little longer to start up after being idle for "
+                "a while — this can take up to a minute. Hang tight, no need "
+                "to back out.",
                 textAlign: TextAlign.center,
                 style: HatiTextStyles.bodyMedium.copyWith(
                   color: const Color(0xFFF5F1E8).withValues(alpha: 0.8),
@@ -201,7 +204,9 @@ class _ScenarioLoadingScreenState extends State<_ScenarioLoadingScreen>
                   child: LinearProgressIndicator(
                     value: _progress.value,
                     minHeight: 10,
-                    backgroundColor: const Color(0xFFF5F1E8).withValues(alpha: 0.2),
+                    backgroundColor: const Color(
+                      0xFFF5F1E8,
+                    ).withValues(alpha: 0.2),
                     color: const Color(0xFFF5F1E8),
                   ),
                 ),

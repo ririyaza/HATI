@@ -159,6 +159,11 @@ class _HomeScreenState extends State<HomeScreen> {
                         autoAdvance: true,
                         holdAfterTyping: _holdAfterTyping,
                         onDismissed: _onHatiDismissed,
+                        // At this screen's large 300 frog size, the default
+                        // 8px gap leaves a visible empty gap between the
+                        // bubble's tail and Hati's head — see
+                        // HatiSpeakingBlock.bubbleGap's doc comment.
+                        bubbleGap: -40,
                       )
                     : const HatiFrogAvatar(size: 300),
               ),

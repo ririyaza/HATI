@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../dashboard/widgets/hati_sprite_animation.dart';
+import '../data/assessment_comparison.dart';
 import 'referral_screen.dart';
 
 /// Shown when the reassessment comparison is `worsened`: acknowledges that
@@ -67,7 +68,11 @@ class WorsenedUpdateScreen extends StatelessWidget {
                   ),
                   onPressed: () {
                     Navigator.of(context).pushReplacement(
-                      MaterialPageRoute(builder: (_) => const ReferralScreen()),
+                      MaterialPageRoute(
+                        builder: (_) => const ReferralScreen(
+                          category: PostAssessmentCategory.worsenedNotElevated,
+                        ),
+                      ),
                     );
                   },
                   child: const Text(

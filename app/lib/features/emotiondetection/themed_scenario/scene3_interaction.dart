@@ -523,28 +523,6 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
     });
   }
 
-  /// Undo, once the current beat's own bubble has nothing left to rewind
-  /// within itself (see `onUndoExhausted` at both call sites below) — steps
-  /// back to the previous beat, replaying it. Going forward only ever needs
-  /// the *new* current beat to update on-stage state; going backward needs
-  /// the on-stage character to match what it would have been at that
-  /// earlier point, so it's re-derived from scratch rather than tracked as
-  /// an undo stack (turn beat lists are short, so this is cheap).
-  void _undoBeat() {
-    if (!mounted || _beatIndex == 0) return;
-    setState(() {
-      _beatIndex--;
-      _dialogueComplete = false;
-      _resyncOnStageThroughBeat(_beatIndex);
-    });
-  }
-
-  void _resyncOnStageThroughBeat(int index) {
-    for (var i = 0; i <= index && i < _beats.length; i++) {
-      _syncOnStageForBeat(_beats[i]);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<ScenarioProvider>();
@@ -599,7 +577,6 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
                 sceneLabel: 'The Approach',
                 currentStep: 3,
                 totalSteps: 7,
-                showUndo: true,
               ),
               const SceneSpeedToggleRow(),
               Expanded(
@@ -680,21 +657,22 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
                                     key: ValueKey(_turnKey),
                                     persistentMessage: currentBeat!.text,
                                     frogSize: hatiH,
-                                    mood: HatiMood.encourage,
+                                    // Reacts to how this turn's answer branched
+                                    // server-side: npc_mood == 'angry' is the
+                                    // same negative-branch signal that puts
+                                    // the NPC into its frown sprite above, so
+                                    // a positive/neutral branch gets Hati's
+                                    // happy mood instead of the default
+                                    // encourage one.
+                                    mood: provider.npcMood == 'angry'
+                                        ? HatiMood.encourage
+                                        : HatiMood.happy,
                                     alignment: CrossAxisAlignment.start,
                                     dissolveBubble: true,
                                     autoAdvance: _kAutoAdvanceBeats,
                                     holdAfterTyping: const Duration(seconds: 3),
                                     showAdvanceCue: true,
                                     onSequenceComplete: _onBeatDismissed,
-                                    onUndoExhausted: _undoBeat,
-                                    onUndoRestored: () {
-                                      if (mounted && _dialogueComplete) {
-                                        setState(
-                                          () => _dialogueComplete = false,
-                                        );
-                                      }
-                                    },
                                   )
                                 : HatiFrogAvatar(
                                     size: hatiH,
@@ -724,7 +702,6 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
                                   key: ValueKey('${_turnKey}_$_beatIndex'),
                                   text: currentBeat.text,
                                   onDismissed: _onBeatDismissed,
-                                  onUndoExhausted: _undoBeat,
                                 ),
                               ),
                             ),
@@ -896,12 +873,6 @@ class _Scene3InteractionState extends State<Scene3Interaction> {
               if (beat.kind == _BeatKind.npc) _lastNpcLineForReplay = beat.text;
             },
             onSequenceComplete: _onBeatDismissed,
-            onUndoExhausted: _undoBeat,
-            onUndoRestored: () {
-              if (mounted && _dialogueComplete) {
-                setState(() => _dialogueComplete = false);
-              }
-            },
           ),
         ),
       ),
@@ -1185,25 +1156,6 @@ class _StageScrim extends StatelessWidget {
   }
 }
 
-class _TapAnywhereHint extends StatelessWidget {
-  const _TapAnywhereHint();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.35),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: const Text(
-        'Tap anywhere to continue',
-        style: TextStyle(color: const Color(0xFFF5F1E8), fontSize: 12),
-      ),
-    );
-  }
-}
-
 class _TypingIndicator extends StatefulWidget {
   const _TypingIndicator();
 
@@ -1457,18 +1409,7 @@ class _TypedCaption extends StatefulWidget {
   final String text;
   final VoidCallback? onDismissed;
 
-  /// Fired when undo is pressed while this caption is fully typed and not
-  /// mid-dismiss — a plain caption is one block of text with no earlier
-  /// sentence of its own to fall back to, so undo always hands straight off
-  /// to the beat director (see Scene3's `_undoBeat`) in that case.
-  final VoidCallback? onUndoExhausted;
-
-  const _TypedCaption({
-    super.key,
-    required this.text,
-    this.onDismissed,
-    this.onUndoExhausted,
-  });
+  const _TypedCaption({super.key, required this.text, this.onDismissed});
 
   @override
   State<_TypedCaption> createState() => _TypedCaptionState();
@@ -1483,7 +1424,6 @@ class _TypedCaptionState extends State<_TypedCaption> {
   void initState() {
     super.initState();
     HatiDialogueTapController.addListener(_handleTap);
-    HatiDialogueTapController.addUndoListener(_handleUndo);
     _scheduleNext();
   }
 
@@ -1510,24 +1450,9 @@ class _TypedCaptionState extends State<_TypedCaption> {
     });
   }
 
-  void _handleUndo() {
-    if (!mounted) return;
-    if (_dismissing) {
-      // Still within the fade-out window — cancel it and replay.
-      setState(() {
-        _dismissing = false;
-        _visibleChars = 0;
-      });
-      _scheduleNext();
-      return;
-    }
-    widget.onUndoExhausted?.call();
-  }
-
   @override
   void dispose() {
     HatiDialogueTapController.removeListener(_handleTap);
-    HatiDialogueTapController.removeUndoListener(_handleUndo);
     _timer?.cancel();
     super.dispose();
   }
@@ -1558,25 +1483,15 @@ class _TypedCaptionState extends State<_TypedCaption> {
             color: Colors.black.withValues(alpha: 0.55),
             borderRadius: BorderRadius.circular(14),
           ),
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Text(
-                displayed,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: const Color(0xFFF5F1E8),
-                  fontStyle: FontStyle.italic,
-                  fontSize: 14,
-                  height: 1.4,
-                ),
-              ),
-              const Positioned(
-                left: -14,
-                top: -14,
-                child: HatiBubbleUndoButton(),
-              ),
-            ],
+          child: Text(
+            displayed,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: const Color(0xFFF5F1E8),
+              fontStyle: FontStyle.italic,
+              fontSize: 14,
+              height: 1.4,
+            ),
           ),
         ),
       ),

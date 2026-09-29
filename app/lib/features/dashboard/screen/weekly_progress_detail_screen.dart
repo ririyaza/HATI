@@ -29,8 +29,10 @@ class _WeeklyProgressDetailScreenState
 
   final _pageController = PageController();
   int _page = 0;
-  DateTime _displayedMonth =
-      DateTime(DateTime.now().year, DateTime.now().month);
+  DateTime _displayedMonth = DateTime(
+    DateTime.now().year,
+    DateTime.now().month,
+  );
   EmotionTrendsRange _emotionTrendsRange = EmotionTrendsRange.allTime;
   late Future<List<EmotionLogEntry>> _logsFuture;
 
@@ -53,7 +55,9 @@ class _WeeklyProgressDetailScreenState
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           backgroundColor: _blue,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           content: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -61,7 +65,10 @@ class _WeeklyProgressDetailScreenState
                 onPressed: () => setDialogState(
                   () => picked = DateTime(picked.year, picked.month - 1),
                 ),
-                icon: const Icon(Icons.chevron_left_rounded, color: const Color(0xFFF5F1E8)),
+                icon: const Icon(
+                  Icons.chevron_left_rounded,
+                  color: const Color(0xFFF5F1E8),
+                ),
               ),
               Expanded(
                 child: Text(
@@ -78,14 +85,20 @@ class _WeeklyProgressDetailScreenState
                 onPressed: () => setDialogState(
                   () => picked = DateTime(picked.year, picked.month + 1),
                 ),
-                icon: const Icon(Icons.chevron_right_rounded, color: const Color(0xFFF5F1E8)),
+                icon: const Icon(
+                  Icons.chevron_right_rounded,
+                  color: const Color(0xFFF5F1E8),
+                ),
               ),
             ],
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, picked),
-              child: const Text('Go', style: TextStyle(color: const Color(0xFFF5F1E8))),
+              child: const Text(
+                'Go',
+                style: TextStyle(color: const Color(0xFFF5F1E8)),
+              ),
             ),
           ],
         ),
@@ -98,8 +111,18 @@ class _WeeklyProgressDetailScreenState
 
   static String _formatMonth(DateTime date) {
     const months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December',
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
     ];
     return '${months[date.month - 1]}, ${date.year}';
   }
@@ -139,21 +162,17 @@ class _WeeklyProgressDetailScreenState
               ),
             ),
             const SizedBox(height: 10),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(3, (i) {
-                final active = i == _page;
-                return AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  margin: const EdgeInsets.symmetric(horizontal: 4),
-                  width: active ? 22 : 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: active ? const Color(0xFFF5F1E8) : Color(0xFFF5F1E8).withValues(alpha: 0.30),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                );
-              }),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: _PageTabBar(
+                currentPage: _page,
+                labels: const ['Summary', 'Triggers', 'Emotions'],
+                onSelected: (i) => _pageController.animateToPage(
+                  i,
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
+                ),
+              ),
             ),
             const SizedBox(height: 12),
             Expanded(
@@ -162,7 +181,9 @@ class _WeeklyProgressDetailScreenState
                 builder: (context, snapshot) {
                   if (snapshot.connectionState != ConnectionState.done) {
                     return const Center(
-                      child: CircularProgressIndicator(color: const Color(0xFFF5F1E8)),
+                      child: CircularProgressIndicator(
+                        color: const Color(0xFFF5F1E8),
+                      ),
                     );
                   }
                   if (snapshot.hasError) {
@@ -172,14 +193,18 @@ class _WeeklyProgressDetailScreenState
                         child: Text(
                           "Couldn't load your progress data. Pull to refresh or try again later.",
                           textAlign: TextAlign.center,
-                          style: TextStyle(color: Color(0xFFF5F1E8).withValues(alpha: 0.70)),
+                          style: TextStyle(
+                            color: Color(0xFFF5F1E8).withValues(alpha: 0.70),
+                          ),
                         ),
                       ),
                     );
                   }
                   final logs = snapshot.data ?? const [];
-                  final confidenceAnxiety =
-                      computeConfidenceAnxiety(logs, DateTime.now());
+                  final confidenceAnxiety = computeConfidenceAnxiety(
+                    logs,
+                    DateTime.now(),
+                  );
                   final activeDays = activeDaysInMonth(logs, _displayedMonth);
                   final triggers = computeTriggerPatterns(logs);
                   final emotions = computeEmotionTrends(
@@ -211,6 +236,63 @@ class _WeeklyProgressDetailScreenState
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Replaces a plain dot indicator with labeled, tappable segments — the dots
+/// alone didn't make it obvious there were other pages to see, let alone
+/// which ones. Tapping a segment jumps straight to that page (via
+/// [onSelected]); swiping the PageView still updates [currentPage] like
+/// before, animating the active segment to match.
+class _PageTabBar extends StatelessWidget {
+  const _PageTabBar({
+    required this.currentPage,
+    required this.labels,
+    required this.onSelected,
+  });
+
+  final int currentPage;
+  final List<String> labels;
+  final ValueChanged<int> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF5F1E8).withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: List.generate(labels.length, (i) {
+          final active = i == currentPage;
+          return Expanded(
+            child: GestureDetector(
+              onTap: () => onSelected(i),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  color: active ? const Color(0xFFF5F1E8) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  labels[i],
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: active ? FontWeight.w700 : FontWeight.w600,
+                    color: active
+                        ? const Color(0xFF0B28D9)
+                        : const Color(0xFFF5F1E8).withValues(alpha: 0.6),
+                  ),
+                ),
+              ),
+            ),
+          );
+        }),
       ),
     );
   }
@@ -278,7 +360,8 @@ class _SummaryPage extends StatelessWidget {
           const SizedBox(height: 20),
           _TrendCard(
             label: 'Confidence',
-            changeLabel: '${(summary.confidenceChangePct.abs() * 100).toStringAsFixed(0)}%',
+            changeLabel:
+                '${(summary.confidenceChangePct.abs() * 100).toStringAsFixed(0)}%',
             improving: summary.confidenceChangePct >= 0,
             color: const Color(0xFF1DB954),
             values: summary.confidenceSparkline,
@@ -287,7 +370,8 @@ class _SummaryPage extends StatelessWidget {
           const SizedBox(height: 14),
           _TrendCard(
             label: 'Anxiety',
-            changeLabel: '${(summary.anxietyChangePct.abs() * 100).toStringAsFixed(0)}%',
+            changeLabel:
+                '${(summary.anxietyChangePct.abs() * 100).toStringAsFixed(0)}%',
             // "improving" here just means the raw value went up (matches
             // the arrow's literal direction, not a good/bad judgment) — the
             // original demo data showed a *decreasing* anxiety trend with a
@@ -307,8 +391,18 @@ class _SummaryPage extends StatelessWidget {
 
   static String _formatMonth(DateTime date) {
     const months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December',
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
     ];
     return '${months[date.month - 1]}, ${date.year}';
   }
@@ -671,7 +765,10 @@ class _TriggerSeverityLegend extends StatelessWidget {
               Container(
                 width: 9,
                 height: 9,
-                decoration: BoxDecoration(color: tier.$2, shape: BoxShape.circle),
+                decoration: BoxDecoration(
+                  color: tier.$2,
+                  shape: BoxShape.circle,
+                ),
               ),
               const SizedBox(width: 5),
               Text(
@@ -770,7 +867,11 @@ class _TriggerBarRow extends StatelessWidget {
                   for (final mark in [0.2, 0.4, 0.6, 0.8])
                     Positioned(
                       left: constraints.maxWidth * mark,
-                      child: Container(width: 1, height: 22, color: Colors.black12),
+                      child: Container(
+                        width: 1,
+                        height: 22,
+                        color: Colors.black12,
+                      ),
                     ),
                   Container(
                     width: barWidth,
@@ -850,7 +951,10 @@ class _EmotionTrendsPage extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
             decoration: BoxDecoration(
-              border: Border.all(color: Color(0xFFF5F1E8).withValues(alpha: 0.24), width: 1.5),
+              border: Border.all(
+                color: Color(0xFFF5F1E8).withValues(alpha: 0.24),
+                width: 1.5,
+              ),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Column(
@@ -873,7 +977,9 @@ class _EmotionTrendsPage extends StatelessWidget {
                             children: [
                               Text(
                                 r.label,
-                                style: const TextStyle(color: const Color(0xFFF5F1E8)),
+                                style: const TextStyle(
+                                  color: const Color(0xFFF5F1E8),
+                                ),
                               ),
                               if (r == range)
                                 const Padding(
@@ -984,7 +1090,10 @@ class _EmotionDonutChart extends StatelessWidget {
                   ),
                   Text(
                     'logged',
-                    style: TextStyle(color: Color(0xFFF5F1E8).withValues(alpha: 0.70), fontSize: 12),
+                    style: TextStyle(
+                      color: Color(0xFFF5F1E8).withValues(alpha: 0.70),
+                      fontSize: 12,
+                    ),
                   ),
                 ],
               ),

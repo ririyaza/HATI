@@ -101,7 +101,7 @@ class _AvatarPickerSheet extends StatelessWidget {
                     padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: isSelected ? _blue : const Color(0xFFE2E6FF),
+                      color: isSelected ? _blue : const Color(0xFFE0E0E0),
                     ),
                     child: ClipOval(
                       child: Image.asset(avatar, fit: BoxFit.cover),
@@ -254,18 +254,18 @@ class _EditNamePronounsSheetState extends State<_EditNamePronounsSheet> {
                     fontSize: 14.5,
                   ),
                   filled: true,
-                  fillColor: const Color(0xFFF8F9FF),
+                  fillColor: const Color(0xFFF5F1E8),
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 16,
                     vertical: 14,
                   ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: Color(0xFFE2E6FF)),
+                    borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: Color(0xFFE2E6FF)),
+                    borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
@@ -298,10 +298,10 @@ class _EditNamePronounsSheetState extends State<_EditNamePronounsSheet> {
                         vertical: 9,
                       ),
                       decoration: BoxDecoration(
-                        color: selected ? _blue : const Color(0xFFF8F9FF),
+                        color: selected ? _blue : const Color(0xFFF5F1E8),
                         borderRadius: BorderRadius.circular(30),
                         border: Border.all(
-                          color: selected ? _blue : const Color(0xFFE2E6FF),
+                          color: selected ? _blue : const Color(0xFFE0E0E0),
                           width: 1.5,
                         ),
                       ),
@@ -474,18 +474,18 @@ class _EditGoalSheetState extends State<_EditGoalSheet> {
                     fontSize: 14.5,
                   ),
                   filled: true,
-                  fillColor: const Color(0xFFF8F9FF),
+                  fillColor: const Color(0xFFF5F1E8),
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 16,
                     vertical: 14,
                   ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: Color(0xFFE2E6FF)),
+                    borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: Color(0xFFE2E6FF)),
+                    borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
@@ -694,10 +694,10 @@ class _EditCopingSheetState extends State<_EditCopingSheet> {
                           vertical: 9,
                         ),
                         decoration: BoxDecoration(
-                          color: selected ? _blue : const Color(0xFFF8F9FF),
+                          color: selected ? _blue : const Color(0xFFF5F1E8),
                           borderRadius: BorderRadius.circular(30),
                           border: Border.all(
-                            color: selected ? _blue : const Color(0xFFE2E6FF),
+                            color: selected ? _blue : const Color(0xFFE0E0E0),
                             width: 1.5,
                           ),
                         ),
@@ -755,18 +755,18 @@ class _EditCopingSheetState extends State<_EditCopingSheet> {
                       fontSize: 14,
                     ),
                     filled: true,
-                    fillColor: const Color(0xFFF8F9FF),
+                    fillColor: const Color(0xFFF5F1E8),
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 16,
                       vertical: 14,
                     ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(14),
-                      borderSide: const BorderSide(color: Color(0xFFE2E6FF)),
+                      borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(14),
-                      borderSide: const BorderSide(color: Color(0xFFE2E6FF)),
+                      borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(14),

@@ -57,6 +57,29 @@ class _Scene0PreSetupState extends State<Scene0PreSetup>
   bool _showSlowStartHint = false;
   Timer? _slowStartTimer;
 
+  // Once Hati's greeting has fully typed out, the bubble is no longer
+  // needed on screen and was covering the scenario title above it — this
+  // fades it out instead (frog stays put), either automatically a few
+  // seconds later or immediately if the player taps anywhere first.
+  bool _bubbleHidden = false;
+  Timer? _bubbleHideTimer;
+
+  void _startBubbleHideTimer() {
+    _bubbleHideTimer?.cancel();
+    _bubbleHideTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted && !_bubbleHidden) setState(() => _bubbleHidden = true);
+    });
+  }
+
+  // Tapping anywhere already skips/advances Hati's typewriter mid-sentence
+  // (see HatiTapToAdvance) — this only additionally dismisses the bubble
+  // once there's nothing left to advance through.
+  void _dismissBubbleOnTap() {
+    if (_dialogueComplete && !_bubbleHidden) {
+      setState(() => _bubbleHidden = true);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -114,6 +137,7 @@ class _Scene0PreSetupState extends State<Scene0PreSetup>
   @override
   void dispose() {
     _slowStartTimer?.cancel();
+    _bubbleHideTimer?.cancel();
     _controller.dispose();
     super.dispose();
   }
@@ -145,248 +169,305 @@ class _Scene0PreSetupState extends State<Scene0PreSetup>
     final readyToBegin = canBegin && _dialogueComplete;
 
     return Scaffold(
-      body: HatiTapToAdvance(
-        child: Stack(
-          children: [
-            // Background — the same brand blue (0xFF0B28D9) the Progress and
-            // Profile screens use for their own headers, so the scenario
-            // intro reads as part of one consistent app, not a different
-            // green-themed area.
-            Container(color: const Color(0xFF0B28D9)),
+      body: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: _dismissBubbleOnTap,
+        child: HatiTapToAdvance(
+          child: Stack(
+            children: [
+              // Background — the same brand blue (0xFF0B28D9) the Progress and
+              // Profile screens use for their own headers, so the scenario
+              // intro reads as part of one consistent app, not a different
+              // green-themed area.
+              Container(color: const Color(0xFF0B28D9)),
 
-          // Decorative circles — white-on-blue rather than the old
-          // green-on-green tones, which read as a background accent
-          // regardless of what's behind them.
-          Positioned(
-            top: -60,
-            right: -60,
-            child: Container(
-              width: 200,
-              height: 200,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: const Color(0xFFF5F1E8).withValues(alpha: 0.08),
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: -40,
-            left: -40,
-            child: Container(
-              width: 160,
-              height: 160,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: const Color(0xFFF5F1E8).withValues(alpha: 0.06),
-              ),
-            ),
-          ),
-
-            // No shared SceneTopHeader on this screen — still gets the same
-            // undo affordance as every other Hati-dialogue screen.
-            SafeArea(
-              child: Align(
-                alignment: Alignment.topRight,
-                child: Padding(
-                  padding: const EdgeInsets.all(8),
-                  child: const HatiUndoButton(),
-                ),
-              ),
-            ),
-
-            // Content
-            SafeArea(
-              child: FadeTransition(
-                opacity: _fade,
-                child: SlideTransition(
-                  position: _slide,
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      return SingleChildScrollView(
-                        child: ConstrainedBox(
-                          constraints: BoxConstraints(
-                            minHeight: constraints.maxHeight,
-                          ),
-                          child: IntrinsicHeight(
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 28,
-                                vertical: 24,
-                              ),
-                              child: Column(
-                                children: [
-                                  // Top badge
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 6,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: HatiColors.leafGreen.withValues(
-                                        alpha: 0.2,
-                                      ),
-                                      borderRadius: BorderRadius.circular(20),
-                                      border: Border.all(
-                                        color: HatiColors.leafGreen.withValues(
-                                          alpha: 0.4,
-                                        ),
-                                      ),
-                                    ),
-                                    child: Text(
-                                      config.theme.toUpperCase(),
-                                      style: const TextStyle(
-                                        color: HatiColors.mintFresh,
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.bold,
-                                        letterSpacing: 1.5,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 10),
-                                  const Align(
-                                    alignment: Alignment.centerLeft,
-                                    child: HatiSpeedToggle(),
-                                  ),
-
-                                  const Spacer(),
-
-                                  // Scenario title
-                                  Text(
-                                    config.title,
-                                    textAlign: TextAlign.center,
-                                    style: HatiTextStyles.heading1.copyWith(
-                                      color: HatiColors.warmCream,
-                                      fontSize: 26,
-                                    ),
-                                  ),
-
-                                  const SizedBox(height: 16),
-
-                                  if (parsed.isEmpty || _tutorialSeen == null)
-                                    Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 24,
-                                      ),
-                                      child: Column(
-                                        children: [
-                                          const CircularProgressIndicator(
-                                            color: HatiColors.mintFresh,
-                                          ),
-                                          // Only appears once the wait has
-                                          // gone on long enough to look
-                                          // broken rather than just loading
-                                          // — see _slowStartTimer.
-                                          if (_showSlowStartHint) ...[
-                                            const SizedBox(height: 16),
-                                            Text(
-                                              "Waking up the server — this can "
-                                              "take up to a minute the first "
-                                              "time. Hang tight, no need to "
-                                              "back out.",
-                                              textAlign: TextAlign.center,
-                                              style: HatiTextStyles.bodyMedium
-                                                  .copyWith(
-                                                    color: HatiColors.warmCream
-                                                        .withValues(
-                                                          alpha: 0.75,
-                                                        ),
-                                                  ),
-                                            ),
-                                          ],
-                                        ],
-                                      ),
-                                    )
-                                  else if (_tutorialSeen == false)
-                                    // Hati waits quietly until the walkthrough
-                                    // dialog above is dismissed.
-                                    const HatiFrogAvatar(size: 180)
-                                  else
-                                    Column(
-                                      children: [
-                                        HatiSpeakingBlock(
-                                          introMessage: introMessage,
-                                          persistentMessage: persistentMessage,
-                                          frogSize: 180,
-                                          mood: HatiMood.thinking,
-                                          showAdvanceCue: true,
-                                          onSequenceComplete: () {
-                                            if (mounted && !_dialogueComplete) {
-                                              setState(
-                                                () => _dialogueComplete = true,
-                                              );
-                                            }
-                                          },
-                                          onUndoRestored: () {
-                                            if (mounted && _dialogueComplete) {
-                                              setState(
-                                                () => _dialogueComplete = false,
-                                              );
-                                            }
-                                          },
-                                        ),
-                                        if (!_dialogueComplete) ...[
-                                          const SizedBox(height: 8),
-                                          const HatiIdleTapReminder(),
-                                        ],
-                                      ],
-                                    ),
-
-                                  const Spacer(),
-
-                                  // Begin button — stays out of the tree
-                                  // (not just disabled) until Hati's greeting
-                                  // has fully typed out, then pops in.
-                                  if (readyToBegin)
-                                    PopIn(
-                                      key: const ValueKey('begin-button'),
-                                      child: HatiButton(
-                                        label: beginLabel,
-                                        icon: Icons.play_arrow_rounded,
-                                        onTap: provider.isLoading
-                                            ? null
-                                            : () => provider.submitText(
-                                                beginLabel,
-                                              ),
-                                        // Lighter accent blue — the brand
-                                        // blue (0xFF0B28D9) used everywhere
-                                        // else blended right into this
-                                        // screen's own blue gradient
-                                        // background, so it needs one that
-                                        // actually contrasts here. Same light
-                                        // blue already used for the "Let's
-                                        // Practice More" CTA on a similarly
-                                        // dark-blue background elsewhere in
-                                        // the app.
-                                        color: const Color(0xFF3DA9FC),
-                                      ),
-                                    )
-                                  else
-                                    const SizedBox(height: 52),
-                                  const SizedBox(height: 12),
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(context),
-                                    child: Text(
-                                      'Back to Dashboard',
-                                      style: HatiTextStyles.bodyMedium.copyWith(
-                                        color: HatiColors.warmCream.withValues(
-                                          alpha: 0.6,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    },
+              // Decorative circles — white-on-blue rather than the old
+              // green-on-green tones, which read as a background accent
+              // regardless of what's behind them.
+              Positioned(
+                top: -60,
+                right: -60,
+                child: Container(
+                  width: 200,
+                  height: 200,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: const Color(0xFFF5F1E8).withValues(alpha: 0.08),
                   ),
                 ),
               ),
-            ),
-          ],
+              Positioned(
+                bottom: -40,
+                left: -40,
+                child: Container(
+                  width: 160,
+                  height: 160,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: const Color(0xFFF5F1E8).withValues(alpha: 0.06),
+                  ),
+                ),
+              ),
+
+              // Content
+              SafeArea(
+                child: FadeTransition(
+                  opacity: _fade,
+                  child: SlideTransition(
+                    position: _slide,
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        return SingleChildScrollView(
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(
+                              minHeight: constraints.maxHeight,
+                            ),
+                            child: IntrinsicHeight(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 28,
+                                  vertical: 24,
+                                ),
+                                child: Column(
+                                  children: [
+                                    // Top badge
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 16,
+                                        vertical: 6,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: HatiColors.leafGreen.withValues(
+                                          alpha: 0.2,
+                                        ),
+                                        borderRadius: BorderRadius.circular(20),
+                                        border: Border.all(
+                                          color: HatiColors.leafGreen
+                                              .withValues(alpha: 0.4),
+                                        ),
+                                      ),
+                                      child: Text(
+                                        config.theme.toUpperCase(),
+                                        style: const TextStyle(
+                                          color: HatiColors.mintFresh,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                          letterSpacing: 1.5,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 10),
+                                    const Align(
+                                      alignment: Alignment.centerLeft,
+                                      child: HatiSpeedToggle(),
+                                    ),
+
+                                    // Scenario title — its own Expanded slot
+                                    // (flex: 1) with Center, so it settles
+                                    // in the middle of the space between the
+                                    // header and Hati below, on any screen
+                                    // size, instead of hugging the top.
+                                    // Raise this flex (relative to the Hati
+                                    // zone's flex: 2 below) to push the
+                                    // title further down toward true center;
+                                    // lower it to pull the title back up.
+                                    Expanded(
+                                      flex: 1,
+                                      child: Center(
+                                        child: Text(
+                                          config.title,
+                                          textAlign: TextAlign.center,
+                                          style: HatiTextStyles.heading1
+                                              .copyWith(
+                                                color: HatiColors.warmCream,
+                                                fontSize: 26,
+                                              ),
+                                        ),
+                                      ),
+                                    ),
+
+                                    // Hati + his bubble zone — its own
+                                    // Expanded slot (flex: 2 — bigger than
+                                    // the title's, since the bubble needs
+                                    // more room) so it claims the rest of
+                                    // the space between the title and the
+                                    // Begin button, on any screen size.
+                                    // HatiSpeakingBlock keeps the bubble
+                                    // attached right above Hati's head —
+                                    // they stay one connected unit. That
+                                    // unit is pinned to the *bottom* of this
+                                    // slot (reverse: true), so it's always
+                                    // close to the Begin button below it,
+                                    // and any slack this Expanded absorbs
+                                    // sits above Hati, between him and the
+                                    // title — never the other way around,
+                                    // so the bubble can't climb up into the
+                                    // title even on short screens (it
+                                    // scrolls internally instead).
+                                    Expanded(
+                                      flex: 2,
+                                      child: SingleChildScrollView(
+                                        reverse: true,
+                                        child: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            if (parsed.isEmpty ||
+                                                _tutorialSeen == null)
+                                              Padding(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      vertical: 24,
+                                                    ),
+                                                child: Column(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  children: [
+                                                    const CircularProgressIndicator(
+                                                      color:
+                                                          HatiColors.mintFresh,
+                                                    ),
+                                                    // Only appears once the
+                                                    // wait has gone on long
+                                                    // enough to look broken
+                                                    // rather than just
+                                                    // loading — see
+                                                    // _slowStartTimer.
+                                                    if (_showSlowStartHint) ...[
+                                                      const SizedBox(
+                                                        height: 16,
+                                                      ),
+                                                      Text(
+                                                        "HATI is taking a "
+                                                        "little longer to "
+                                                        "start up today — "
+                                                        "this can take up to "
+                                                        "a minute. Hang "
+                                                        "tight, no need to "
+                                                        "back out.",
+                                                        textAlign:
+                                                            TextAlign.center,
+                                                        style: HatiTextStyles
+                                                            .bodyMedium
+                                                            .copyWith(
+                                                              color: HatiColors
+                                                                  .warmCream
+                                                                  .withValues(
+                                                                    alpha: 0.75,
+                                                                  ),
+                                                            ),
+                                                      ),
+                                                    ],
+                                                  ],
+                                                ),
+                                              )
+                                            else if (_tutorialSeen == false)
+                                              // Hati waits quietly until the
+                                              // walkthrough dialog above is
+                                              // dismissed.
+                                              const HatiFrogAvatar(size: 150)
+                                            else
+                                              AnimatedSwitcher(
+                                                duration: const Duration(
+                                                  milliseconds: 400,
+                                                ),
+                                                child: _bubbleHidden
+                                                    ? const HatiFrogAvatar(
+                                                        key: ValueKey(
+                                                          'frog-only',
+                                                        ),
+                                                        size: 150,
+                                                        mood: HatiMood.thinking,
+                                                      )
+                                                    : HatiSpeakingBlock(
+                                                        key: const ValueKey(
+                                                          'speaking',
+                                                        ),
+                                                        introMessage:
+                                                            introMessage,
+                                                        persistentMessage:
+                                                            persistentMessage,
+                                                        frogSize: 150,
+                                                        mood: HatiMood.thinking,
+                                                        showAdvanceCue: true,
+                                                        onSequenceComplete: () {
+                                                          if (mounted &&
+                                                              !_dialogueComplete) {
+                                                            setState(
+                                                              () =>
+                                                                  _dialogueComplete =
+                                                                      true,
+                                                            );
+                                                            _startBubbleHideTimer();
+                                                          }
+                                                        },
+                                                      ),
+                                              ),
+                                            if (!_dialogueComplete) ...[
+                                              const SizedBox(height: 8),
+                                              const HatiIdleTapReminder(),
+                                            ],
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+
+                                    const SizedBox(height: 16),
+
+                                    // Begin button — stays out of the tree
+                                    // (not just disabled) until Hati's greeting
+                                    // has fully typed out, then pops in.
+                                    if (readyToBegin)
+                                      PopIn(
+                                        key: const ValueKey('begin-button'),
+                                        child: HatiButton(
+                                          label: beginLabel,
+                                          icon: Icons.play_arrow_rounded,
+                                          onTap: provider.isLoading
+                                              ? null
+                                              : () => provider.submitText(
+                                                  beginLabel,
+                                                ),
+                                          // Lighter accent blue — the brand
+                                          // blue (0xFF0B28D9) used everywhere
+                                          // else blended right into this
+                                          // screen's own blue gradient
+                                          // background, so it needs one that
+                                          // actually contrasts here. Same light
+                                          // blue already used for the "Let's
+                                          // Practice More" CTA on a similarly
+                                          // dark-blue background elsewhere in
+                                          // the app.
+                                          color: const Color(0xFF3DA9FC),
+                                        ),
+                                      )
+                                    else
+                                      const SizedBox(height: 52),
+                                    const SizedBox(height: 12),
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context),
+                                      child: Text(
+                                        'Back to Dashboard',
+                                        style: HatiTextStyles.bodyMedium
+                                            .copyWith(
+                                              color: HatiColors.warmCream
+                                                  .withValues(alpha: 0.6),
+                                            ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -390,14 +390,14 @@ class _ProfileContent extends StatelessWidget {
                         width: double.infinity,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFFFF0F0),
+                          color: const Color(0xFFD9250B),
                           borderRadius: BorderRadius.circular(14),
                         ),
                         alignment: Alignment.center,
                         child: const Text(
                           'Log Out',
                           style: TextStyle(
-                            color: Color(0xFFD9250B),
+                            color: Color(0xFFF5F1E8),
                             fontWeight: FontWeight.w700,
                             fontSize: 15,
                           ),
@@ -1015,9 +1015,9 @@ class _InfoCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FF),
+        color: const Color(0xFFF5F1E8),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E6FF)),
+        border: Border.all(color: const Color(0xFFE0E0E0)),
       ),
       child: Text(
         body,
@@ -1097,9 +1097,9 @@ class _CopingPreferencesCard extends StatelessWidget {
                         vertical: 7,
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF8F9FF),
+                        color: const Color(0xFFF5F1E8),
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: const Color(0xFFE2E6FF)),
+                        border: Border.all(color: const Color(0xFFE0E0E0)),
                       ),
                       child: Text(
                         item,
@@ -1280,9 +1280,9 @@ class _NotificationToggleRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FF),
+        color: const Color(0xFFF5F1E8),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E6FF)),
+        border: Border.all(color: const Color(0xFFE0E0E0)),
       ),
       child: Row(
         children: [

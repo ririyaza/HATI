@@ -104,14 +104,16 @@ Future<List<EmotionLogEntry>> fetchAllEmotionLogs() async {
         data['timestamp']?.toString() ?? '',
       )?.toLocal();
       if (timestamp == null) continue;
-      entries.add(EmotionLogEntry(
-        emotion: emotion,
-        step: (data['step'] ?? '').toString(),
-        theme: (data['theme'] ?? '').toString(),
-        scenarioKey: (data['scenario_key'] ?? '').toString(),
-        timestamp: timestamp,
-        difficulty: (data['difficulty'] ?? 'easy').toString(),
-      ));
+      entries.add(
+        EmotionLogEntry(
+          emotion: emotion,
+          step: (data['step'] ?? '').toString(),
+          theme: (data['theme'] ?? '').toString(),
+          scenarioKey: (data['scenario_key'] ?? '').toString(),
+          timestamp: timestamp,
+          difficulty: (data['difficulty'] ?? 'easy').toString(),
+        ),
+      );
     }
   }
   return entries;
@@ -140,6 +142,30 @@ DateTime startOfWeek(DateTime date) {
   // S/M/T/W/TH/F/S (Sunday-first), so the week start is the most recent
   // Sunday — weekday%7 gives 0 for Sunday itself, 1 for Monday, etc.
   return d.subtract(Duration(days: d.weekday % 7));
+}
+
+/// Monday-based week start — distinct from [startOfWeek]'s Sunday-first
+/// convention (used by the Summary page's calendar), matching instead the
+/// Progress screen's streak card, whose day row reads M T W T F S S.
+DateTime startOfWeekMonday(DateTime date) {
+  final d = DateTime(date.year, date.month, date.day);
+  return d.subtract(Duration(days: d.weekday - 1));
+}
+
+/// Mon..Sun activity for the week starting [weekStart] — true on any day
+/// with at least one emotion log of any kind, the same "did I do something
+/// that day" semantics as [activeDaysInMonth]. Drives the streak card's
+/// per-day circles for whichever week the user has navigated to, past or
+/// present, since (unlike [DashboardUserData.weeklyActivity], which only
+/// knows each module's *last* completion date) every logged session is
+/// counted here.
+List<bool> activeDaysInWeek(List<EmotionLogEntry> logs, DateTime weekStart) {
+  return List.generate(
+    7,
+    (i) => logs.any(
+      (e) => _isSameDate(e.timestamp, weekStart.add(Duration(days: i))),
+    ),
+  );
 }
 
 bool _isSameDate(DateTime a, DateTime b) =>
@@ -205,10 +231,17 @@ ConfidenceAnxietySummary computeConfidenceAnxiety(
   final prevWeekStart = weekStart.subtract(const Duration(days: 7));
 
   final thisWeek = logs
-      .where((e) => !e.timestamp.isBefore(weekStart) && e.timestamp.isBefore(weekEnd))
+      .where(
+        (e) =>
+            !e.timestamp.isBefore(weekStart) && e.timestamp.isBefore(weekEnd),
+      )
       .toList();
   final prevWeek = logs
-      .where((e) => !e.timestamp.isBefore(prevWeekStart) && e.timestamp.isBefore(weekStart))
+      .where(
+        (e) =>
+            !e.timestamp.isBefore(prevWeekStart) &&
+            e.timestamp.isBefore(weekStart),
+      )
       .toList();
 
   final confidenceSparkline = List.generate(7, (i) {
@@ -226,8 +259,10 @@ ConfidenceAnxietySummary computeConfidenceAnxiety(
     confidencePct: _pctOf(confidenceEmotions, thisWeek),
     anxietyPct: _pctOf(anxietyEmotions, thisWeek),
     confidenceChangePct:
-        _pctOf(confidenceEmotions, thisWeek) - _pctOf(confidenceEmotions, prevWeek),
-    anxietyChangePct: _pctOf(anxietyEmotions, thisWeek) - _pctOf(anxietyEmotions, prevWeek),
+        _pctOf(confidenceEmotions, thisWeek) -
+        _pctOf(confidenceEmotions, prevWeek),
+    anxietyChangePct:
+        _pctOf(anxietyEmotions, thisWeek) - _pctOf(anxietyEmotions, prevWeek),
     confidenceSparkline: confidenceSparkline,
     anxietySparkline: anxietySparkline,
     totalLogsThisWeek: thisWeek.length,
@@ -319,8 +354,9 @@ const _themeShortLabels = {
 };
 
 List<TriggerDatum> computeTriggerPatterns(List<EmotionLogEntry> logs) {
-  final relevant =
-      logs.where((e) => e.isPiesOrInteraction && e.theme.isNotEmpty).toList();
+  final relevant = logs
+      .where((e) => e.isPiesOrInteraction && e.theme.isNotEmpty)
+      .toList();
 
   final totalByTheme = <String, int>{};
   final anxiousByTheme = <String, int>{};

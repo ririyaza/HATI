@@ -83,7 +83,6 @@ class _Scene1OfficePiesState extends State<Scene1OfficePies> {
               currentStep: 1,
               totalSteps: 7,
               sceneLabel: 'The Office',
-              showUndo: true,
             ),
             const SceneSpeedToggleRow(),
             Expanded(
@@ -97,11 +96,6 @@ class _Scene1OfficePiesState extends State<Scene1OfficePies> {
                   }
                 },
                 showIdleReminder: !_dialogueComplete,
-                onUndoRestored: () {
-                  if (mounted && _dialogueComplete) {
-                    setState(() => _dialogueComplete = false);
-                  }
-                },
                 // fixedHeader and body end up as direct siblings inside
                 // DraggableChoiceSheet's own Column, so their PopIn keys
                 // must differ — a 'header:'/'body:' prefix keeps that true
