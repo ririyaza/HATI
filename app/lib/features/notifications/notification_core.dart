@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest_all.dart' as tz_data;
+import 'package:timezone/timezone.dart' as tz;
 
 /// Shared [FlutterLocalNotificationsPlugin] lifecycle — one-time init and
 /// the OS notification permission prompt — used by every on-device
@@ -16,6 +18,15 @@ class NotificationCore {
   static Future<void> ensureInitialized() async {
     if (_initialized) return;
     tz_data.initializeTimeZones();
+    // `timezone`'s `tz.local` defaults to UTC until explicitly set — without
+    // this, every wall-clock schedule (e.g. the daily reminder's fixed
+    // hour) fires at that hour in UTC instead of the device's actual local
+    // time. Falls back to leaving it as UTC if the platform lookup fails,
+    // rather than throwing and blocking notifications entirely.
+    try {
+      final name = await FlutterTimezone.getLocalTimezone();
+      tz.setLocalLocation(tz.getLocation(name));
+    } catch (_) {}
     await plugin.initialize(
       settings: const InitializationSettings(
         android: AndroidInitializationSettings('@mipmap/ic_launcher'),

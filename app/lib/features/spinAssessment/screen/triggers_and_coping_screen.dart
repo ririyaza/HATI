@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'assessment_complete_screen.dart';
+import '../../../shared/theme/app_colors.dart';
 
 class TriggersAndCopingScreen extends StatefulWidget {
   final int score;
@@ -301,7 +302,7 @@ class _TriggersAndCopingScreenState extends State<TriggersAndCopingScreen>
                                       fontWeight: FontWeight.w400,
                                     ),
                                     filled: true,
-                                    fillColor: const Color(0xFFF8F9FF),
+                                    fillColor: AppColors.creamSoft,
                                     contentPadding:
                                         const EdgeInsets.symmetric(
                                       horizontal: 16,
@@ -310,14 +311,14 @@ class _TriggersAndCopingScreenState extends State<TriggersAndCopingScreen>
                                     border: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(14),
                                       borderSide: const BorderSide(
-                                        color: Color(0xFFE2E6FF),
+                                        color: AppColors.creamLine,
                                         width: 1.2,
                                       ),
                                     ),
                                     enabledBorder: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(14),
                                       borderSide: const BorderSide(
-                                        color: Color(0xFFE2E6FF),
+                                        color: AppColors.creamLine,
                                         width: 1.2,
                                       ),
                                     ),
@@ -340,7 +341,7 @@ class _TriggersAndCopingScreenState extends State<TriggersAndCopingScreen>
                                     vertical: 12,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFFEEF1FF),
+                                    color: AppColors.blueTint,
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: Row(
@@ -534,12 +535,12 @@ class _CopingChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: selected
               ? const Color(0xFF0B28D9)
-              : const Color(0xFFF8F9FF),
+              : AppColors.creamSoft,
           borderRadius: BorderRadius.circular(30),
           border: Border.all(
             color: selected
                 ? const Color(0xFF0B28D9)
-                : const Color(0xFFE2E6FF),
+                : AppColors.creamLine,
             width: 1.5,
           ),
         ),

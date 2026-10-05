@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'dashboard_screen.dart';
+import '../../../shared/theme/app_colors.dart';
 
 class SupportResourcesScreen extends StatelessWidget {
   const SupportResourcesScreen({super.key});
@@ -130,7 +131,7 @@ class _ResourceCard extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE0E0E0)),
+        border: Border.all(color: AppColors.creamLine),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

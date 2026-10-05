@@ -103,7 +103,8 @@ class _HomeScreenState extends State<HomeScreen> {
     _idleTimer?.cancel();
     final delay = initial
         ? _initialTipDelay
-        : _minIdleGap + Duration(seconds: _random.nextInt(_maxIdleJitter.inSeconds));
+        : _minIdleGap +
+              Duration(seconds: _random.nextInt(_maxIdleJitter.inSeconds));
     _idleTimer = Timer(delay, () {
       if (!mounted) return;
       setState(() {
@@ -118,10 +119,9 @@ class _HomeScreenState extends State<HomeScreen> {
   /// tip so Hati keeps checking back in on its own.
   void _onHatiDismissed() => _scheduleNextTip();
 
-  String get _currentMessage =>
-      _currentTipIndex == null
-          ? _welcomeMessage
-          : _companionTips[_currentTipIndex!];
+  String get _currentMessage => _currentTipIndex == null
+      ? _welcomeMessage
+      : _companionTips[_currentTipIndex!];
 
   @override
   Widget build(BuildContext context) {
@@ -134,43 +134,74 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
       child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'HATI',
-                style: TextStyle(
-                  color: const Color(0xFFF5F1E8),
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.2,
+        child: LayoutBuilder(
+          builder: (context, viewport) {
+            // The title, banner and chat bar need roughly this much height;
+            // on shorter viewports (small phones, large text) the screen
+            // scrolls instead of overflowing. Grows with the text-size
+            // setting.
+            final textScale = MediaQuery.textScalerOf(
+              context,
+            ).scale(1.0).clamp(1.0, 2.0);
+            final contentHeight = max(viewport.maxHeight, 480.0 * textScale);
+            return SingleChildScrollView(
+              child: SizedBox(
+                height: contentHeight,
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'HATI',
+                        style: TextStyle(
+                          color: Color(0xFFF5F1E8),
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                      const ReassessmentBanner(),
+                      // Hati takes the space between the banner and the chat
+                      // bar: 300 on roomy screens, shrinking (never below
+                      // 120) on shorter ones so he isn't pushed under them.
+                      Expanded(
+                        child: LayoutBuilder(
+                          builder: (context, area) {
+                            final frogSize = (area.maxHeight * 0.75).clamp(
+                              120.0,
+                              300.0,
+                            );
+                            return Center(
+                              child: _started
+                                  ? HatiSpriteAnimation(
+                                      key: ValueKey(_messageVersion),
+                                      message: _currentMessage,
+                                      size: frogSize,
+                                      startDelay: Duration.zero,
+                                      autoAdvance: true,
+                                      holdAfterTyping: _holdAfterTyping,
+                                      onDismissed: _onHatiDismissed,
+                                      // At the large 300 frog size, the
+                                      // default 8px gap leaves a visible
+                                      // empty gap between the bubble's tail
+                                      // and Hati's head — see
+                                      // HatiSpeakingBlock.bubbleGap's doc
+                                      // comment. Scaled with the frog.
+                                      bubbleGap: -40 * (frogSize / 300),
+                                    )
+                                  : HatiFrogAvatar(size: frogSize),
+                            );
+                          },
+                        ),
+                      ),
+                      HatiChatEntryBar(key: widget.chatKey),
+                    ],
+                  ),
                 ),
               ),
-              const ReassessmentBanner(),
-              const Spacer(),
-              Center(
-                child: _started
-                    ? HatiSpriteAnimation(
-                        key: ValueKey(_messageVersion),
-                        message: _currentMessage,
-                        startDelay: Duration.zero,
-                        autoAdvance: true,
-                        holdAfterTyping: _holdAfterTyping,
-                        onDismissed: _onHatiDismissed,
-                        // At this screen's large 300 frog size, the default
-                        // 8px gap leaves a visible empty gap between the
-                        // bubble's tail and Hati's head — see
-                        // HatiSpeakingBlock.bubbleGap's doc comment.
-                        bubbleGap: -40,
-                      )
-                    : const HatiFrogAvatar(size: 300),
-              ),
-              const Spacer(),
-              HatiChatEntryBar(key: widget.chatKey),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );

@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../../../shared/theme/app_colors.dart';
 
 class ContactDeveloperScreen extends StatefulWidget {
   const ContactDeveloperScreen({super.key});
@@ -130,16 +131,16 @@ class _ContactDeveloperScreenState extends State<ContactDeveloperScreen> {
                     contentPadding: const EdgeInsets.all(16),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.grey.shade300),
+                      borderSide: BorderSide(color: AppColors.creamLine),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.grey.shade300),
+                      borderSide: BorderSide(color: AppColors.creamLine),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: const BorderSide(
-                        color: Color(0xFF0056FF),
+                        color: AppColors.blue,
                         width: 1.5,
                       ),
                     ),
@@ -156,7 +157,7 @@ class _ContactDeveloperScreenState extends State<ContactDeveloperScreen> {
                 height: 52,
                 child: FilledButton(
                   style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF0056FF),
+                    backgroundColor: AppColors.blue,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),

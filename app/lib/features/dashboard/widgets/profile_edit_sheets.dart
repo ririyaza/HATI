@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import '../../../shared/theme/app_colors.dart';
 
 /// Bottom sheets for editing profile fields that can be left unset (or
 /// changed) after onboarding: name & pronouns, profile picture, goal, and
@@ -101,7 +102,7 @@ class _AvatarPickerSheet extends StatelessWidget {
                     padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: isSelected ? _blue : const Color(0xFFE0E0E0),
+                      color: isSelected ? _blue : AppColors.creamLine,
                     ),
                     child: ClipOval(
                       child: Image.asset(avatar, fit: BoxFit.cover),
@@ -261,11 +262,11 @@ class _EditNamePronounsSheetState extends State<_EditNamePronounsSheet> {
                   ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                    borderSide: const BorderSide(color: AppColors.creamLine),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                    borderSide: const BorderSide(color: AppColors.creamLine),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
@@ -301,7 +302,7 @@ class _EditNamePronounsSheetState extends State<_EditNamePronounsSheet> {
                         color: selected ? _blue : const Color(0xFFF5F1E8),
                         borderRadius: BorderRadius.circular(30),
                         border: Border.all(
-                          color: selected ? _blue : const Color(0xFFE0E0E0),
+                          color: selected ? _blue : AppColors.creamLine,
                           width: 1.5,
                         ),
                       ),
@@ -481,11 +482,11 @@ class _EditGoalSheetState extends State<_EditGoalSheet> {
                   ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                    borderSide: const BorderSide(color: AppColors.creamLine),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                    borderSide: const BorderSide(color: AppColors.creamLine),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
@@ -697,7 +698,7 @@ class _EditCopingSheetState extends State<_EditCopingSheet> {
                           color: selected ? _blue : const Color(0xFFF5F1E8),
                           borderRadius: BorderRadius.circular(30),
                           border: Border.all(
-                            color: selected ? _blue : const Color(0xFFE0E0E0),
+                            color: selected ? _blue : AppColors.creamLine,
                             width: 1.5,
                           ),
                         ),
@@ -762,11 +763,11 @@ class _EditCopingSheetState extends State<_EditCopingSheet> {
                     ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(14),
-                      borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                      borderSide: const BorderSide(color: AppColors.creamLine),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(14),
-                      borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                      borderSide: const BorderSide(color: AppColors.creamLine),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(14),
@@ -825,7 +826,7 @@ class _SheetHandle extends StatelessWidget {
         width: 40,
         height: 4,
         decoration: BoxDecoration(
-          color: const Color(0xFFE0E0E0),
+          color: AppColors.creamLine,
           borderRadius: BorderRadius.circular(2),
         ),
       ),

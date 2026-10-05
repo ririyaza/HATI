@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../onboarding/consent_content.dart';
+import '../../../shared/theme/app_colors.dart';
 
 /// Read-only view of the informed consent information the user reviewed
 /// and agreed to during onboarding (`onboarding/consent_content.dart`),
@@ -27,9 +28,9 @@ class PrivacyPolicyScreen extends StatelessWidget {
           child: Container(
             width: double.infinity,
             decoration: BoxDecoration(
-              color: const Color(0xFFF8F9FF),
+              color: AppColors.creamSoft,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: const Color(0xFFE2E6FF), width: 1.2),
+              border: Border.all(color: AppColors.creamLine, width: 1.2),
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(20),

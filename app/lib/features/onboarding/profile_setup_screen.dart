@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../spinAssessment/screen/spin_assessment_screen.dart';
+import '../../shared/theme/app_colors.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
   const ProfileSetupScreen({super.key});
@@ -357,7 +358,7 @@ class _AvatarPicker extends StatelessWidget {
             ),
             child: ClipOval(
               child: Container(
-                color: const Color(0xFFEEF1FF),
+                color: AppColors.blueTint,
                 child: assetPath == null
                     ? Icon(
                         Icons.person_rounded,
@@ -461,7 +462,7 @@ class _DefaultAvatarSheet extends StatelessWidget {
                       shape: BoxShape.circle,
                       color: isSelected
                           ? const Color(0xFF0B28D9)
-                          : const Color(0xFFE2E6FF),
+                          : AppColors.creamLine,
                     ),
                     child: ClipOval(
                       child: Image.asset(avatar, fit: BoxFit.cover),
@@ -559,18 +560,18 @@ class _StyledTextField extends StatelessWidget {
           fontWeight: FontWeight.w400,
         ),
         filled: true,
-        fillColor: const Color(0xFFF8F9FF),
+        fillColor: AppColors.creamSoft,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 14,
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: Color(0xFFE2E6FF), width: 1.2),
+          borderSide: const BorderSide(color: AppColors.creamLine, width: 1.2),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: Color(0xFFE2E6FF), width: 1.2),
+          borderSide: const BorderSide(color: AppColors.creamLine, width: 1.2),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
@@ -618,12 +619,12 @@ class _PronounsSelector extends StatelessWidget {
             decoration: BoxDecoration(
               color: isSelected
                   ? const Color(0xFF0B28D9)
-                  : const Color(0xFFF8F9FF),
+                  : AppColors.creamSoft,
               borderRadius: BorderRadius.circular(30),
               border: Border.all(
                 color: isSelected
                     ? const Color(0xFF0B28D9)
-                    : const Color(0xFFE2E6FF),
+                    : AppColors.creamLine,
                 width: 1.5,
               ),
               boxShadow: isSelected

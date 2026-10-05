@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../../shared/widgets/scroll_if_cramped.dart';
 import '../../spinAssessment/models/spin_question_model.dart';
+import '../../../shared/theme/app_colors.dart';
 
 /// Generic question-flow screen: one Likert-scale question at a time, with
 /// a progress header and Back/Next controls.
@@ -144,7 +146,9 @@ class _LikertAssessmentFlowState extends State<LikertAssessmentFlow> {
                     child: LinearProgressIndicator(
                       value: progress,
                       minHeight: 6,
-                      backgroundColor: Color(0xFFF5F1E8).withValues(alpha: 0.24),
+                      backgroundColor: Color(
+                        0xFFF5F1E8,
+                      ).withValues(alpha: 0.24),
                       valueColor: const AlwaysStoppedAnimation<Color>(
                         const Color(0xFFF5F1E8),
                       ),
@@ -153,65 +157,69 @@ class _LikertAssessmentFlowState extends State<LikertAssessmentFlow> {
                 ],
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 20, 24, 4),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    widget.promptSentence,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.black54,
-                      height: 1.4,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '"${question.question}"',
-                    style: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.black87,
-                      height: 1.4,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  if (widget.instructionLine != null)
-                    Text(
-                      widget.instructionLine!,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.black38,
-                        letterSpacing: 1,
-                      ),
-                    ),
-                ],
-              ),
-            ),
             Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(24, 10, 24, 0),
-                child: Column(
-                  children: List.generate(widget.options.length, (i) {
-                    final selected = question.selectedScore == i;
-                    final isLastOption = i == widget.options.length - 1;
-                    return Expanded(
-                      child: Padding(
-                        padding: EdgeInsets.only(
-                          bottom: isLastOption ? 0 : 8,
-                        ),
-                        child: _OptionTile(
-                          label: widget.options[i],
-                          selected: selected,
-                          onTap: () =>
-                              setState(() => question.selectedScore = i),
+              child: ScrollIfCramped(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.promptSentence,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.black54,
+                          height: 1.4,
                         ),
                       ),
-                    );
-                  }),
+                      const SizedBox(height: 8),
+                      Text(
+                        '"${question.question}"',
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.black87,
+                          height: 1.4,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      if (widget.instructionLine != null) ...[
+                        Text(
+                          widget.instructionLine!,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.black38,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                      ],
+                      Expanded(
+                        child: Column(
+                          children: List.generate(widget.options.length, (i) {
+                            final selected = question.selectedScore == i;
+                            final isLastOption = i == widget.options.length - 1;
+                            return Expanded(
+                              child: Padding(
+                                padding: EdgeInsets.only(
+                                  bottom: isLastOption ? 0 : 8,
+                                ),
+                                child: _OptionTile(
+                                  label: widget.options[i],
+                                  selected: selected,
+                                  onTap: () => setState(
+                                    () => question.selectedScore = i,
+                                  ),
+                                ),
+                              ),
+                            );
+                          }),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -219,7 +227,7 @@ class _LikertAssessmentFlowState extends State<LikertAssessmentFlow> {
               padding: const EdgeInsets.fromLTRB(24, 14, 24, 12),
               decoration: const BoxDecoration(
                 color: const Color(0xFFF5F1E8),
-                border: Border(top: BorderSide(color: Color(0xFFF0F0F0))),
+                border: Border(top: BorderSide(color: AppColors.creamLine)),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -234,9 +242,7 @@ class _LikertAssessmentFlowState extends State<LikertAssessmentFlow> {
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(26),
                             ),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 24,
-                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 24),
                           ),
                           onPressed: _previous,
                           child: const Text(
@@ -318,12 +324,12 @@ class _OptionTile extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 0),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFFF0F3FF) : const Color(0xFFF5F1E8),
+          color: selected ? AppColors.blueTint : const Color(0xFFF5F1E8),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: selected ? _blue : const Color(0xFFE0E0E0),
+            color: selected ? _blue : AppColors.creamLine,
             width: selected ? 2 : 1,
           ),
         ),
@@ -352,7 +358,11 @@ class _OptionTile extends StatelessWidget {
                 ),
               ),
               child: selected
-                  ? const Icon(Icons.check, size: 14, color: const Color(0xFFF5F1E8))
+                  ? const Icon(
+                      Icons.check,
+                      size: 14,
+                      color: const Color(0xFFF5F1E8),
+                    )
                   : null,
             ),
           ],

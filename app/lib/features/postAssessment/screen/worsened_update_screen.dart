@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../dashboard/widgets/hati_sprite_animation.dart';
 import '../data/assessment_comparison.dart';
 import 'referral_screen.dart';
+import '../../../shared/theme/app_colors.dart';
 
 /// Shown when the reassessment comparison is `worsened`: acknowledges that
 /// scores have gone up before moving on to `ReferralScreen`, so the referral
@@ -35,7 +36,7 @@ class WorsenedUpdateScreen extends StatelessWidget {
             const SizedBox(height: 16),
             Expanded(
               child: ColoredBox(
-                color: const Color(0xFFF2F2F7),
+                color: AppColors.cream,
                 child: Center(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.symmetric(

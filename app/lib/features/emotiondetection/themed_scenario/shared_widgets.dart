@@ -32,6 +32,7 @@ import 'package:rive/rive.dart'
 import '../../../shared/audio/hati_audio_service.dart';
 import 'app_theme.dart';
 import 'scenario_replay_view.dart';
+import '../../../shared/theme/app_colors.dart';
 
 // ── Hati Dialogue Bubble ─────────────────────────────────────────────────────
 class HatiBubble extends StatefulWidget {
@@ -853,7 +854,7 @@ class SceneTopHeader extends StatelessWidget {
           children: [
             IconButton(
               onPressed: () => Navigator.maybePop(context),
-              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              icon: const Icon(Icons.arrow_back, color: AppColors.cream),
               visualDensity: VisualDensity.compact,
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(),
@@ -1148,7 +1149,7 @@ class _TextResponseCardState extends State<TextResponseCard> {
                         : widget.hintText),
               hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 15),
               filled: true,
-              fillColor: const Color(0xFFF0F0F0),
+              fillColor: AppColors.creamSoft,
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16,
                 vertical: 12,
@@ -2149,7 +2150,7 @@ class _HatiIdleTapReminderState extends State<HatiIdleTapReminder>
             child: const Text(
               'Tap anywhere to continue',
               style: TextStyle(
-                color: Colors.white,
+                color: AppColors.cream,
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
               ),

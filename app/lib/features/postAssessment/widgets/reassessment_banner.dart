@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../data/post_assessment_repository.dart';
 import '../screen/post_assessment_intro_screen.dart';
+import '../../../shared/theme/app_colors.dart';
 
 /// Prompts the user to start their 2-week reassessment once it's due, as a
 /// centered pop-up dialog matching the pre-test's `_DoThisLaterDialog`
@@ -85,8 +86,9 @@ class _ReassessmentDialog extends StatelessWidget {
                 width: 52,
                 height: 52,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF0F3FF),
+                  color: AppColors.creamSoft,
                   borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppColors.creamLine),
                 ),
                 child: const Icon(
                   Icons.event_available_rounded,

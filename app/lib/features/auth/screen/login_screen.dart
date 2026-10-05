@@ -5,16 +5,17 @@ import 'signup_screen.dart';
 import 'email_verification_screen.dart';
 import '../auth_navigation.dart';
 import '../services/social_auth_service.dart';
+import '../../../shared/theme/app_colors.dart';
 
 // Brand tokens shared with the loading screen and onboarding/consent flow —
 // keep these in sync with lib/features/onboarding/consent_flow_screen.dart
 // so auth doesn't visually diverge from the rest of the app.
 const _kBrand = Color(0xFF0B28D9);
-const _kBrandTint = Color(0xFFF8F9FF);
-const _kBrandBorder = Color(0xFFE2E6FF);
+const _kBrandTint = AppColors.creamSoft;
+const _kBrandBorder = AppColors.creamLine;
 const _kTextDark = Color(0xFF1A1A2E);
 const _kTextMuted = Color(0xFF6B7280);
-const _kFieldBorder = Color(0xFFE2E8F0);
+const _kFieldBorder = AppColors.creamLine;
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -307,8 +308,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 10),
                 // Forgot Password Link
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
+                Wrap(
+                  alignment: WrapAlignment.end,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     Text(
                       'Forgot Password? ',
@@ -335,7 +337,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: _kBrand,
-                      foregroundColor: Colors.white,
+                      foregroundColor: AppColors.cream,
                       elevation: 0,
                       disabledBackgroundColor: _kBrand.withOpacity(0.35),
                       shape: RoundedRectangleBorder(
@@ -349,7 +351,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             width: 24,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              color: Colors.white,
+                              color: AppColors.cream,
                             ),
                           )
                         : const Text(
@@ -392,7 +394,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
                       ),
-                      backgroundColor: Colors.white,
+                      backgroundColor: AppColors.creamSoft,
                     ),
                     onPressed: _anyLoading ? null : _handleFacebookSignIn,
                     child: _isFacebookLoading
@@ -410,11 +412,15 @@ class _LoginScreenState extends State<LoginScreen> {
                                 color: Color(0xFF1877F2),
                               ),
                               const SizedBox(width: 12),
-                              Text(
-                                'Continue with Facebook',
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: _kTextDark,
-                                  fontWeight: FontWeight.w500,
+                              Flexible(
+                                child: Text(
+                                  'Continue with Facebook',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: _kTextDark,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
                               ),
                             ],
@@ -430,7 +436,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
                       ),
-                      backgroundColor: Colors.white,
+                      backgroundColor: AppColors.creamSoft,
                     ),
                     onPressed: _anyLoading ? null : _handleGoogleSignIn,
                     child: _isGoogleLoading
@@ -448,11 +454,15 @@ class _LoginScreenState extends State<LoginScreen> {
                                 color: Color(0xFFEA4335),
                               ),
                               const SizedBox(width: 12),
-                              Text(
-                                'Continue with Google',
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: _kTextDark,
-                                  fontWeight: FontWeight.w500,
+                              Flexible(
+                                child: Text(
+                                  'Continue with Google',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: _kTextDark,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
                               ),
                             ],
@@ -461,8 +471,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 28),
                 // Signup Link
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     Text(
                       'Don\'t have an account? ',
@@ -503,7 +514,7 @@ InputDecoration _fieldDecoration({required String hintText, Widget? suffixIcon})
     hintText: hintText,
     hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 16),
     filled: true,
-    fillColor: Colors.white,
+    fillColor: AppColors.creamSoft,
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(14),
       borderSide: const BorderSide(color: _kFieldBorder),

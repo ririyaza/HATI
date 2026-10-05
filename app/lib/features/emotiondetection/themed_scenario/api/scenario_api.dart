@@ -20,7 +20,7 @@ import 'package:http/http.dart' as http;
 /// it's given.
 class ScenarioApi {
   static const String baseUrl =
-      "https://hati-backend.gentlewave-19ed4c84.southeastasia.azurecontainerapps.io";
+      "https://hati-backend.ambitioussea-f3ddbc9f.southeastasia.azurecontainerapps.io";
 
   /// Without a timeout, an unreachable [baseUrl] (server not running, IP
   /// changed, device on a different network) just hangs indefinitely with

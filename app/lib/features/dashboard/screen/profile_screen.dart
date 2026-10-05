@@ -12,6 +12,7 @@ import '../data/dashboard_user_data.dart';
 import '../widgets/help_center_sheet.dart';
 import '../widgets/profile_edit_sheets.dart';
 import 'privacy_policy_screen.dart';
+import '../../../shared/theme/app_colors.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -487,10 +488,10 @@ class _ProfileAvatar extends StatelessWidget {
                       errorBuilder: (_, __, ___) => const Icon(
                         Icons.person,
                         size: 40,
-                        color: Colors.white,
+                        color: AppColors.cream,
                       ),
                     )
-            : const Icon(Icons.person, size: 40, color: Colors.white),
+            : const Icon(Icons.person, size: 40, color: AppColors.cream),
       ),
     );
   }
@@ -675,7 +676,7 @@ class _AssessmentEntryCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFFF5F1E8),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE0E0E0)),
+        border: Border.all(color: AppColors.creamLine),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -716,7 +717,7 @@ class _AssessmentEntryCard extends StatelessWidget {
               ],
             ),
           ),
-          const Divider(height: 1, color: Color(0xFFEEEEEE)),
+          const Divider(height: 1, color: AppColors.creamLine),
           Padding(
             padding: const EdgeInsets.all(14),
             child: Row(
@@ -734,7 +735,7 @@ class _AssessmentEntryCard extends StatelessWidget {
                 Container(
                   width: 1,
                   height: 80,
-                  color: const Color(0xFFEEEEEE),
+                  color: AppColors.creamLine,
                   margin: const EdgeInsets.symmetric(horizontal: 14),
                 ),
                 Expanded(
@@ -947,7 +948,7 @@ class _CheckInStatusCard extends StatelessWidget {
             decoration: BoxDecoration(
               color: const Color(0xFFF5F1E8),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFE0E0E0)),
+              border: Border.all(color: AppColors.creamLine),
             ),
             child: Row(
               children: [
@@ -1017,7 +1018,7 @@ class _InfoCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFFF5F1E8),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE0E0E0)),
+        border: Border.all(color: AppColors.creamLine),
       ),
       child: Text(
         body,
@@ -1049,7 +1050,7 @@ class _CopingPreferencesCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFFF5F1E8),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE0E0E0)),
+        border: Border.all(color: AppColors.creamLine),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1099,7 +1100,7 @@ class _CopingPreferencesCard extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: const Color(0xFFF5F1E8),
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: const Color(0xFFE0E0E0)),
+                        border: Border.all(color: AppColors.creamLine),
                       ),
                       child: Text(
                         item,
@@ -1282,7 +1283,7 @@ class _NotificationToggleRow extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFFF5F1E8),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE0E0E0)),
+        border: Border.all(color: AppColors.creamLine),
       ),
       child: Row(
         children: [
@@ -1352,7 +1353,7 @@ class _SettingsTile extends StatelessWidget {
         decoration: BoxDecoration(
           color: const Color(0xFFF5F1E8),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFFE0E0E0)),
+          border: Border.all(color: AppColors.creamLine),
         ),
         child: Row(
           children: [

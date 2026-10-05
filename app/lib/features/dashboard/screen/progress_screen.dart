@@ -5,6 +5,7 @@ import '../data/dashboard_user_data.dart';
 import 'scenario_progress_detail_screen.dart';
 import 'weekly_progress_data.dart';
 import 'weekly_progress_detail_screen.dart';
+import '../../../shared/theme/app_colors.dart';
 
 /// Legacy module-progress doc IDs that predate the current scenario-key
 /// naming in [kScenarioConfigs] — mapped onto their modern equivalent so
@@ -540,7 +541,7 @@ class _ModuleProgressCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFFF5F1E8),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE0E0E0)),
+        border: Border.all(color: AppColors.creamLine),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -550,7 +551,7 @@ class _ModuleProgressCard extends StatelessWidget {
             child: Container(
               width: 48,
               height: 48,
-              color: const Color(0xFFF0F3FF),
+              color: AppColors.creamSoft,
               child: Image.asset(
                 _placeholderAssetForModuleId(module.id),
                 fit: BoxFit.contain,
@@ -623,7 +624,7 @@ class _ModuleProgressCard extends StatelessWidget {
                   child: LinearProgressIndicator(
                     value: module.progress,
                     minHeight: 8,
-                    backgroundColor: const Color(0xFFE8ECFF),
+                    backgroundColor: AppColors.creamDeep,
                     valueColor: const AlwaysStoppedAnimation<Color>(
                       Color(0xFF0B28D9),
                     ),
@@ -727,12 +728,12 @@ class _BadgeTile extends StatelessWidget {
           decoration: BoxDecoration(
             color: badge.earned
                 ? const Color(0xFF0B28D9).withOpacity(0.07)
-                : const Color(0xFFF4F4F4),
+                : AppColors.creamDeep,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
               color: badge.earned
                   ? const Color(0xFF0B28D9).withOpacity(0.2)
-                  : const Color(0xFFE0E0E0),
+                  : AppColors.creamLine,
             ),
           ),
           child: Column(

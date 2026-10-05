@@ -8,6 +8,7 @@ import '../data/low_score_exit_hati_dialogue.dart';
 import '../data/spin_retake_policy.dart';
 import 'spin_assessment_screen.dart';
 import 'spin_result_review_screen.dart';
+import '../../../shared/theme/app_colors.dart';
 
 class LowScoreExitScreen extends StatefulWidget {
   final int score;
@@ -89,29 +90,43 @@ class _LowScoreExitScreenState extends State<LowScoreExitScreen> {
         _retakeEligibleAt != null && !now.isBefore(_retakeEligibleAt!);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F1E8),
+      backgroundColor: AppColors.cream,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 32, 24, 0),
-              child: Center(
-                child: Text(
-                  'About Your Result',
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF0056FF),
-                    fontSize: 24,
+            // Same blue header band as the assessment screens.
+            Container(
+              width: double.infinity,
+              color: AppColors.blue,
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+              child: Column(
+                children: [
+                  Text(
+                    'HATI',
+                    style: TextStyle(
+                      color: AppColors.cream.withValues(alpha: 0.60),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 3,
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'About Your Result',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.cream,
+                      fontSize: 22,
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 16),
             Expanded(
               child: ColoredBox(
-                color: const Color(0xFFF2F2F7),
+                color: AppColors.cream,
                 child: Center(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.symmetric(
@@ -157,7 +172,7 @@ class _LowScoreExitScreenState extends State<LowScoreExitScreen> {
                       height: 52,
                       child: FilledButton(
                         style: FilledButton.styleFrom(
-                          backgroundColor: const Color(0xFF0056FF),
+                          backgroundColor: AppColors.blue,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(26),
                           ),
@@ -168,7 +183,7 @@ class _LowScoreExitScreenState extends State<LowScoreExitScreen> {
                           style: TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.w600,
-                            color: const Color(0xFFF5F1E8),
+                            color: AppColors.cream,
                           ),
                         ),
                       ),
@@ -180,14 +195,11 @@ class _LowScoreExitScreenState extends State<LowScoreExitScreen> {
                     child: canRetake
                         ? OutlinedButton(
                             style: OutlinedButton.styleFrom(
-                              side: const BorderSide(
-                                color: Colors.black,
-                                width: 1.2,
-                              ),
+                              side: const BorderSide(color: Colors.black12),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(26),
                               ),
-                              backgroundColor: const Color(0xFFF5F1E8),
+                              backgroundColor: AppColors.cream,
                             ),
                             onPressed: _dialogueComplete
                                 ? () => SystemNavigator.pop()
@@ -197,13 +209,13 @@ class _LowScoreExitScreenState extends State<LowScoreExitScreen> {
                               style: TextStyle(
                                 fontSize: 17,
                                 fontWeight: FontWeight.w600,
-                                color: Colors.black,
+                                color: Colors.black87,
                               ),
                             ),
                           )
                         : FilledButton(
                             style: FilledButton.styleFrom(
-                              backgroundColor: const Color(0xFF0056FF),
+                              backgroundColor: AppColors.blue,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(26),
                               ),
@@ -216,7 +228,7 @@ class _LowScoreExitScreenState extends State<LowScoreExitScreen> {
                               style: TextStyle(
                                 fontSize: 17,
                                 fontWeight: FontWeight.w600,
-                                color: const Color(0xFFF5F1E8),
+                                color: AppColors.cream,
                               ),
                             ),
                           ),
@@ -226,11 +238,11 @@ class _LowScoreExitScreenState extends State<LowScoreExitScreen> {
                     height: 52,
                     child: OutlinedButton(
                       style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Colors.black, width: 1.2),
+                        side: const BorderSide(color: Colors.black12),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(26),
                         ),
-                        backgroundColor: const Color(0xFFF5F1E8),
+                        backgroundColor: AppColors.cream,
                       ),
                       onPressed:
                           _dialogueComplete ? _handleReviewResult : null,
@@ -239,7 +251,7 @@ class _LowScoreExitScreenState extends State<LowScoreExitScreen> {
                         style: TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w600,
-                          color: Colors.black,
+                          color: Colors.black87,
                         ),
                       ),
                     ),
@@ -287,20 +299,21 @@ class _RetakeStatusCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFF0F3FF),
+        color: AppColors.creamSoft,
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.creamLine),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.schedule_rounded, color: Color(0xFF0056FF), size: 20),
+          const Icon(Icons.schedule_rounded, color: AppColors.blue, size: 20),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               message,
               style: const TextStyle(
                 fontSize: 14,
-                color: Color(0xFF1A1A2E),
+                color: AppColors.ink,
                 height: 1.5,
               ),
             ),

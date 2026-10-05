@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../../../shared/theme/app_colors.dart';
 
 /// Every spotlight target the dashboard tour can point to, created once by
 /// [DashboardScreen] and handed down to each tab's screen (and the floating
@@ -566,7 +567,7 @@ class _TourCard extends StatelessWidget {
                   child: LinearProgressIndicator(
                     value: (stepIndex + 1) / totalSteps,
                     minHeight: 4,
-                    backgroundColor: const Color(0xFFE0E0E0),
+                    backgroundColor: AppColors.creamLine,
                     valueColor: const AlwaysStoppedAnimation<Color>(
                       Color(0xFF0B28D9),
                     ),

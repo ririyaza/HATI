@@ -12,6 +12,7 @@
 import 'package:flutter/material.dart';
 
 import 'hati_audio_service.dart';
+import '../theme/app_colors.dart';
 
 const Color _kBlue = Color(0xFF0B28D9);
 
@@ -164,9 +165,9 @@ class _AudioToggleRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FF),
+        color: AppColors.creamSoft,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E6FF)),
+        border: Border.all(color: AppColors.creamLine),
       ),
       child: Row(
         children: [

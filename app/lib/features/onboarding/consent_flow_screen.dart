@@ -6,6 +6,7 @@ import '../auth/screen/login_screen.dart';
 import 'consent_content.dart';
 import 'consent_intro_screen.dart';
 import 'profile_setup_screen.dart';
+import '../../shared/theme/app_colors.dart';
 
 class ConsentFlowScreen extends StatefulWidget {
   const ConsentFlowScreen({super.key});
@@ -229,9 +230,9 @@ class _ConsentFlowScreenState extends State<ConsentFlowScreen>
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
             child: Container(
               decoration: BoxDecoration(
-                color: const Color(0xFFF8F9FF),
+                color: AppColors.creamSoft,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: const Color(0xFFE2E6FF), width: 1.2),
+                border: Border.all(color: AppColors.creamLine, width: 1.2),
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(20),
@@ -347,7 +348,7 @@ class _ConsentFlowScreenState extends State<ConsentFlowScreen>
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: const Color(0xFFEEF1FF),
+              color: AppColors.blueTint,
               borderRadius: BorderRadius.circular(16),
             ),
             child: Row(
@@ -713,12 +714,12 @@ class _ConsentCheckItem extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         decoration: BoxDecoration(
-          color: checked ? const Color(0xFFEEF1FF) : const Color(0xFFF5F1E8),
+          color: checked ? AppColors.blueTint : const Color(0xFFF5F1E8),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: checked
                 ? const Color(0xFF0B28D9).withOpacity(0.5)
-                : const Color(0xFFE2E8F0),
+                : AppColors.creamLine,
             width: 1.2,
           ),
         ),

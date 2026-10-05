@@ -6,6 +6,7 @@ import 'package:record/record.dart';
 import 'dart:convert';
 import 'package:path_provider/path_provider.dart';
 import '../dashboard/screen/modules_screen.dart';
+import '../../shared/theme/app_colors.dart';
 
 class EmotionPage extends StatefulWidget {
   final String? scenarioTitle;
@@ -864,7 +865,7 @@ class _EmotionPageState extends State<EmotionPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF2F4F7),
+      backgroundColor: AppColors.cream,
       appBar: AppBar(
         backgroundColor: const Color(0xFFF5F1E8),
         elevation: 0.5,
@@ -883,7 +884,7 @@ class _EmotionPageState extends State<EmotionPage> {
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              color: const Color(0xFFF7F9FC),
+              color: AppColors.creamSoft,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -967,7 +968,7 @@ class _EmotionPageState extends State<EmotionPage> {
                       hintText: _inputLocked ? "Choose an option above..." : "Type a message...",
                       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                       filled: true,
-                      fillColor: const Color(0xFFF2F4F7),
+                      fillColor: AppColors.creamSoft,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(24),
                         borderSide: BorderSide.none,

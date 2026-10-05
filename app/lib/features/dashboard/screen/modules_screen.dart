@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../../emotiondetection/themed_scenario/scenario_models.dart';
 import '../../emotiondetection/themed_scenario/scenario_play_page.dart';
+import '../../../shared/theme/app_colors.dart';
 
 class ModulesScreen extends StatefulWidget {
   const ModulesScreen({super.key, this.gridKey});
@@ -500,7 +501,7 @@ Widget _recentActivityCard(BuildContext context) {
               child: Container(
                 width: 84,
                 height: 84,
-                color: const Color(0xFFF0F3FF),
+                color: AppColors.creamSoft,
                 child: Image.asset(
                   _placeholderAssetForScenario(scenarioKey),
                   fit: BoxFit.contain,
@@ -747,7 +748,7 @@ Widget _scenarioGrid(
             decoration: BoxDecoration(
               color: const Color(0xFFF5F1E8),
               borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: const Color(0xFFE0E0E0)),
+              border: Border.all(color: AppColors.creamLine),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.04),
@@ -766,7 +767,7 @@ Widget _scenarioGrid(
                     // Placeholder art isn't square (tall rectangular
                     // illustrations) — contain + a neutral fill shows the
                     // full picture, letterboxed, instead of cropping into it.
-                    color: const Color(0xFFF0F3FF),
+                    color: AppColors.creamSoft,
                     child: Image.asset(
                       _placeholderAssetForScenario(template.scenarioKey),
                       fit: BoxFit.contain,
@@ -836,8 +837,9 @@ Widget _scenarioGrid(
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF0F3FF),
+                    color: AppColors.creamSoft,
                     borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppColors.creamLine),
                   ),
                   child: Text(
                     '${score.round()}% match',

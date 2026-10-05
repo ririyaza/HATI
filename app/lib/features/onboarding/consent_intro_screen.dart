@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../dashboard/widgets/hati_sprite_animation.dart';
@@ -79,124 +81,166 @@ class _ConsentIntroScreenState extends State<ConsentIntroScreen>
             opacity: _fadeAnim,
             child: SlideTransition(
               position: _slideAnim,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(24, 32, 24, 0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // ── Top label ──────────────────────────────────────
-                    Align(
-                      alignment: Alignment.topLeft,
-                      child: Text(
-                        'HATI',
-                        style: TextStyle(
-                          color: const Color(0xFFF5F1E8).withOpacity(0.55),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 3.5,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 32),
-
-                    // ── Heading ────────────────────────────────────────
-                    const Text(
-                      'Before We Begin',
-                      style: TextStyle(
-                        color: const Color(0xFFF5F1E8),
-                        fontSize: 30,
-                        fontWeight: FontWeight.w800,
-                        height: 1.15,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      'We need your informed consent before you take part\nin our research study.',
-                      style: TextStyle(
-                        color: const Color(0xFFF5F1E8).withOpacity(0.75),
-                        fontSize: 15,
-                        height: 1.5,
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-
-                    const SizedBox(height: 36),
-
-                    // ── Hati sprite with speech bubble ────────────────
-                    Expanded(
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          // Soft radial glow behind sprite
-                          Positioned.fill(
-                            child: DecoratedBox(
-                              decoration: BoxDecoration(
-                                gradient: RadialGradient(
-                                  center: Alignment.center,
-                                  radius: 0.65,
-                                  colors: [
-                                    const Color(0xFFF5F1E8).withOpacity(0.07),
-                                    Colors.transparent,
-                                  ],
+              child: LayoutBuilder(
+                builder: (context, viewport) {
+                  // Fixed chrome (label, heading, steps, button) needs about
+                  // this much height; below it the screen scrolls instead of
+                  // overflowing. Grows with the user's text-size setting.
+                  final textScale = MediaQuery.textScalerOf(
+                    context,
+                  ).scale(1.0).clamp(1.0, 2.0);
+                  final contentHeight = math.max(
+                    viewport.maxHeight,
+                    620.0 * textScale,
+                  );
+                  return SingleChildScrollView(
+                    child: SizedBox(
+                      height: contentHeight,
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(24, 32, 24, 0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            // ── Top label ──────────────────────────────────────
+                            Align(
+                              alignment: Alignment.topLeft,
+                              child: Text(
+                                'HATI',
+                                style: TextStyle(
+                                  color: const Color(
+                                    0xFFF5F1E8,
+                                  ).withOpacity(0.55),
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 3.5,
                                 ),
                               ),
                             ),
-                          ),
-                          Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const SizedBox(height: 20),
-                              HatiSpriteAnimation(
-                                size: 220,
-                                message: ConsentIntroHatiDialogue.message,
-                                startDelay: Duration.zero,
-                                persistBubble: true,
+                            const SizedBox(height: 32),
+
+                            // ── Heading ────────────────────────────────────────
+                            const Text(
+                              'Before We Begin',
+                              style: TextStyle(
+                                color: const Color(0xFFF5F1E8),
+                                fontSize: 30,
+                                fontWeight: FontWeight.w800,
+                                height: 1.15,
                               ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // ── Steps preview chips ────────────────────────────
-                    _StepsPreview(),
-
-                    const SizedBox(height: 28),
-
-                    // ── CTA button ─────────────────────────────────────
-                    SizedBox(
-                      height: 54,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFF5F1E8),
-                          foregroundColor: const Color(0xFF0B28D9),
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(28),
-                          ),
-                        ),
-                        onPressed: () {
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const ConsentFlowScreen(),
                             ),
-                          );
-                        },
-                        child: const Text(
-                          'Let\'s Get Started',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                          ),
+                            const SizedBox(height: 10),
+                            Text(
+                              'We need your informed consent before you take part\nin our research study.',
+                              style: TextStyle(
+                                color: const Color(
+                                  0xFFF5F1E8,
+                                ).withOpacity(0.75),
+                                fontSize: 15,
+                                height: 1.5,
+                                fontWeight: FontWeight.w400,
+                              ),
+                            ),
+
+                            const SizedBox(height: 36),
+
+                            // ── Hati sprite with speech bubble ────────────────
+                            Expanded(
+                              child: Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  // Soft radial glow behind sprite
+                                  Positioned.fill(
+                                    child: DecoratedBox(
+                                      decoration: BoxDecoration(
+                                        gradient: RadialGradient(
+                                          center: Alignment.center,
+                                          radius: 0.65,
+                                          colors: [
+                                            const Color(
+                                              0xFFF5F1E8,
+                                            ).withOpacity(0.07),
+                                            Colors.transparent,
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  LayoutBuilder(
+                                    builder: (context, constraints) {
+                                      // 220 only fits roomy screens; on short ones
+                                      // the mascot shrinks (leaving room for the
+                                      // speech bubble) rather than overflowing.
+                                      final frogSize =
+                                          (constraints.maxHeight * 0.5).clamp(
+                                            80.0,
+                                            220.0,
+                                          );
+                                      return Center(
+                                        child: SingleChildScrollView(
+                                          child: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              HatiSpriteAnimation(
+                                                size: frogSize,
+                                                message:
+                                                    ConsentIntroHatiDialogue
+                                                        .message,
+                                                startDelay: Duration.zero,
+                                                persistBubble: true,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            const SizedBox(height: 24),
+
+                            // ── Steps preview chips ────────────────────────────
+                            _StepsPreview(),
+
+                            const SizedBox(height: 28),
+
+                            // ── CTA button ─────────────────────────────────────
+                            SizedBox(
+                              height: 54,
+                              child: ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFFF5F1E8),
+                                  foregroundColor: const Color(0xFF0B28D9),
+                                  elevation: 0,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(28),
+                                  ),
+                                ),
+                                onPressed: () {
+                                  Navigator.pushReplacement(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => const ConsentFlowScreen(),
+                                    ),
+                                  );
+                                },
+                                child: const Text(
+                                  'Let\'s Get Started',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 32),
+                          ],
                         ),
                       ),
                     ),
-                    const SizedBox(height: 32),
-                  ],
-                ),
+                  );
+                },
               ),
             ),
           ),
@@ -258,7 +302,10 @@ class _StepDot extends StatelessWidget {
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: const Color(0xFFF5F1E8).withOpacity(0.18),
-            border: Border.all(color: const Color(0xFFF5F1E8).withOpacity(0.4), width: 1),
+            border: Border.all(
+              color: const Color(0xFFF5F1E8).withOpacity(0.4),
+              width: 1,
+            ),
           ),
           alignment: Alignment.center,
           child: Text(

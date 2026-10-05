@@ -4,9 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../data/spin_questions.dart';
 import '../data/spin_scoring.dart';
+import '../../../shared/widgets/scroll_if_cramped.dart';
 import '../../dashboard/screen/dashboard_screen.dart';
 import 'low_score_exit_screen.dart';
 import 'spin_result_screen.dart';
+import '../../../shared/theme/app_colors.dart';
 
 class SpinAssessmentScreen extends StatefulWidget {
   /// True when the user is retaking the assessment after being blocked by
@@ -268,94 +270,96 @@ class _SpinAssessmentScreenState extends State<SpinAssessmentScreen> {
               ),
             ),
 
-            // ── Body — expands to fill remaining space ───────────
+            // ── Body — fills the viewport, scrolls when it can't fit ─
             Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Info card
-                    _InfoCard(
-                      icon: Icons.checklist_rounded,
-                      title: 'What to expect',
-                      body:
-                          '17 short questions about how social situations feel '
-                          'for you. There are no right or wrong answers, just honest ones.',
-                    ),
-                    const SizedBox(height: 20),
+              child: ScrollIfCramped(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Info card
+                      _InfoCard(
+                        icon: Icons.checklist_rounded,
+                        title: 'What to expect',
+                        body:
+                            '17 short questions about how social situations feel '
+                            'for you. There are no right or wrong answers, just honest ones.',
+                      ),
+                      const SizedBox(height: 20),
 
-                    // Quick-facts
-                    _FactRow(
-                      icon: Icons.timer_outlined,
-                      text: 'Takes about 3–5 minutes',
-                    ),
-                    const SizedBox(height: 12),
-                    _FactRow(
-                      icon: Icons.lock_outline,
-                      text: 'Your answers are private',
-                    ),
-                    const SizedBox(height: 12),
-                    _FactRow(
-                      icon: Icons.tune_rounded,
-                      text: 'Personalizes your HATI experience',
-                    ),
+                      // Quick-facts
+                      _FactRow(
+                        icon: Icons.timer_outlined,
+                        text: 'Takes about 3–5 minutes',
+                      ),
+                      const SizedBox(height: 12),
+                      _FactRow(
+                        icon: Icons.lock_outline,
+                        text: 'Your answers are private',
+                      ),
+                      const SizedBox(height: 12),
+                      _FactRow(
+                        icon: Icons.tune_rounded,
+                        text: 'Personalizes your HATI experience',
+                      ),
 
-                    const Spacer(),
+                      const Spacer(),
 
-                    // Buttons
-                    FilledButton(
-                      style: FilledButton.styleFrom(
-                        backgroundColor: _blue,
-                        minimumSize: const Size.fromHeight(52),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(26),
+                      // Buttons
+                      FilledButton(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: _blue,
+                          minimumSize: const Size.fromHeight(52),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(26),
+                          ),
+                        ),
+                        onPressed: () => setState(() => _started = true),
+                        child: const Text(
+                          'Begin Check-in',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFFF5F1E8),
+                          ),
                         ),
                       ),
-                      onPressed: () => setState(() => _started = true),
-                      child: const Text(
-                        'Begin Check-in',
+                      const SizedBox(height: 10),
+                      OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Colors.black12),
+                          minimumSize: const Size.fromHeight(52),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(26),
+                          ),
+                        ),
+                        onPressed: _handleDoThisLater,
+                        child: const Text(
+                          'Do this later',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Disclaimer
+                      const Text(
+                        'This is not a diagnostic test. Your responses are used\n'
+                        'only for research and personalization.',
+                        textAlign: TextAlign.center,
                         style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: const Color(0xFFF5F1E8),
+                          fontSize: 12,
+                          color: Colors.black38,
+                          height: 1.5,
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 10),
-                    OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Colors.black12),
-                        minimumSize: const Size.fromHeight(52),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(26),
-                        ),
-                      ),
-                      onPressed: _handleDoThisLater,
-                      child: const Text(
-                        'Do this later',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.black87,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Disclaimer
-                    const Text(
-                      'This is not a diagnostic test. Your responses are used\n'
-                      'only for research and personalization.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.black38,
-                        height: 1.5,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
+                      const SizedBox(height: 16),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -366,7 +370,7 @@ class _SpinAssessmentScreenState extends State<SpinAssessmentScreen> {
   }
 
   // ─────────────────────────────────────────────────────────────
-  // QUESTION SCREEN  (no scroll — fills the viewport exactly)
+  // QUESTION SCREEN  (fills the viewport, scrolls when it can't fit)
   // ─────────────────────────────────────────────────────────────
   Widget _buildQuestionScreen() {
     final question = spinQuestions[currentIndex];
@@ -423,7 +427,9 @@ class _SpinAssessmentScreenState extends State<SpinAssessmentScreen> {
                     child: LinearProgressIndicator(
                       value: progress,
                       minHeight: 6,
-                      backgroundColor: Color(0xFFF5F1E8).withValues(alpha: 0.24),
+                      backgroundColor: Color(
+                        0xFFF5F1E8,
+                      ).withValues(alpha: 0.24),
                       valueColor: const AlwaysStoppedAnimation<Color>(
                         const Color(0xFFF5F1E8),
                       ),
@@ -433,57 +439,59 @@ class _SpinAssessmentScreenState extends State<SpinAssessmentScreen> {
               ),
             ),
 
-            // ── Question text ──────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 20, 24, 4),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Over the past week, how much did this statement '
-                    'describe you?',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.black54,
-                      height: 1.4,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '"${question.question}"',
-                    style: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.black87,
-                      height: 1.4,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                ],
-              ),
-            ),
-
-            // ── Options — expand to fill remaining space ───────
+            // ── Question + options — fill the space, scroll if cramped ─
             Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(24, 10, 24, 0),
-                child: Column(
-                  children: List.generate(_options.length, (i) {
-                    final selected = question.selectedScore == i;
-                    final isLast = i == _options.length - 1;
-                    return Expanded(
-                      child: Padding(
-                        padding: EdgeInsets.only(bottom: isLast ? 0 : 8),
-                        child: _OptionTile(
-                          label: _options[i],
-                          selected: selected,
-                          onTap: () =>
-                              setState(() => question.selectedScore = i),
+              child: ScrollIfCramped(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Over the past week, how much did this '
+                        'statement describe you?',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.black54,
+                          height: 1.4,
                         ),
                       ),
-                    );
-                  }),
+                      const SizedBox(height: 8),
+                      Text(
+                        '"${question.question}"',
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.black87,
+                          height: 1.4,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Expanded(
+                        child: Column(
+                          children: List.generate(_options.length, (i) {
+                            final selected = question.selectedScore == i;
+                            final isLast = i == _options.length - 1;
+                            return Expanded(
+                              child: Padding(
+                                padding: EdgeInsets.only(
+                                  bottom: isLast ? 0 : 8,
+                                ),
+                                child: _OptionTile(
+                                  label: _options[i],
+                                  selected: selected,
+                                  onTap: () => setState(
+                                    () => question.selectedScore = i,
+                                  ),
+                                ),
+                              ),
+                            );
+                          }),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -493,7 +501,7 @@ class _SpinAssessmentScreenState extends State<SpinAssessmentScreen> {
               padding: const EdgeInsets.fromLTRB(24, 14, 24, 12),
               decoration: const BoxDecoration(
                 color: const Color(0xFFF5F1E8),
-                border: Border(top: BorderSide(color: Color(0xFFF0F0F0))),
+                border: Border(top: BorderSide(color: AppColors.creamLine)),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -598,8 +606,9 @@ class _DoThisLaterDialog extends StatelessWidget {
                 width: 52,
                 height: 52,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF0F3FF),
+                  color: AppColors.creamSoft,
                   borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppColors.creamLine),
                 ),
                 child: const Icon(
                   Icons.schedule_rounded,
@@ -690,12 +699,12 @@ class _OptionTile extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 0),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFFF0F3FF) : const Color(0xFFF5F1E8),
+          color: selected ? AppColors.blueTint : const Color(0xFFF5F1E8),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: selected ? _blue : const Color(0xFFE0E0E0),
+            color: selected ? _blue : AppColors.creamLine,
             width: selected ? 2 : 1,
           ),
         ),
@@ -724,7 +733,11 @@ class _OptionTile extends StatelessWidget {
                 ),
               ),
               child: selected
-                  ? const Icon(Icons.check, size: 14, color: const Color(0xFFF5F1E8))
+                  ? const Icon(
+                      Icons.check,
+                      size: 14,
+                      color: const Color(0xFFF5F1E8),
+                    )
                   : null,
             ),
           ],
@@ -750,8 +763,9 @@ class _InfoCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: const Color(0xFFF0F3FF),
+        color: AppColors.creamSoft,
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.creamLine),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -760,12 +774,14 @@ class _InfoCard extends StatelessWidget {
             children: [
               Icon(icon, color: const Color(0xFF0B28D9), size: 18),
               const SizedBox(width: 8),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF0B28D9),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF0B28D9),
+                  ),
                 ),
               ),
             ],
@@ -799,7 +815,7 @@ class _FactRow extends StatelessWidget {
           width: 36,
           height: 36,
           decoration: BoxDecoration(
-            color: const Color(0xFFE8ECFF),
+            color: AppColors.creamDeep,
             borderRadius: BorderRadius.circular(10),
           ),
           child: Icon(icon, color: const Color(0xFF0B28D9), size: 18),

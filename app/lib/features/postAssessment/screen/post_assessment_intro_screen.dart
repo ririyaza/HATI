@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../../shared/widgets/scroll_if_cramped.dart';
 import 'post_spin_assessment_screen.dart';
+import '../../../shared/theme/app_colors.dart';
 
 /// Entry point of the 2-week reassessment flow. Visually mirrors
 /// `SpinAssessmentScreen`'s intro screen (same header/card/button styling)
@@ -47,93 +49,95 @@ class PostAssessmentIntroScreen extends StatelessWidget {
               ),
             ),
             Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const _InfoCard(
-                      icon: Icons.checklist_rounded,
-                      title: 'What to expect',
-                      body:
-                          "It's been about two weeks since you started with "
-                          'HATI. Let\'s check in with two short question '
-                          'sets (24 questions total) to see how things '
-                          'have been feeling lately.',
-                    ),
-                    const SizedBox(height: 20),
-                    const _FactRow(
-                      icon: Icons.timer_outlined,
-                      text: 'Takes about 5 minutes',
-                    ),
-                    const SizedBox(height: 12),
-                    const _FactRow(
-                      icon: Icons.lock_outline,
-                      text: 'Your answers are private',
-                    ),
-                    const SizedBox(height: 12),
-                    const _FactRow(
-                      icon: Icons.insights_rounded,
-                      text: 'Helps track your progress over time',
-                    ),
-                    const Spacer(),
-                    FilledButton(
-                      style: FilledButton.styleFrom(
-                        backgroundColor: _blue,
-                        minimumSize: const Size.fromHeight(52),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(26),
-                        ),
+              child: ScrollIfCramped(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const _InfoCard(
+                        icon: Icons.checklist_rounded,
+                        title: 'What to expect',
+                        body:
+                            "It's been about two weeks since you started with "
+                            'HATI. Let\'s check in with two short question '
+                            'sets (24 questions total) to see how things '
+                            'have been feeling lately.',
                       ),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const PostSpinAssessmentScreen(),
+                      const SizedBox(height: 20),
+                      const _FactRow(
+                        icon: Icons.timer_outlined,
+                        text: 'Takes about 5 minutes',
+                      ),
+                      const SizedBox(height: 12),
+                      const _FactRow(
+                        icon: Icons.lock_outline,
+                        text: 'Your answers are private',
+                      ),
+                      const SizedBox(height: 12),
+                      const _FactRow(
+                        icon: Icons.insights_rounded,
+                        text: 'Helps track your progress over time',
+                      ),
+                      const Spacer(),
+                      FilledButton(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: _blue,
+                          minimumSize: const Size.fromHeight(52),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(26),
                           ),
-                        );
-                      },
-                      child: const Text(
-                        'Begin Check-in',
+                        ),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const PostSpinAssessmentScreen(),
+                            ),
+                          );
+                        },
+                        child: const Text(
+                          'Begin Check-in',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFFF5F1E8),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Colors.black12),
+                          minimumSize: const Size.fromHeight(52),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(26),
+                          ),
+                        ),
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text(
+                          'Not right now',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'This is not a diagnostic test. Your responses are used\n'
+                        'only for research and personalization.',
+                        textAlign: TextAlign.center,
                         style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: const Color(0xFFF5F1E8),
+                          fontSize: 12,
+                          color: Colors.black38,
+                          height: 1.5,
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 10),
-                    OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Colors.black12),
-                        minimumSize: const Size.fromHeight(52),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(26),
-                        ),
-                      ),
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text(
-                        'Not right now',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.black87,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'This is not a diagnostic test. Your responses are used\n'
-                      'only for research and personalization.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.black38,
-                        height: 1.5,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
+                      const SizedBox(height: 16),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -145,7 +149,11 @@ class PostAssessmentIntroScreen extends StatelessWidget {
 }
 
 class _InfoCard extends StatelessWidget {
-  const _InfoCard({required this.icon, required this.title, required this.body});
+  const _InfoCard({
+    required this.icon,
+    required this.title,
+    required this.body,
+  });
 
   final IconData icon;
   final String title;
@@ -156,8 +164,9 @@ class _InfoCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: const Color(0xFFF0F3FF),
+        color: AppColors.creamSoft,
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.creamLine),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -166,12 +175,14 @@ class _InfoCard extends StatelessWidget {
             children: [
               Icon(icon, color: const Color(0xFF0B28D9), size: 18),
               const SizedBox(width: 8),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF0B28D9),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF0B28D9),
+                  ),
                 ),
               ),
             ],
@@ -205,7 +216,7 @@ class _FactRow extends StatelessWidget {
           width: 36,
           height: 36,
           decoration: BoxDecoration(
-            color: const Color(0xFFE8ECFF),
+            color: AppColors.creamDeep,
             borderRadius: BorderRadius.circular(10),
           ),
           child: Icon(icon, color: const Color(0xFF0B28D9), size: 18),

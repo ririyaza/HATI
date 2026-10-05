@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../../shared/widgets/scroll_if_cramped.dart';
 import 'post_gad7_assessment_screen.dart';
+import '../../../shared/theme/app_colors.dart';
 
 /// Transition screen shown between the SPIN and GAD-7 portions of the
 /// reassessment flow, so the topic switch (social anxiety -> general
@@ -51,76 +53,78 @@ class PostGad7IntroScreen extends StatelessWidget {
               ),
             ),
             Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const _InfoCard(
-                      icon: Icons.checklist_rounded,
-                      title: "Nice work, first section done",
-                      body:
-                          "You've finished the social anxiety questions. "
-                          "Next is a short, different set about general "
-                          "anxiety, how you've been feeling day-to-day "
-                          "over the past two weeks.",
-                    ),
-                    const SizedBox(height: 20),
-                    const _FactRow(
-                      icon: Icons.format_list_numbered_rounded,
-                      text: 'Just 7 quick questions',
-                    ),
-                    const SizedBox(height: 12),
-                    const _FactRow(
-                      icon: Icons.timer_outlined,
-                      text: 'Takes about 2 minutes',
-                    ),
-                    const SizedBox(height: 12),
-                    const _FactRow(
-                      icon: Icons.insights_rounded,
-                      text: 'Continues your progress (18 of 24)',
-                    ),
-                    const Spacer(),
-                    FilledButton(
-                      style: FilledButton.styleFrom(
-                        backgroundColor: _blue,
-                        minimumSize: const Size.fromHeight(52),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(26),
-                        ),
+              child: ScrollIfCramped(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const _InfoCard(
+                        icon: Icons.checklist_rounded,
+                        title: "Nice work, first section done",
+                        body:
+                            "You've finished the social anxiety questions. "
+                            "Next is a short, different set about general "
+                            "anxiety, how you've been feeling day-to-day "
+                            "over the past two weeks.",
                       ),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => PostGad7AssessmentScreen(
-                              spinTotal: spinTotal,
-                            ),
+                      const SizedBox(height: 20),
+                      const _FactRow(
+                        icon: Icons.format_list_numbered_rounded,
+                        text: 'Just 7 quick questions',
+                      ),
+                      const SizedBox(height: 12),
+                      const _FactRow(
+                        icon: Icons.timer_outlined,
+                        text: 'Takes about 2 minutes',
+                      ),
+                      const SizedBox(height: 12),
+                      const _FactRow(
+                        icon: Icons.insights_rounded,
+                        text: 'Continues your progress (18 of 24)',
+                      ),
+                      const Spacer(),
+                      FilledButton(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: _blue,
+                          minimumSize: const Size.fromHeight(52),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(26),
                           ),
-                        );
-                      },
-                      child: const Text(
-                        'Continue',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: const Color(0xFFF5F1E8),
+                        ),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => PostGad7AssessmentScreen(
+                                spinTotal: spinTotal,
+                              ),
+                            ),
+                          );
+                        },
+                        child: const Text(
+                          'Continue',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFFF5F1E8),
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'This is not a diagnostic test. Your responses are used\n'
-                      'only for research and personalization.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.black38,
-                        height: 1.5,
+                      const SizedBox(height: 16),
+                      const Text(
+                        'This is not a diagnostic test. Your responses are used\n'
+                        'only for research and personalization.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.black38,
+                          height: 1.5,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
+                      const SizedBox(height: 16),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -132,7 +136,11 @@ class PostGad7IntroScreen extends StatelessWidget {
 }
 
 class _InfoCard extends StatelessWidget {
-  const _InfoCard({required this.icon, required this.title, required this.body});
+  const _InfoCard({
+    required this.icon,
+    required this.title,
+    required this.body,
+  });
 
   final IconData icon;
   final String title;
@@ -143,8 +151,9 @@ class _InfoCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: const Color(0xFFF0F3FF),
+        color: AppColors.creamSoft,
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.creamLine),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -153,12 +162,14 @@ class _InfoCard extends StatelessWidget {
             children: [
               Icon(icon, color: const Color(0xFF0B28D9), size: 18),
               const SizedBox(width: 8),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF0B28D9),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF0B28D9),
+                  ),
                 ),
               ),
             ],
@@ -192,7 +203,7 @@ class _FactRow extends StatelessWidget {
           width: 36,
           height: 36,
           decoration: BoxDecoration(
-            color: const Color(0xFFE8ECFF),
+            color: AppColors.creamDeep,
             borderRadius: BorderRadius.circular(10),
           ),
           child: Icon(icon, color: const Color(0xFF0B28D9), size: 18),

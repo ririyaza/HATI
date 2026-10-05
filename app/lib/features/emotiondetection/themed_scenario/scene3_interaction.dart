@@ -38,6 +38,7 @@ import '../../../shared/audio/hati_audio_service.dart';
 import 'scenario_models.dart';
 import 'scenario_provider.dart';
 import 'shared_widgets.dart';
+import '../../../shared/theme/app_colors.dart';
 
 const _kApproachBlue = Color(0xFF4A8FD4);
 
@@ -1840,7 +1841,7 @@ class _ApproachInputBar extends StatelessWidget {
                       fontSize: 15,
                     ),
                     filled: true,
-                    fillColor: const Color(0xFFF0F0F0),
+                    fillColor: AppColors.creamSoft,
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 16,
                       vertical: 12,

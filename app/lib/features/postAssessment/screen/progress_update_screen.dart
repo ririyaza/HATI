@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../dashboard/screen/dashboard_screen.dart';
 import '../../dashboard/widgets/hati_sprite_animation.dart';
 import '../data/assessment_comparison.dart';
+import '../../../shared/theme/app_colors.dart';
 
 /// Shown for any [PostAssessmentCategory] whose suggested action doesn't
 /// encourage professional support (`!category.isReferral`): categories
@@ -77,7 +78,7 @@ class ProgressUpdateScreen extends StatelessWidget {
             const SizedBox(height: 16),
             Expanded(
               child: ColoredBox(
-                color: const Color(0xFFF2F2F7),
+                color: AppColors.cream,
                 child: Center(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.symmetric(

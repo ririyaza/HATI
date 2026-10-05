@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../shared/theme/app_colors.dart';
 import '../dashboard/screen/dashboard_screen.dart';
 
 // ──────────────────────────────────────────────
@@ -238,7 +239,7 @@ class _TutorialScreenState extends State<TutorialScreen>
                     const Text(
                       'HATI',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: AppColors.cream,
                         fontSize: 22,
                         fontWeight: FontWeight.w800,
                         letterSpacing: 1.5,
@@ -255,13 +256,13 @@ class _TutorialScreenState extends State<TutorialScreen>
                             vertical: 6,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.18),
+                            color: AppColors.cream.withValues(alpha: 0.18),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: const Text(
                             'Skip',
                             style: TextStyle(
-                              color: Colors.white,
+                              color: AppColors.cream,
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
                             ),
@@ -302,8 +303,8 @@ class _TutorialScreenState extends State<TutorialScreen>
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(4),
                             color: i == _currentPage
-                                ? Colors.white
-                                : Colors.white.withValues(alpha: 0.35),
+                                ? AppColors.cream
+                                : AppColors.cream.withValues(alpha: 0.35),
                           ),
                         ),
                       ),
@@ -316,7 +317,7 @@ class _TutorialScreenState extends State<TutorialScreen>
                         width: double.infinity,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         decoration: BoxDecoration(
-                          color: isLast ? slide.accentColor : Colors.white,
+                          color: isLast ? slide.accentColor : AppColors.cream,
                           borderRadius: BorderRadius.circular(16),
                           boxShadow: [
                             BoxShadow(
@@ -334,7 +335,7 @@ class _TutorialScreenState extends State<TutorialScreen>
                               isLast ? "Let's Get Started" : 'Next',
                               style: TextStyle(
                                 color: isLast
-                                    ? Colors.white
+                                    ? AppColors.cream
                                     : const Color(0xFF0B28D9),
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
@@ -375,68 +376,81 @@ class _TutorialSlideView extends StatelessWidget {
       opacity: fadeAnimation,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 28),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 130,
-              height: 130,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: slide.accentColor.withValues(alpha: 0.18),
-                border: Border.all(
-                  color: slide.accentColor.withValues(alpha: 0.45),
-                  width: 2,
+        // Centered when it fits; scrolls instead of overflowing on short
+        // screens or large text sizes.
+        child: Center(
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 130,
+                  height: 130,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: slide.accentColor.withValues(alpha: 0.18),
+                    border: Border.all(
+                      color: slide.accentColor.withValues(alpha: 0.45),
+                      width: 2,
+                    ),
+                  ),
+                  child: Center(
+                    child: Icon(
+                      slide.icon,
+                      size: 56,
+                      color: const Color(0xFFF5F1E8),
+                    ),
+                  ),
                 ),
-              ),
-              child: Center(
-                child: Icon(slide.icon, size: 56, color: const Color(0xFFF5F1E8)),
-              ),
-            ),
-            const SizedBox(height: 36),
-            Text(
-              slide.title,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: const Color(0xFFF5F1E8),
-                fontSize: 26,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.2,
-                height: 1.1,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
-              decoration: BoxDecoration(
-                color: slide.accentColor.withValues(alpha: 0.25),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: slide.accentColor.withValues(alpha: 0.5),
+                const SizedBox(height: 36),
+                Text(
+                  slide.title,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: const Color(0xFFF5F1E8),
+                    fontSize: 26,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.2,
+                    height: 1.1,
+                  ),
                 ),
-              ),
-              child: Text(
-                slide.subtitle,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: const Color(0xFFF5F1E8).withValues(alpha: 0.9),
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: slide.accentColor.withValues(alpha: 0.25),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: slide.accentColor.withValues(alpha: 0.5),
+                    ),
+                  ),
+                  child: Text(
+                    slide.subtitle,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: const Color(0xFFF5F1E8).withValues(alpha: 0.9),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
-              ),
+                const SizedBox(height: 24),
+                Text(
+                  slide.description,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: const Color(0xFFF5F1E8).withValues(alpha: 0.78),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w400,
+                    height: 1.6,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 24),
-            Text(
-              slide.description,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: const Color(0xFFF5F1E8).withValues(alpha: 0.78),
-                fontSize: 15,
-                fontWeight: FontWeight.w400,
-                height: 1.6,
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

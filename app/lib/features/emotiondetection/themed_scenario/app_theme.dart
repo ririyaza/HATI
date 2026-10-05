@@ -7,6 +7,7 @@
 // ─────────────────────────────────────────────
 
 import 'package:flutter/material.dart';
+import '../../../shared/theme/app_colors.dart';
 
 class HatiColors {
   // Brand palette
@@ -14,7 +15,7 @@ class HatiColors {
   static const Color mossGreen = Color(0xFF2D5A27);
   static const Color leafGreen = Color(0xFF4CAF50);
   static const Color mintFresh = Color(0xFF80CBC4);
-  static const Color warmCream = Color(0xFFF5F0E8);
+  static const Color warmCream = AppColors.cream;
   static const Color softGold = Color(0xFFD4A843);
   static const Color gentleAmber = Color(0xFFF59E0B);
 
@@ -26,7 +27,7 @@ class HatiColors {
   static const Color angry = Color(0xFFEF5350);
 
   // UI
-  static const Color surface = Color(0xFFF9F6F0);
+  static const Color surface = AppColors.creamSoft;
   static const Color surfaceDark = Color(0xFF1C2B1C);
   static const Color cardBg = Color(0xFFF5F1E8);
   static const Color dialogBg = Color(0xFFE8F5E9);
@@ -38,7 +39,7 @@ class HatiColors {
   static const Color textDark = Color(0xFF1A1A2E);
   static const Color textMedium = Color(0xFF4A5568);
   static const Color textLight = Color(0xFF718096);
-  static const Color divider = Color(0xFFE2E8F0);
+  static const Color divider = AppColors.creamLine;
 }
 
 class HatiTextStyles {

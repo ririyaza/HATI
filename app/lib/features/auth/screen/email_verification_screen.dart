@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../auth_navigation.dart';
 import 'login_screen.dart';
+import '../../../shared/theme/app_colors.dart';
 
 /// Shown right after signup, or after a login attempt with an unverified
 /// email. Polls Firebase for verification status and lets the user resend
@@ -302,10 +303,8 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen>
                         height: 52,
                         child: FilledButton(
                           style: FilledButton.styleFrom(
-                            backgroundColor: const Color(0xFF0056FF),
-                            disabledBackgroundColor: const Color(
-                              0xFF0056FF,
-                            ).withOpacity(0.6),
+                            backgroundColor: AppColors.blue,
+                            disabledBackgroundColor: AppColors.blue.withOpacity(0.6),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -337,7 +336,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen>
                         height: 52,
                         child: OutlinedButton(
                           style: OutlinedButton.styleFrom(
-                            side: BorderSide(color: Colors.grey.shade300),
+                            side: BorderSide(color: AppColors.creamLine),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -423,7 +422,7 @@ class _PulsingMailIcon extends StatelessWidget {
                   height: 96 + 24 * t,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: const Color(0xFF0056FF).withOpacity(0.08 * (1 - t)),
+                    color: AppColors.blue.withOpacity(0.08 * (1 - t)),
                   ),
                 ),
                 child!,
@@ -435,13 +434,13 @@ class _PulsingMailIcon extends StatelessWidget {
             height: 96,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: const Color(0xFF0056FF).withOpacity(0.08),
+              color: AppColors.blue.withOpacity(0.08),
             ),
             alignment: Alignment.center,
             child: const Icon(
               Icons.mark_email_unread_outlined,
               size: 48,
-              color: Color(0xFF0056FF),
+              color: AppColors.blue,
             ),
           ),
         ),
@@ -487,11 +486,11 @@ class _EmailVerifiedDialog extends StatelessWidget {
               height: 68,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: const Color(0xFF0056FF).withOpacity(0.1),
+                color: AppColors.blue.withOpacity(0.1),
               ),
               child: const Icon(
                 Icons.mark_email_read_rounded,
-                color: Color(0xFF0056FF),
+                color: AppColors.blue,
                 size: 34,
               ),
             ),
@@ -501,7 +500,7 @@ class _EmailVerifiedDialog extends StatelessWidget {
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
-                color: Color(0xFF0056FF),
+                color: AppColors.blue,
               ),
             ),
             const SizedBox(height: 10),
@@ -521,7 +520,7 @@ class _EmailVerifiedDialog extends StatelessWidget {
               height: 50,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF0056FF),
+                  backgroundColor: AppColors.blue,
                   foregroundColor: const Color(0xFFF5F1E8),
                   elevation: 0,
                   shape: RoundedRectangleBorder(

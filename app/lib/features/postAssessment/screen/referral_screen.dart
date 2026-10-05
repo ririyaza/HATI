@@ -4,6 +4,7 @@ import '../../dashboard/screen/dashboard_screen.dart';
 import '../../dashboard/screen/support_resources_screen.dart';
 import '../../dashboard/widgets/hati_sprite_animation.dart';
 import '../data/assessment_comparison.dart';
+import '../../../shared/theme/app_colors.dart';
 
 /// Shown for any [PostAssessmentCategory] whose suggested action encourages
 /// professional support (`category.isReferral`): categories 2, 4, 5, and 6
@@ -79,8 +80,9 @@ class ReferralScreen extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF0F3FF),
+                  color: AppColors.creamSoft,
                   borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.creamLine),
                 ),
                 child: const Row(
                   crossAxisAlignment: CrossAxisAlignment.start,

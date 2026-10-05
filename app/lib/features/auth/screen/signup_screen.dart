@@ -3,16 +3,17 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'email_verification_screen.dart';
+import '../../../shared/theme/app_colors.dart';
 
 // Brand tokens shared with the loading screen and onboarding/consent flow —
 // keep these in sync with lib/features/onboarding/consent_flow_screen.dart
 // so auth doesn't visually diverge from the rest of the app.
 const _kBrand = Color(0xFF0B28D9);
-const _kBrandTint = Color(0xFFF8F9FF);
-const _kBrandBorder = Color(0xFFE2E6FF);
+const _kBrandTint = AppColors.creamSoft;
+const _kBrandBorder = AppColors.creamLine;
 const _kTextDark = Color(0xFF1A1A2E);
 const _kTextMuted = Color(0xFF6B7280);
-const _kFieldBorder = Color(0xFFE2E8F0);
+const _kFieldBorder = AppColors.creamLine;
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -248,7 +249,7 @@ class _SignupScreenState extends State<SignupScreen> {
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: _kBrand,
-                      foregroundColor: Colors.white,
+                      foregroundColor: AppColors.cream,
                       elevation: 0,
                       disabledBackgroundColor: _kBrand.withOpacity(0.35),
                       shape: RoundedRectangleBorder(
@@ -262,7 +263,7 @@ class _SignupScreenState extends State<SignupScreen> {
                             width: 24,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              color: Colors.white,
+                              color: AppColors.cream,
                             ),
                           )
                         : const Text(
@@ -276,8 +277,9 @@ class _SignupScreenState extends State<SignupScreen> {
                 ),
                 const SizedBox(height: 28),
                 // Login Link
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     Text(
                       'Already have an account? ',
@@ -313,7 +315,7 @@ InputDecoration _fieldDecoration({required String hintText, Widget? suffixIcon})
     hintText: hintText,
     hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 16),
     filled: true,
-    fillColor: Colors.white,
+    fillColor: AppColors.creamSoft,
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(14),
       borderSide: const BorderSide(color: _kFieldBorder),

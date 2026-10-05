@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../../auth/screen/login_screen.dart';
+import '../../../shared/theme/app_colors.dart';
 
 /// Landing screen for the admin/developer account (see `navigateAfterAuth`):
 /// a flat, cross-user inbox of every message sent through "Contact
@@ -126,10 +127,10 @@ class _MessageCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: isRead ? const Color(0xFFF5F1E8) : const Color(0xFFF0F3FF),
+          color: isRead ? const Color(0xFFF5F1E8) : AppColors.blueTint,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: isRead ? const Color(0xFFE0E0E0) : const Color(0xFF0B28D9),
+            color: isRead ? AppColors.creamLine : const Color(0xFF0B28D9),
           ),
         ),
         child: Column(

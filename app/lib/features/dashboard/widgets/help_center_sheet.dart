@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../screen/contact_developer_screen.dart';
 import '../screen/support_resources_screen.dart';
+import '../../../shared/theme/app_colors.dart';
 
 /// Bottom sheet quick-access point: lets the user reach either the app
 /// developer or mental-health support resources from anywhere on the
@@ -41,7 +42,7 @@ class _HelpCenterSheet extends StatelessWidget {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE0E0E0),
+                  color: AppColors.creamLine,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -63,7 +64,7 @@ class _HelpCenterSheet extends StatelessWidget {
             const SizedBox(height: 20),
             _HelpOption(
               icon: Icons.code_rounded,
-              iconColor: const Color(0xFF0056FF),
+              iconColor: AppColors.blue,
               title: 'Message the Developer',
               subtitle: 'Report a bug or share feedback about the app.',
               onTap: () {
@@ -133,7 +134,7 @@ class _HelpOption extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          border: Border.all(color: const Color(0xFFE0E0E0)),
+          border: Border.all(color: AppColors.creamLine),
           borderRadius: BorderRadius.circular(16),
         ),
         child: Row(
