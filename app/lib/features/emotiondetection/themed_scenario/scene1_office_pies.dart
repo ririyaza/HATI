@@ -244,6 +244,16 @@ class _PiesHeader extends StatelessWidget {
               Text(label, style: HatiTextStyles.heading3),
             ],
           ),
+          const SizedBox(height: 4),
+          // Each P.I.E.S. category takes exactly one answer (tapping a chip
+          // submits it), so say so up front instead of letting the chip
+          // list read like a multi-select.
+          Text(
+            'Choose only one of the choices below.',
+            style: HatiTextStyles.caption.copyWith(
+              color: HatiColors.textMedium,
+            ),
+          ),
           const SizedBox(height: 10),
         ],
       ),

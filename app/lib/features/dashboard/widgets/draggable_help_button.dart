@@ -7,7 +7,18 @@ import 'help_center_sheet.dart';
 /// so it has the full area to roam in; a plain tap (no meaningful movement
 /// between pointer down/up) still opens the help sheet.
 class DraggableHelpButton extends StatefulWidget {
-  const DraggableHelpButton({super.key, this.buttonKey, this.onReplayTour});
+  const DraggableHelpButton({
+    super.key,
+    this.buttonKey,
+    this.onReplayTour,
+    this.topOffset = 16,
+  });
+
+  /// Default distance of the button's top edge below the status bar (can be
+  /// negative to start partly over it). Scenario play passes a negative
+  /// value so the button starts above SceneTopHeader's progress bar instead
+  /// of covering its right end.
+  final double topOffset;
 
   /// Spotlight target for the dashboard tour's final "Need Help?" step.
   final Key? buttonKey;
@@ -38,8 +49,12 @@ class _DraggableHelpButtonState extends State<DraggableHelpButton> {
         );
         final topInset = MediaQuery.paddingOf(context).top;
 
-        // Default starting spot: top-right, clear of the status bar/notch.
-        _topLeft ??= Offset(maxX - _margin, topInset + _margin);
+        // Default starting spot: top-right, [DraggableHelpButton.topOffset]
+        // below the status bar/notch (never above the screen's top edge).
+        _topLeft ??= Offset(
+          maxX - _margin,
+          (topInset + widget.topOffset).clamp(4.0, maxY),
+        );
         final clamped = Offset(
           _topLeft!.dx.clamp(0.0, maxX),
           _topLeft!.dy.clamp(1.0, maxY),

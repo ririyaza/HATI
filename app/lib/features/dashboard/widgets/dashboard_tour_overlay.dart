@@ -12,6 +12,7 @@ class DashboardTourKeys {
   final homeChatKey = GlobalKey();
   final modulesGridKey = GlobalKey();
   final progressWeeklyKey = GlobalKey();
+  final progressModulesKey = GlobalKey();
 }
 
 class _TourStep {
@@ -87,12 +88,21 @@ final List<_TourStep> _tourSteps = [
   _TourStep(
     title: 'This Week',
     description:
-        "Your day-by-day streak for the week, plus how far you've "
-        "progressed through each scenario module you've started — tap for "
-        'a detailed breakdown.',
+        'Your day-by-day streak for the week — tap for a detailed weekly '
+        'breakdown.',
     icon: Icons.calendar_today_rounded,
     tabIndex: 2,
     keyOf: (k) => k.progressWeeklyKey,
+  ),
+  _TourStep(
+    title: 'Scenario Progress',
+    description:
+        "Every scenario you've started appears here with how far you've "
+        'got. Tap a scenario to see a summary of the emotions you felt '
+        'during it, from most to least frequent.',
+    icon: Icons.bar_chart_rounded,
+    tabIndex: 2,
+    keyOf: (k) => k.progressModulesKey,
   ),
   const _TourStep(
     title: 'Profile',

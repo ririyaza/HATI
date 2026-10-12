@@ -23,10 +23,15 @@ String _placeholderAssetForModuleId(String id) {
 }
 
 class ProgressScreen extends StatelessWidget {
-  const ProgressScreen({super.key, this.weeklyKey});
+  const ProgressScreen({super.key, this.weeklyKey, this.modulesKey});
 
   /// Spotlight target for the dashboard tour's "This Week" step.
   final Key? weeklyKey;
+
+  /// Spotlight target for the dashboard tour's "Scenario Progress" step —
+  /// the first scenario module card, or the empty-state card before any
+  /// scenario has been started.
+  final Key? modulesKey;
 
   @override
   Widget build(BuildContext context) {
@@ -49,7 +54,11 @@ class ProgressScreen extends StatelessWidget {
             if (!snapshot.hasData) {
               return const _StateScaffold.loading();
             }
-            return _ProgressContent(data: snapshot.data!, weeklyKey: weeklyKey);
+            return _ProgressContent(
+              data: snapshot.data!,
+              weeklyKey: weeklyKey,
+              modulesKey: modulesKey,
+            );
           },
         );
       },
@@ -58,16 +67,21 @@ class ProgressScreen extends StatelessWidget {
 }
 
 class _ProgressContent extends StatelessWidget {
-  const _ProgressContent({required this.data, this.weeklyKey});
+  const _ProgressContent({
+    required this.data,
+    this.weeklyKey,
+    this.modulesKey,
+  });
 
   final DashboardUserData data;
   final Key? weeklyKey;
+  final Key? modulesKey;
 
   @override
   Widget build(BuildContext context) {
     final percent = (data.overallProgress * 100).round();
     final startedModules = data.modules
-        .where((module) => module.completedScenarios > 0)
+        .where((module) => module.isStarted)
         .toList();
 
     return Scaffold(
@@ -157,7 +171,7 @@ class _ProgressContent extends StatelessWidget {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  '${data.scenariosCompleted} of ${data.totalScenarios} scenarios done',
+                                  '${data.modesCompleted} of ${data.totalModes} Easy & Hard modes done',
                                   style: TextStyle(
                                     color: Color(
                                       0xFFF5F1E8,
@@ -235,19 +249,29 @@ class _ProgressContent extends StatelessWidget {
                         ],
                       ),
                     ),
-                    if (startedModules.isNotEmpty) ...[
-                      const SizedBox(height: 24),
-                      const Text(
-                        'Scenario Modules',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.black,
-                        ),
+                    const SizedBox(height: 24),
+                    const Text(
+                      'Scenario Modules',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.black,
                       ),
-                      const SizedBox(height: 12),
-                      ...startedModules.map(
-                        (module) => Padding(
+                    ),
+                    const SizedBox(height: 12),
+                    // Shown before any scenario is started — explains what
+                    // will appear here, and gives the dashboard tour's
+                    // "Scenario Progress" step something to spotlight.
+                    if (startedModules.isEmpty)
+                      Padding(
+                        key: modulesKey,
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: const _NoModulesYetCard(),
+                      ),
+                    if (startedModules.isNotEmpty) ...[
+                      ...startedModules.indexed.map(
+                        (entry) => Padding(
+                          key: entry.$1 == 0 ? modulesKey : null,
                           padding: const EdgeInsets.only(bottom: 10),
                           child: InkWell(
                             borderRadius: BorderRadius.circular(16),
@@ -256,12 +280,12 @@ class _ProgressContent extends StatelessWidget {
                                 context,
                                 MaterialPageRoute(
                                   builder: (_) => ScenarioProgressDetailScreen(
-                                    scenarioKey: module.id,
+                                    scenarioKey: entry.$2.id,
                                   ),
                                 ),
                               );
                             },
-                            child: _ModuleProgressCard(module: module),
+                            child: _ModuleProgressCard(module: entry.$2),
                           ),
                         ),
                       ),
@@ -529,6 +553,41 @@ class _WeekNavButton extends StatelessWidget {
   }
 }
 
+class _NoModulesYetCard extends StatelessWidget {
+  const _NoModulesYetCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF5F1E8),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.creamLine),
+      ),
+      child: const Row(
+        children: [
+          Icon(Icons.bar_chart_rounded, color: Color(0xFF0B28D9), size: 28),
+          SizedBox(width: 14),
+          Expanded(
+            child: Text(
+              'Scenarios you start will appear here. Tap one to see a '
+              'summary of the emotions you felt during it.',
+              style: TextStyle(
+                fontSize: 12.5,
+                color: Colors.black54,
+                fontWeight: FontWeight.w500,
+                height: 1.4,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _ModuleProgressCard extends StatelessWidget {
   const _ModuleProgressCard({required this.module});
 
@@ -576,7 +635,7 @@ class _ModuleProgressCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      '${module.completedScenarios}/${module.totalScenarios}',
+                      '${module.modesCompleted}/${module.totalModes} modes',
                       style: const TextStyle(
                         fontSize: 12,
                         color: Colors.black45,
@@ -622,7 +681,7 @@ class _ModuleProgressCard extends StatelessWidget {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(6),
                   child: LinearProgressIndicator(
-                    value: module.progress,
+                    value: module.displayProgress,
                     minHeight: 8,
                     backgroundColor: AppColors.creamDeep,
                     valueColor: const AlwaysStoppedAnimation<Color>(
@@ -632,7 +691,7 @@ class _ModuleProgressCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  '${(module.progress * 100).round()}% complete',
+                  '${(module.displayProgress * 100).round()}% complete',
                   style: const TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,

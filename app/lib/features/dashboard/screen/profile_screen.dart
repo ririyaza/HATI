@@ -15,7 +15,12 @@ import 'privacy_policy_screen.dart';
 import '../../../shared/theme/app_colors.dart';
 
 class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({super.key});
+  const ProfileScreen({super.key, this.onNavigateTab});
+
+  /// Switches the dashboard's bottom-nav tab (0=Home, 1=Modules,
+  /// 2=Progress, 3=Profile) — used by the stat cards so each one opens its
+  /// own page. Null leaves the cards non-tappable.
+  final ValueChanged<int>? onNavigateTab;
 
   @override
   Widget build(BuildContext context) {
@@ -38,7 +43,10 @@ class ProfileScreen extends StatelessWidget {
             if (!snapshot.hasData) {
               return const _StateScaffold.loading();
             }
-            return _ProfileContent(data: snapshot.data!);
+            return _ProfileContent(
+              data: snapshot.data!,
+              onNavigateTab: onNavigateTab,
+            );
           },
         );
       },
@@ -184,9 +192,10 @@ class _LogoutConfirmDialog extends StatelessWidget {
 }
 
 class _ProfileContent extends StatelessWidget {
-  const _ProfileContent({required this.data});
+  const _ProfileContent({required this.data, this.onNavigateTab});
 
   final DashboardUserData data;
+  final ValueChanged<int>? onNavigateTab;
 
   @override
   Widget build(BuildContext context) {
@@ -294,7 +303,7 @@ class _ProfileContent extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _StatsRow(data: data),
+                    _StatsRow(data: data, onNavigateTab: onNavigateTab),
                     const SizedBox(height: 24),
                     const Text(
                       '2-Week Check-in',
@@ -560,66 +569,95 @@ class _SectionTitle extends StatelessWidget {
   }
 }
 
+// Dashboard tab indexes the stat cards open.
+const _modulesTabIndex = 1;
+const _progressTabIndex = 2;
+
 class _StatsRow extends StatelessWidget {
-  const _StatsRow({required this.data});
+  const _StatsRow({required this.data, this.onNavigateTab});
 
   final DashboardUserData data;
+  final ValueChanged<int>? onNavigateTab;
+
+  VoidCallback? _goTo(int tab) =>
+      onNavigateTab == null ? null : () => onNavigateTab!(tab);
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        _StatCard(value: '${data.modulesStarted}', label: 'Modules\nStarted'),
-        const SizedBox(width: 10),
         _StatCard(
-          value: '${data.scenariosCompleted}',
-          label: 'Scenarios\nCompleted',
+          value: '${data.modulesStarted}',
+          label: 'Modules\nStarted',
+          onTap: _goTo(_modulesTabIndex),
         ),
         const SizedBox(width: 10),
-        _StatCard(value: '${data.currentStreak}', label: 'Day\nStreak'),
+        // Scenario completion and the day streak both live on the Progress
+        // tab (scenario module cards and the "This Week" streak card).
+        _StatCard(
+          value: '${data.modesCompleted}',
+          label: 'Modes\nCompleted',
+          onTap: _goTo(_progressTabIndex),
+        ),
+        const SizedBox(width: 10),
+        _StatCard(
+          value: '${data.currentStreak}',
+          label: 'Day\nStreak',
+          onTap: _goTo(_progressTabIndex),
+        ),
       ],
     );
   }
 }
 
 class _StatCard extends StatelessWidget {
-  const _StatCard({required this.value, required this.label});
+  const _StatCard({required this.value, required this.label, this.onTap});
 
   final String value;
   final String label;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          color: const Color(0xFF0B28D9).withOpacity(0.07),
+      child: Material(
+        color: const Color(0xFF0B28D9).withOpacity(0.07),
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
           borderRadius: BorderRadius.circular(14),
+          onTap: onTap,
+          child: _statBody(),
         ),
-        child: Column(
-          children: [
-            Text(
-              value,
-              style: const TextStyle(
-                fontSize: 26,
-                fontWeight: FontWeight.w800,
-                color: Color(0xFF0B28D9),
-              ),
+      ),
+    );
+  }
+
+  Widget _statBody() {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      width: double.infinity,
+      child: Column(
+        children: [
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 26,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF0B28D9),
             ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: Colors.black54,
-                height: 1.3,
-              ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: Colors.black54,
+              height: 1.3,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -1241,7 +1279,7 @@ class _NotificationSettingsSheetState
             const SizedBox(height: 18),
             _NotificationToggleRow(
               label: 'Daily reminder',
-              description: "A nudge to open HATI if you haven't that day.",
+              description: 'A morning nudge at 7:00 AM to check in with Hati.',
               value: _dailyEnabled,
               busy: _dailyBusy,
               onChanged: _toggleDaily,

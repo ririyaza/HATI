@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import 'in_progress_scenarios.dart';
+
 class DashboardUserData {
   const DashboardUserData({
     required this.uid,
@@ -34,15 +36,27 @@ class DashboardUserData {
   int get totalScenarios =>
       modules.fold(0, (sum, module) => sum + module.totalScenarios);
 
-  int get modulesStarted =>
-      modules.where((module) => module.completedScenarios > 0).length;
+  // Finished at least once OR currently mid-session — matches what the
+  // Modules tab shows as started (a "% complete" pill), so Profile's count,
+  // the Progress tab's module list and the Modules tab always agree.
+  int get modulesStarted => modules.where((module) => module.isStarted).length;
+
+  // Easy and Hard count separately: each scenario is 2 modes, so the
+  // Progress tab's Overall Completion is out of 12 for the 6 scenarios.
+  int get modesCompleted =>
+      modules.fold(0, (sum, module) => sum + module.modesCompleted);
+
+  int get totalModes =>
+      modules.fold(0, (sum, module) => sum + module.totalModes);
 
   double get overallProgress {
-    if (totalScenarios <= 0) return 0;
-    return (scenariosCompleted / totalScenarios).clamp(0.0, 1.0).toDouble();
+    if (totalModes <= 0) return 0;
+    return (modesCompleted / totalModes).clamp(0.0, 1.0).toDouble();
   }
 
-  int get level => (scenariosCompleted ~/ 5) + 1;
+  // One level per 4 Easy/Hard modes finished: Level 1 at 0-3, up to
+  // Level 4 once all 12 are done.
+  int get level => (modesCompleted ~/ 4) + 1;
 
   // Backend-maintained (users/{uid}/badge_progress/summary's
   // currentDayStreak, kept by scenario_engine.py's update_badge_progress)
@@ -79,7 +93,8 @@ class DashboardUserData {
       image: 'assets/badges/half_way.png',
       label: 'Half Way!',
       earned: badgeProgress.earnedBadges.containsKey('halfway'),
-      description: 'Complete at least half of all practice scenarios.',
+      description:
+          'Complete at least half of all Easy and Hard modes (6 of 12).',
     ),
     BadgeData(
       image: 'assets/badges/quick_thinker.png',
@@ -131,6 +146,7 @@ class ModuleProgressData {
     required this.lastCompletedAt,
     this.easyCompleted = false,
     this.difficultCompleted = false,
+    this.inProgressProgress,
   });
 
   final String id;
@@ -150,10 +166,36 @@ class ModuleProgressData {
   final bool easyCompleted;
   final bool difficultCompleted;
 
+  /// Fraction through an unfinished session (same value as the Modules
+  /// tab's "% complete" pill), or null when no session is in progress.
+  final double? inProgressProgress;
+
+  bool get isStarted => completedScenarios > 0 || inProgressProgress != null;
+
   double get progress {
     if (totalScenarios <= 0) return 0;
     return (completedScenarios / totalScenarios).clamp(0.0, 1.0).toDouble();
   }
+
+  /// Easy + Hard modes finished (0-2 per scenario). A module finished
+  /// before scenario_progress tracked modes still counts as 1.
+  int get modesCompleted {
+    final n = (easyCompleted ? 1 : 0) + (difficultCompleted ? 1 : 0);
+    return n == 0 && completedScenarios > 0 ? 1 : n;
+  }
+
+  int get totalModes => totalScenarios * 2;
+
+  double get modeProgress {
+    if (totalModes <= 0) return 0;
+    return (modesCompleted / totalModes).clamp(0.0, 1.0).toDouble();
+  }
+
+  /// What the Progress card shows: share of Easy + Hard modes finished, or,
+  /// before any mode is finished, how far the current session has got.
+  double get displayProgress => modesCompleted > 0
+      ? modeProgress
+      : (inProgressProgress ?? 0).clamp(0.0, 1.0).toDouble();
 }
 
 class AssessmentScoreData {
@@ -213,6 +255,7 @@ class DashboardDataService {
     List<QueryDocumentSnapshot<Map<String, dynamic>>>? latestAssessmentDocs;
     DocumentSnapshot<Map<String, dynamic>>? latestBadgeDoc;
     List<QueryDocumentSnapshot<Map<String, dynamic>>>? latestDifficultyDocs;
+    Map<String, InProgressScenario>? latestInProgress;
 
     void emitIfReady() {
       final userDoc = latestUserDoc;
@@ -220,11 +263,13 @@ class DashboardDataService {
       final assessmentDocs = latestAssessmentDocs;
       final badgeDoc = latestBadgeDoc;
       final difficultyDocs = latestDifficultyDocs;
+      final inProgress = latestInProgress;
       if (userDoc == null ||
           moduleDocs == null ||
           assessmentDocs == null ||
           badgeDoc == null ||
-          difficultyDocs == null) {
+          difficultyDocs == null ||
+          inProgress == null) {
         return;
       }
       controller.add(
@@ -235,6 +280,7 @@ class DashboardDataService {
           assessmentDocs: assessmentDocs,
           badgeDoc: badgeDoc,
           difficultyDocs: difficultyDocs,
+          inProgress: inProgress,
         ),
       );
     }
@@ -274,6 +320,13 @@ class DashboardDataService {
           // disagree about which mode a scenario is currently in.
           userRef.collection('scenario_progress').snapshots().listen((snap) {
             latestDifficultyDocs = snap.docs;
+            emitIfReady();
+          }, onError: controller.addError),
+          // Unfinished sessions — the same source and rules as the Modules
+          // tab's "% complete" pill (see parseInProgressScenarios), so a
+          // module played partway counts as started here too.
+          userRef.collection('scenarios').snapshots().listen((snap) {
+            latestInProgress = parseInProgressScenarios(snap.docs);
             emitIfReady();
           }, onError: controller.addError),
         ];
@@ -363,9 +416,10 @@ class DashboardUserDataParser {
     required List<QueryDocumentSnapshot<Map<String, dynamic>>> assessmentDocs,
     DocumentSnapshot<Map<String, dynamic>>? badgeDoc,
     List<QueryDocumentSnapshot<Map<String, dynamic>>> difficultyDocs = const [],
+    Map<String, InProgressScenario> inProgress = const {},
   }) {
     final data = userDoc.data() ?? {};
-    final modules = _parseModules(moduleDocs, difficultyDocs);
+    final modules = _parseModules(moduleDocs, difficultyDocs, inProgress);
     final assessments = _parseAssessments(data, assessmentDocs);
     final copingPreferences = _parseCopingPreferences(data, assessmentDocs);
     final badgeProgress = _parseBadgeProgress(badgeDoc);
@@ -396,6 +450,7 @@ class DashboardUserDataParser {
   static List<ModuleProgressData> _parseModules(
     List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
     List<QueryDocumentSnapshot<Map<String, dynamic>>> difficultyDocs,
+    Map<String, InProgressScenario> inProgress,
   ) {
     final byId = <String, ModuleProgressData>{};
 
@@ -423,6 +478,7 @@ class DashboardUserDataParser {
         lastCompletedAt: null,
         easyCompleted: easyByKey[entry.key] ?? false,
         difficultCompleted: difficultByKey[entry.key] ?? false,
+        inProgressProgress: inProgress[entry.key]?.progress,
       );
     }
 
@@ -451,6 +507,7 @@ class DashboardUserDataParser {
         lastCompletedAt: _date(data['lastCompletedAt']),
         easyCompleted: easyByKey[doc.id] ?? false,
         difficultCompleted: difficultByKey[doc.id] ?? false,
+        inProgressProgress: inProgress[doc.id]?.progress,
       );
     }
 
