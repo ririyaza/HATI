@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../shared/offline/offline_save.dart';
 import '../../shared/theme/app_colors.dart';
 import '../dashboard/screen/dashboard_screen.dart';
 
@@ -182,10 +183,15 @@ class _TutorialScreenState extends State<TutorialScreen>
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       try {
-        await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
-          'tutorialCompleted': true,
-          'tutorialCompletedAt': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
+        final userRef = FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid);
+        await OfflineSave.run(
+          (batch) => batch.set(userRef, {
+            'tutorialCompleted': true,
+            'tutorialCompletedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true)),
+        );
       } catch (_) {}
     }
 

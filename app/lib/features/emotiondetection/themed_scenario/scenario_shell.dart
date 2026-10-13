@@ -14,12 +14,15 @@
 // pushed it.
 // ─────────────────────────────────────────────
 
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../shared/audio/hati_audio_service.dart';
+import '../../../shared/offline/action_feedback.dart';
 import '../../dashboard/widgets/draggable_help_button.dart';
 import 'app_theme.dart';
 import 'scenario_models.dart';
@@ -96,7 +99,11 @@ class _ScenarioShellState extends State<ScenarioShell> {
     if (err == null) return;
     provider.clearError();
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
+    ActionFeedback.error(
+      context,
+      err,
+      onRetry: provider.canRetry ? provider.retryLastAction : null,
+    );
   }
 
   @override
@@ -124,6 +131,19 @@ class _ScenarioShellState extends State<ScenarioShell> {
         if (provider.isReplaying)
           const Positioned.fill(child: ScenarioReplayView()),
         const Positioned.fill(child: DraggableHelpButton()),
+        // Topmost so it's never hidden behind a scene's own layers.
+        Positioned(
+          left: 16,
+          right: 16,
+          bottom: 0,
+          child: SafeArea(
+            top: false,
+            child: _LongWaitCancelBar(
+              isLoading: provider.isLoading,
+              onCancel: () => Navigator.pop(context),
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -147,6 +167,149 @@ class _ScenarioShellState extends State<ScenarioShell> {
       case SceneId.dashboard:
         return const _ScenarioDashboardScene(key: ValueKey('dashboard'));
     }
+  }
+}
+
+// ── Long-wait cancel bar ────────────────────────────────────────────────────
+/// Appears once a single backend request (a step, a voice answer, or a
+/// "Start over" restart) has been in flight for [_showAfter] — long enough
+/// that it's probably a cold start or a slow network rather than a normal
+/// turn — and lets the player leave instead of waiting it out.
+///
+/// Cancelling leaves the scenario rather than just dismissing the wait:
+/// the backend may still apply the request after we stop listening, so
+/// staying on the old screen and re-answering could send that answer to
+/// the *next* step. Leaving is always safe — the session is saved
+/// server-side and the "Resume Scenario?" dialog picks it back up.
+class _LongWaitCancelBar extends StatefulWidget {
+  final bool isLoading;
+  final VoidCallback onCancel;
+
+  const _LongWaitCancelBar({required this.isLoading, required this.onCancel});
+
+  @override
+  State<_LongWaitCancelBar> createState() => _LongWaitCancelBarState();
+}
+
+class _LongWaitCancelBarState extends State<_LongWaitCancelBar> {
+  static const _showAfter = Duration(seconds: 8);
+
+  Timer? _timer;
+  bool _visible = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.isLoading) _startTimer();
+  }
+
+  @override
+  void didUpdateWidget(_LongWaitCancelBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isLoading == oldWidget.isLoading) return;
+    if (widget.isLoading) {
+      _startTimer();
+    } else {
+      _timer?.cancel();
+      _visible = false;
+    }
+  }
+
+  void _startTimer() {
+    _timer?.cancel();
+    _timer = Timer(_showAfter, () {
+      if (mounted) setState(() => _visible = true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _confirmCancel() async {
+    final leave = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: HatiColors.cardBg,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('Leave this scenario?', style: HatiTextStyles.heading3),
+        content: Text(
+          "Your progress so far is saved — you can resume from here next "
+          "time you open this scenario.",
+          style: HatiTextStyles.bodyMedium,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Keep waiting'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text(
+              'Leave',
+              style: TextStyle(color: Color(0xFF0B28D9)),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (leave == true && mounted) widget.onCancel();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final show = widget.isLoading && _visible;
+    return IgnorePointer(
+      ignoring: !show,
+      child: AnimatedSlide(
+        offset: show ? Offset.zero : const Offset(0, 1.5),
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+        child: AnimatedOpacity(
+          opacity: show ? 1 : 0,
+          duration: const Duration(milliseconds: 250),
+          child: Material(
+            color: HatiColors.cardBg,
+            elevation: 6,
+            borderRadius: BorderRadius.circular(16),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 8, 10),
+              child: Row(
+                children: [
+                  const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.2,
+                      color: Color(0xFF0B28D9),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'This is taking longer than usual…',
+                      style: HatiTextStyles.bodyMedium,
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: _confirmCancel,
+                    child: const Text(
+                      'Cancel',
+                      style: TextStyle(
+                        color: Color(0xFF0B28D9),
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 

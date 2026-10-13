@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../../shared/offline/offline_save.dart';
+
 import 'assessment_comparison.dart';
 import 'post_assessment_scoring.dart';
 
@@ -147,7 +149,7 @@ class PostAssessmentRepository {
     );
   }
 
-  static Future<void> saveResult({
+  static Future<SaveOutcome> saveResult({
     required String uid,
     required InstrumentSnapshot spin,
     required InstrumentSnapshot gad7,
@@ -159,28 +161,38 @@ class PostAssessmentRepository {
     // sentinel isn't guaranteed to have resolved yet at that point.
     final administeredAt = DateTime.now();
 
-    await _reassessments(uid).add({
-      'type': 'reassessment',
-      'administeredAt': Timestamp.fromDate(administeredAt),
-      'spin': {'total': spin.total, 'severity': spin.severity},
-      'gad7': {'total': gad7.total, 'severity': gad7.severity},
-      'comparison': {
-        'spinResult': comparison.spinResult.name,
-        'gad7Result': comparison.gad7Result.name,
-        'gad7Elevated': comparison.gad7Elevated,
-        'spinStillSignificant': comparison.spinStillSignificant,
-        'category': comparison.category.name,
-      },
-      'routedTo': comparison.routedTo,
-    });
+    // One atomic batch via OfflineSave, not three awaited writes: offline,
+    // an awaited write never completes, so the later ones never even queued.
+    final outcome = await OfflineSave.run((batch) {
+      batch.set(_reassessments(uid).doc(), {
+        'type': 'reassessment',
+        'administeredAt': Timestamp.fromDate(administeredAt),
+        'spin': {'total': spin.total, 'severity': spin.severity},
+        'gad7': {'total': gad7.total, 'severity': gad7.severity},
+        'comparison': {
+          'spinResult': comparison.spinResult.name,
+          'gad7Result': comparison.gad7Result.name,
+          'gad7Elevated': comparison.gad7Elevated,
+          'spinStillSignificant': comparison.spinStillSignificant,
+          'category': comparison.category.name,
+        },
+        'routedTo': comparison.routedTo,
+      });
 
-    // Keep the existing dashboard's SPIN pre/post comparison
-    // (dashboard_user_data.dart's _parseAssessments) working unmodified.
-    await _userRef(uid).collection('spinAssessments').doc('post').set({
-      'score': spin.total,
-      'severity': spin.severity,
-      'completedAt': Timestamp.fromDate(administeredAt),
-    }, SetOptions(merge: true));
+      // Keep the existing dashboard's SPIN pre/post comparison
+      // (dashboard_user_data.dart's _parseAssessments) working unmodified.
+      batch.set(_userRef(uid).collection('spinAssessments').doc('post'), {
+        'score': spin.total,
+        'severity': spin.severity,
+        'completedAt': Timestamp.fromDate(administeredAt),
+      }, SetOptions(merge: true));
+
+      // A completed reassessment clears any snooze, so the *next* cooldown
+      // window starts clean.
+      batch.set(_userRef(uid), {
+        'reassessmentBannerSnoozedUntil': FieldValue.delete(),
+      }, SetOptions(merge: true));
+    });
 
     _sessionBaselineUid = uid;
     _sessionBaseline = PriorAssessment(
@@ -188,12 +200,7 @@ class PostAssessmentRepository {
       spin: spin,
       gad7: gad7,
     );
-
-    // A completed reassessment clears any snooze, so the *next* cooldown
-    // window starts clean.
-    await _userRef(uid).set({
-      'reassessmentBannerSnoozedUntil': FieldValue.delete(),
-    }, SetOptions(merge: true));
+    return outcome;
   }
 
   /// Whether the dashboard reassessment banner should show right now: due
@@ -244,12 +251,14 @@ class PostAssessmentRepository {
   }
 
   /// Hides the banner until the same time tomorrow.
-  static Future<void> snoozeBannerOneDay(String uid) async {
-    await _userRef(uid).set({
-      'reassessmentBannerSnoozedUntil': Timestamp.fromDate(
-        DateTime.now().add(const Duration(days: 1)),
-      ),
-    }, SetOptions(merge: true));
+  static Future<SaveOutcome> snoozeBannerOneDay(String uid) {
+    return OfflineSave.run(
+      (batch) => batch.set(_userRef(uid), {
+        'reassessmentBannerSnoozedUntil': Timestamp.fromDate(
+          DateTime.now().add(const Duration(days: 1)),
+        ),
+      }, SetOptions(merge: true)),
+    );
   }
 
   static int? _nullableInt(Object? value) {

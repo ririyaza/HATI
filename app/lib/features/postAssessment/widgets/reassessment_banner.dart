@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../data/post_assessment_repository.dart';
 import '../screen/post_assessment_intro_screen.dart';
+import '../../../shared/offline/action_feedback.dart';
 import '../../../shared/theme/app_colors.dart';
 
 /// Prompts the user to start their 2-week reassessment once it's due, as a
@@ -62,7 +63,22 @@ class _ReassessmentDialog extends StatelessWidget {
   Future<void> _snooze(BuildContext context) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      await PostAssessmentRepository.snoozeBannerOneDay(user.uid);
+      try {
+        final outcome = await PostAssessmentRepository.snoozeBannerOneDay(
+          user.uid,
+        );
+        if (context.mounted) {
+          ActionFeedback.saved(
+            context,
+            outcome,
+            savedMessage: "Okay, we'll remind you tomorrow.",
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ActionFeedback.error(context, ActionFeedback.messageFor(e));
+        }
+      }
     }
     if (context.mounted) Navigator.of(context).pop();
   }

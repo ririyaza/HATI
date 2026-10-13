@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'assessment_complete_screen.dart';
+import '../../../shared/offline/action_feedback.dart';
+import '../../../shared/offline/offline_save.dart';
 import '../../../shared/theme/app_colors.dart';
 
 class TriggersAndCopingScreen extends StatefulWidget {
@@ -115,15 +117,27 @@ class _TriggersAndCopingScreenState extends State<TriggersAndCopingScreen>
     final userRef =
         FirebaseFirestore.instance.collection('users').doc(user.uid);
     try {
-      await userRef.collection('spinAssessments').doc('initial').set({
-        'copingMechanism': coping,
-        'copingRecordedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
-      await userRef.set({
-        'initialCopingMechanism': coping,
-        'initialCopingRecordedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
-    } catch (_) {}
+      final outcome = await OfflineSave.run((batch) {
+        batch.set(userRef.collection('spinAssessments').doc('initial'), {
+          'copingMechanism': coping,
+          'copingRecordedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+        batch.set(userRef, {
+          'initialCopingMechanism': coping,
+          'initialCopingRecordedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      });
+      if (mounted) ActionFeedback.saved(context, outcome, savedMessage: null);
+    } catch (e) {
+      // Not blocking: coping preferences can be edited later from Profile.
+      if (mounted) {
+        ActionFeedback.error(
+          context,
+          "${ActionFeedback.messageFor(e, fallback: "Couldn't save your coping preferences.")} "
+          'You can add them later from your Profile.',
+        );
+      }
+    }
   }
 
   void _goToAssessmentComplete() {

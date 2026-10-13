@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'features/onboarding/loading_screen.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'shared/audio/hati_audio_service.dart';
+import 'shared/offline/connectivity_banner.dart';
+import 'shared/offline/connectivity_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -52,6 +55,15 @@ void main() async {
   // the very first scenario a player opens already respects whatever they
   // last set in Sound & Music instead of a brief flash of default volume.
   await HatiAudioService.instance.init();
+  // Firestore's local cache is what makes the app usable offline: reads fall
+  // back to the last-synced data and writes queue up and upload on their own
+  // once the device reconnects (see shared/offline/offline_save.dart). It's
+  // on by default on Android/iOS but off on web, so it's set explicitly —
+  // this must happen before the first Firestore call anywhere.
+  FirebaseFirestore.instance.settings = const Settings(
+    persistenceEnabled: true,
+  );
+  await ConnectivityService.instance.init();
   runApp(const MyApp());
 }
 
@@ -71,6 +83,8 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
+      builder: (context, child) =>
+          ConnectivityBanner(child: child ?? const SizedBox.shrink()),
       home: const LoadingScreen(),
     );
   }

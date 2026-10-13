@@ -58,6 +58,7 @@ dependencies:
   flutter_timezone: ^4.1.1
   audioplayers: ^6.7.1
   url_launcher: ^6.3.3
+  connectivity_plus: ^7.3.2
 
 dev_dependencies:
   flutter_test:

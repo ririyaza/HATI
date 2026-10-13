@@ -3,6 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../spinAssessment/screen/spin_assessment_screen.dart';
+import '../../shared/offline/action_feedback.dart';
+import '../../shared/offline/offline_save.dart';
 import '../../shared/theme/app_colors.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
@@ -69,7 +71,10 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
     setState(() => _isSaving = true);
 
     try {
-      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+      final userRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid);
+      final outcome = await OfflineSave.run((batch) => batch.set(userRef, {
         'email': user.email,
         'displayName': _nicknameController.text.trim(),
         'nickname': _nicknameController.text.trim(),
@@ -82,9 +87,10 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
         },
         'profileCompleted': true,
         'profileCompletedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+      }, SetOptions(merge: true)));
 
       if (!mounted) return;
+      ActionFeedback.saved(context, outcome, savedMessage: null);
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const SpinAssessmentScreen()),
@@ -98,9 +104,12 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
-            content: const Text(
-              'An error occurred while saving your profile.',
-              style: TextStyle(color: const Color(0xFFF5F1E8)),
+            content: Text(
+              ActionFeedback.messageFor(
+                e,
+                fallback: 'An error occurred while saving your profile.',
+              ),
+              style: const TextStyle(color: Color(0xFFF5F1E8)),
             ),
           ),
         );

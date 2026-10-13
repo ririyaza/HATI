@@ -9,6 +9,7 @@ import '../data/spin_retake_policy.dart';
 import 'spin_assessment_screen.dart';
 import 'spin_result_review_screen.dart';
 import '../../../shared/theme/app_colors.dart';
+import '../../../shared/widgets/textured_blue_background.dart';
 
 class LowScoreExitScreen extends StatefulWidget {
   final int score;
@@ -43,12 +44,13 @@ class _LowScoreExitScreenState extends State<LowScoreExitScreen> {
           .collection('users')
           .doc(user.uid)
           .get();
-      final completedAt =
-          (doc.data()?['initialSpinCompletedAt'] as Timestamp?)?.toDate();
+      final completedAt = (doc.data()?['initialSpinCompletedAt'] as Timestamp?)
+          ?.toDate();
       if (!mounted) return;
       setState(() {
-        _retakeEligibleAt =
-            completedAt != null ? spinRetakeEligibleAt(completedAt) : null;
+        _retakeEligibleAt = completedAt != null
+            ? spinRetakeEligibleAt(completedAt)
+            : null;
         _loadingEligibility = false;
       });
     } catch (_) {
@@ -90,43 +92,38 @@ class _LowScoreExitScreenState extends State<LowScoreExitScreen> {
         _retakeEligibleAt != null && !now.isBefore(_retakeEligibleAt!);
 
     return Scaffold(
-      backgroundColor: AppColors.cream,
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Same blue header band as the assessment screens.
-            Container(
-              width: double.infinity,
-              color: AppColors.blue,
-              padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-              child: Column(
-                children: [
-                  Text(
-                    'HATI',
-                    style: TextStyle(
-                      color: AppColors.cream.withValues(alpha: 0.60),
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 3,
+      body: TexturedBlueBackground(
+        child: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+                child: Column(
+                  children: [
+                    Text(
+                      'HATI',
+                      style: TextStyle(
+                        color: AppColors.cream.withValues(alpha: 0.55),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 3.5,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'About Your Result',
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.cream,
-                      fontSize: 22,
+                    const SizedBox(height: 8),
+                    Text(
+                      'About Your Result',
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.cream,
+                        fontSize: 24,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            Expanded(
-              child: ColoredBox(
-                color: AppColors.cream,
+              Expanded(
                 child: Center(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.symmetric(
@@ -154,112 +151,115 @@ class _LowScoreExitScreenState extends State<LowScoreExitScreen> {
                   ),
                 ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (!_loadingEligibility) ...[
-                    _RetakeStatusCard(
-                      canRetake: canRetake,
-                      eligibleAt: _retakeEligibleAt,
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-                  if (canRetake) ...[
-                    SizedBox(
-                      height: 52,
-                      child: FilledButton(
-                        style: FilledButton.styleFrom(
-                          backgroundColor: AppColors.blue,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(26),
-                          ),
-                        ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (!_loadingEligibility) ...[
+                      _RetakeStatusCard(
+                        canRetake: canRetake,
+                        eligibleAt: _retakeEligibleAt,
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                    if (canRetake) ...[
+                      _PrimaryButton(
+                        label: 'Retake Assessment',
                         onPressed: _dialogueComplete ? _handleRetake : null,
-                        child: const Text(
-                          'Retake Assessment',
-                          style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.cream,
-                          ),
-                        ),
                       ),
-                    ),
+                      const SizedBox(height: 12),
+                    ],
+                    if (canRetake)
+                      _OutlineButton(
+                        label: 'Exit the App',
+                        onPressed: _dialogueComplete
+                            ? () => SystemNavigator.pop()
+                            : null,
+                      )
+                    else
+                      _PrimaryButton(
+                        label: 'Exit the App',
+                        onPressed: _dialogueComplete
+                            ? () => SystemNavigator.pop()
+                            : null,
+                      ),
                     const SizedBox(height: 12),
-                  ],
-                  SizedBox(
-                    height: 52,
-                    child: canRetake
-                        ? OutlinedButton(
-                            style: OutlinedButton.styleFrom(
-                              side: const BorderSide(color: Colors.black12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(26),
-                              ),
-                              backgroundColor: AppColors.cream,
-                            ),
-                            onPressed: _dialogueComplete
-                                ? () => SystemNavigator.pop()
-                                : null,
-                            child: const Text(
-                              'Exit the App',
-                              style: TextStyle(
-                                fontSize: 17,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.black87,
-                              ),
-                            ),
-                          )
-                        : FilledButton(
-                            style: FilledButton.styleFrom(
-                              backgroundColor: AppColors.blue,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(26),
-                              ),
-                            ),
-                            onPressed: _dialogueComplete
-                                ? () => SystemNavigator.pop()
-                                : null,
-                            child: const Text(
-                              'Exit the App',
-                              style: TextStyle(
-                                fontSize: 17,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.cream,
-                              ),
-                            ),
-                          ),
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    height: 52,
-                    child: OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Colors.black12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(26),
-                        ),
-                        backgroundColor: AppColors.cream,
-                      ),
-                      onPressed:
-                          _dialogueComplete ? _handleReviewResult : null,
-                      child: const Text(
-                        'Review Result',
-                        style: TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black87,
-                        ),
-                      ),
+                    _OutlineButton(
+                      label: 'Review Result',
+                      onPressed: _dialogueComplete ? _handleReviewResult : null,
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// Cream button with blue text — same CTA treatment as the consent intro.
+class _PrimaryButton extends StatelessWidget {
+  const _PrimaryButton({required this.label, required this.onPressed});
+
+  final String label;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 52,
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.cream,
+          foregroundColor: AppColors.blue,
+          disabledBackgroundColor: AppColors.cream.withValues(alpha: 0.35),
+          disabledForegroundColor: AppColors.blue.withValues(alpha: 0.5),
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(26),
+          ),
+        ),
+        onPressed: onPressed,
+        child: Text(
+          label,
+          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+        ),
+      ),
+    );
+  }
+}
+
+class _OutlineButton extends StatelessWidget {
+  const _OutlineButton({required this.label, required this.onPressed});
+
+  final String label;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 52,
+      child: OutlinedButton(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.cream,
+          disabledForegroundColor: AppColors.cream.withValues(alpha: 0.4),
+          side: BorderSide(
+            color: AppColors.cream.withValues(
+              alpha: onPressed == null ? 0.2 : 0.5,
             ),
-          ],
+            width: 1.2,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(26),
+          ),
+        ),
+        onPressed: onPressed,
+        child: Text(
+          label,
+          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
         ),
       ),
     );
@@ -273,8 +273,18 @@ class _RetakeStatusCard extends StatelessWidget {
   const _RetakeStatusCard({required this.canRetake, required this.eligibleAt});
 
   static const _months = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
   ];
 
   String _formatDate(DateTime date) =>
@@ -284,12 +294,14 @@ class _RetakeStatusCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final String message;
     if (canRetake) {
-      message = 'It\'s been 14 days since your last check-in. You\'re '
+      message =
+          'It\'s been 14 days since your last check-in. You\'re '
           'welcome to retake the assessment whenever you\'re ready.';
     } else if (eligibleAt != null) {
       final daysLeft = eligibleAt!.difference(DateTime.now()).inHours / 24;
       final daysLeftRounded = daysLeft.ceil().clamp(1, 14);
-      message = 'You can retake this assessment in $daysLeftRounded '
+      message =
+          'You can retake this assessment in $daysLeftRounded '
           '${daysLeftRounded == 1 ? 'day' : 'days'} '
           '(on ${_formatDate(eligibleAt!)}).';
     } else {
@@ -299,21 +311,21 @@ class _RetakeStatusCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.creamSoft,
+        color: AppColors.cream.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.creamLine),
+        border: Border.all(color: AppColors.cream.withValues(alpha: 0.25)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.schedule_rounded, color: AppColors.blue, size: 20),
+          const Icon(Icons.schedule_rounded, color: AppColors.cream, size: 20),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               message,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
-                color: AppColors.ink,
+                color: AppColors.cream.withValues(alpha: 0.9),
                 height: 1.5,
               ),
             ),

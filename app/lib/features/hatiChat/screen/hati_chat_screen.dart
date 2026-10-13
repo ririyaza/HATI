@@ -9,6 +9,7 @@ import 'package:record/record.dart';
 import '../../emotiondetection/themed_scenario/shared_widgets.dart'
     show HatiFrogAvatar, HatiMood;
 import '../data/hati_chat_service.dart';
+import '../../../shared/offline/connectivity_service.dart';
 
 /// Free-form chat with Hati, entered from the homepage. Uses the same deep
 /// blue gradient + soft blob texture as the app's other Hati-dialogue
@@ -140,10 +141,13 @@ class _HatiChatScreenState extends State<HatiChatScreen> {
       debugPrint('HatiChat transcription failed: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text(
-              "I couldn't quite catch that — mind trying again, or typing "
-              "instead?",
+              e is OfflineException
+                  ? "Voice messages need an internet connection — try "
+                        "typing instead, and send it once you're back online."
+                  : "I couldn't quite catch that — mind trying again, or "
+                        "typing instead?",
             ),
           ),
         );
@@ -194,7 +198,10 @@ class _HatiChatScreenState extends State<HatiChatScreen> {
         _sending = false;
         _messages.add(
           _ChatEntry.error(
-            "Sorry, I couldn't quite catch that. Mind trying again?",
+            e is OfflineException
+                ? "Looks like you're offline, so I can't reply just yet. "
+                      "Tap retry once you're connected and I'll be right here."
+                : "Sorry, I couldn't quite catch that. Mind trying again?",
             retryText: text,
           ),
         );

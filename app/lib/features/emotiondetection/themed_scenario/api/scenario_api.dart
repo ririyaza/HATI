@@ -15,6 +15,8 @@ import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 
+import '../../../../shared/offline/connectivity_service.dart';
+
 /// Thin HTTP client shared by every themed scenario. Talks to
 /// `/scenario/start|step|step_audio` with whatever `theme`/`scenario_key`
 /// it's given.
@@ -37,6 +39,24 @@ class ScenarioApi {
   /// which _throwUnreachable()'s wording below misleadingly blamed on the
   /// user's network instead.
   static const Duration _requestTimeout = Duration(seconds: 60);
+
+  /// Fails fast while the device is offline, instead of letting the request
+  /// sit out the full [_requestTimeout] before saying anything.
+  Future<void> _ensureOnline() async {
+    if (!await ConnectivityService.instance.ensureOnline()) {
+      throw const OfflineException();
+    }
+  }
+
+  /// A socket error means either this device lost its connection or the
+  /// server refused it — re-check which before choosing what to tell the
+  /// user, since only one of those is something they can fix.
+  Future<Never> _throwSocketFailure() async {
+    if (!await ConnectivityService.instance.checkNow()) {
+      throw const OfflineException();
+    }
+    _throwUnreachable();
+  }
 
   Never _throwUnreachable() {
     throw Exception(
@@ -85,6 +105,7 @@ class ScenarioApi {
     String? userName,
     bool forceNew = false,
   }) async {
+    await _ensureOnline();
     final http.Response response;
     try {
       response = await http
@@ -107,7 +128,7 @@ class ScenarioApi {
     } on TimeoutException {
       _throwUnreachable();
     } on SocketException {
-      _throwUnreachable();
+      await _throwSocketFailure();
     }
 
     if (response.statusCode != 200) {
@@ -122,6 +143,7 @@ class ScenarioApi {
     String? userName,
     required String userId,
   }) async {
+    await _ensureOnline();
     final http.Response response;
     try {
       response = await http
@@ -143,7 +165,7 @@ class ScenarioApi {
     } on TimeoutException {
       _throwUnreachable();
     } on SocketException {
-      _throwUnreachable();
+      await _throwSocketFailure();
     }
 
     if (response.statusCode != 200) {
@@ -157,6 +179,7 @@ class ScenarioApi {
     required String userId,
     required String filePath,
   }) async {
+    await _ensureOnline();
     final uri = Uri.parse("$baseUrl/scenario/step_audio");
     final request = http.MultipartRequest("POST", uri);
     request.headers["Authorization"] = await _authHeader();
@@ -177,7 +200,7 @@ class ScenarioApi {
     } on TimeoutException {
       _throwUnreachable();
     } on SocketException {
-      _throwUnreachable();
+      await _throwSocketFailure();
     }
 
     if (response.statusCode != 200) {

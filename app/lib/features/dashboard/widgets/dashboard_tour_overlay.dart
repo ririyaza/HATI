@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../../../shared/offline/offline_save.dart';
 import '../../../shared/theme/app_colors.dart';
 
 /// Every spotlight target the dashboard tour can point to, created once by
@@ -211,10 +212,15 @@ class DashboardTourOverlay extends StatefulWidget {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
     try {
-      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
-        'dashboardTourCompleted': true,
-        'dashboardTourCompletedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+      final userRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid);
+      await OfflineSave.run(
+        (batch) => batch.set(userRef, {
+          'dashboardTourCompleted': true,
+          'dashboardTourCompletedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true)),
+      );
     } catch (_) {}
   }
 

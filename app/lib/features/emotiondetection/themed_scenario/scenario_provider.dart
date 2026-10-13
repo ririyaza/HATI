@@ -15,12 +15,15 @@
 
 import 'package:flutter/foundation.dart';
 
+import '../../../shared/offline/connectivity_service.dart';
 import 'api/scenario_api.dart';
 import 'scenario_models.dart';
 
 class ScenarioProvider extends ChangeNotifier {
   ScenarioProvider({required this.config, ScenarioApi? api})
-    : _api = api ?? ScenarioApi();
+    : _api = api ?? ScenarioApi() {
+    ConnectivityService.instance.addListener(_onConnectivityChanged);
+  }
 
   final ScenarioConfig config;
   final ScenarioApi _api;
@@ -126,9 +129,46 @@ class ScenarioProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// The request that just failed (start/step/audio), kept so the player
+  /// can retry it from the error snackbar instead of redoing their input.
+  /// Cleared once any request succeeds.
+  Future<void> Function()? _failedAction;
+
+  /// Set when [_failedAction] failed only because the device was offline —
+  /// it's then re-sent automatically as soon as the connection returns.
+  bool _failedOffline = false;
+
+  bool get canRetry => _failedAction != null && !isLoading;
+
+  Future<void> retryLastAction() async {
+    final action = _failedAction;
+    if (action == null || isLoading) return;
+    _failedAction = null;
+    _failedOffline = false;
+    await action();
+  }
+
+  void _onConnectivityChanged() {
+    if (_failedOffline && ConnectivityService.instance.isOnline) {
+      retryLastAction();
+    }
+  }
+
+  void _fail(Object error, String prefix, Future<void> Function() retry) {
+    _failedAction = retry;
+    _failedOffline = error is OfflineException;
+    errorMessage = error is OfflineException
+        ? "You're offline. We'll pick up right where you left off once "
+              "you're back online."
+        : "$prefix$error";
+    isLoading = false;
+    notifyListeners();
+  }
+
   @override
   void dispose() {
     _disposed = true;
+    ConnectivityService.instance.removeListener(_onConnectivityChanged);
     super.dispose();
   }
 
@@ -177,9 +217,11 @@ class ScenarioProvider extends ChangeNotifier {
 
       _applyResponse(data);
     } catch (e) {
-      errorMessage = "Error starting scenario: $e";
-      isLoading = false;
-      notifyListeners();
+      _fail(
+        e,
+        "Error starting scenario: ",
+        () => start(userId: userId, userName: userName, forceNew: forceNew),
+      );
     }
   }
 
@@ -227,9 +269,7 @@ class ScenarioProvider extends ChangeNotifier {
       );
       _applyResponse(data);
     } catch (e) {
-      errorMessage = "Error: $e";
-      isLoading = false;
-      notifyListeners();
+      _fail(e, "Error: ", () => submitText(text));
     }
   }
 
@@ -250,9 +290,7 @@ class ScenarioProvider extends ChangeNotifier {
       lastFinalEmotion = data["final_emotion"]?.toString();
       _applyResponse(data);
     } catch (e) {
-      errorMessage = "Voice error: $e";
-      isLoading = false;
-      notifyListeners();
+      _fail(e, "Voice error: ", () => submitAudio(filePath, userId: userId));
     }
   }
 
@@ -264,6 +302,8 @@ class ScenarioProvider extends ChangeNotifier {
   }
 
   void _applyResponse(Map<String, dynamic> data) {
+    _failedAction = null;
+    _failedOffline = false;
     final newSessionId = data["session_id"];
     if (newSessionId != null) {
       sessionId = newSessionId.toString();

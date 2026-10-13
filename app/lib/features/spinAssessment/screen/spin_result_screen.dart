@@ -6,6 +6,9 @@ import 'assessment_complete_screen.dart';
 import 'spin_result_visuals.dart';
 import 'triggers_and_coping_screen.dart';
 import 'low_score_exit_screen.dart';
+import '../../../shared/offline/action_feedback.dart';
+import '../../../shared/offline/connectivity_service.dart';
+import '../../../shared/offline/offline_save.dart';
 
 // ─────────────────────────────────────────────
 // Main Screen
@@ -71,7 +74,9 @@ class _SpinResultScreenState extends State<SpinResultScreen>
         // failure here used to mean the access block just never took
         // effect, with nothing telling anyone it hadn't saved.
         await _saveWithRetryDialog(
-          () => userRef!.set({'accessBlocked': true}, SetOptions(merge: true)),
+          (batch) => batch.set(userRef!, {
+            'accessBlocked': true,
+          }, SetOptions(merge: true)),
         );
       }
     }
@@ -93,7 +98,13 @@ class _SpinResultScreenState extends State<SpinResultScreen>
     var hasSavedCoping = false;
     if (userRef != null) {
       try {
-        final doc = await userRef.get();
+        // Offline, a default get() waits on the server before falling back
+        // to cache — go straight to the cached doc so Continue responds.
+        final doc = await userRef.get(
+          ConnectivityService.instance.isOnline
+              ? const GetOptions()
+              : const GetOptions(source: Source.cache),
+        );
         final data = doc.data() ?? {};
         final coping = data['initialCopingMechanism'];
         hasSavedCoping = coping is String && coping.trim().isNotEmpty;
@@ -115,10 +126,24 @@ class _SpinResultScreenState extends State<SpinResultScreen>
   /// Retries [save] on failure via a blocking dialog that explains what
   /// happened instead of failing silently — returns true once it actually
   /// succeeds, or false if the user explicitly chooses to skip.
-  Future<bool> _saveWithRetryDialog(Future<void> Function() save) async {
+  ///
+  /// Offline isn't a failure: [OfflineSave] queues the write on-device and
+  /// it syncs on reconnect, so the user just gets a heads-up and moves on.
+  Future<bool> _saveWithRetryDialog(
+    void Function(WriteBatch batch) build,
+  ) async {
     while (true) {
       try {
-        await save();
+        final outcome = await OfflineSave.run(build);
+        if (mounted && outcome == SaveOutcome.savedOffline) {
+          ActionFeedback.saved(
+            context,
+            outcome,
+            offlineMessage:
+                "You're offline. Your results are saved on this device and "
+                'will sync when you reconnect.',
+          );
+        }
         return true;
       } catch (e) {
         if (!mounted) return false;
@@ -127,9 +152,11 @@ class _SpinResultScreenState extends State<SpinResultScreen>
           barrierDismissible: false,
           builder: (ctx) => AlertDialog(
             title: const Text("Couldn't Save Your Results"),
-            content: const Text(
-              "We couldn't save your assessment — please check your "
-              "internet connection and try again.",
+            content: Text(
+              ActionFeedback.messageFor(
+                e,
+                fallback: "We couldn't save your assessment. Please try again.",
+              ),
             ),
             actions: [
               TextButton(

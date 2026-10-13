@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_ai/firebase_ai.dart';
 
+import '../../../shared/offline/connectivity_service.dart';
+
 /// Persona, tone, and safety instruction for Hati's general homepage chat
 /// assistant. This is deliberately NOT the same voice as the scenario
 /// dialogue system's in-character prompts — this chat is a free-form,
@@ -100,6 +102,7 @@ class HatiChatService {
   /// responsible for turning that into a gentle in-chat fallback + retry,
   /// per this feature's error-handling requirement.
   Future<String> send(String userText) async {
+    await _ensureOnline();
     unawaited(_log(sender: 'user', text: userText));
 
     final response = await _chat.sendMessage(Content.text(userText));
@@ -118,6 +121,7 @@ class HatiChatService {
   /// if nothing intelligible was said; throws on network/API failure the
   /// same way [send] does, for the caller to handle.
   Future<String> transcribeAudio(String filePath) async {
+    await _ensureOnline();
     final bytes = await File(filePath).readAsBytes();
     final response = await _transcriptionModel.generateContent([
       Content.multi([
@@ -131,6 +135,15 @@ class HatiChatService {
       ]),
     ]);
     return response.text?.trim() ?? '';
+  }
+
+  /// The model call has no offline fallback, and without this check it only
+  /// fails after the SDK's own network timeout — the user would watch Hati
+  /// "type" for a long while before being told anything.
+  Future<void> _ensureOnline() async {
+    if (!await ConnectivityService.instance.ensureOnline()) {
+      throw const OfflineException();
+    }
   }
 
   Future<void> _log({required String sender, required String text}) async {

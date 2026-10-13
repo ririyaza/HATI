@@ -341,9 +341,8 @@ class _Scene0PreSetupState extends State<Scene0PreSetup>
                                                         "little longer to "
                                                         "start up today — "
                                                         "this can take up to "
-                                                        "a minute. Hang "
-                                                        "tight, no need to "
-                                                        "back out.",
+                                                        "a minute. You can "
+                                                        "cancel anytime.",
                                                         textAlign:
                                                             TextAlign.center,
                                                         style: HatiTextStyles

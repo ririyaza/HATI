@@ -6,6 +6,8 @@ import '../auth/screen/login_screen.dart';
 import 'consent_content.dart';
 import 'consent_intro_screen.dart';
 import 'profile_setup_screen.dart';
+import '../../shared/offline/action_feedback.dart';
+import '../../shared/offline/offline_save.dart';
 import '../../shared/theme/app_colors.dart';
 
 class ConsentFlowScreen extends StatefulWidget {
@@ -136,10 +138,17 @@ class _ConsentFlowScreenState extends State<ConsentFlowScreen>
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
-        await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
-          'consentGiven': true,
-          'consentAt': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
+        final userRef = FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid);
+        final outcome = await OfflineSave.run(
+          (batch) => batch.set(userRef, {
+            'consentGiven': true,
+            'consentAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true)),
+        );
+        // The success dialog below already confirms the online case.
+        if (mounted) ActionFeedback.saved(context, outcome, savedMessage: null);
       }
     } catch (_) {}
 

@@ -5,6 +5,8 @@ import '../data/assessment_comparison.dart';
 import '../data/post_assessment_repository.dart';
 import '../data/post_assessment_scoring.dart';
 import '../data/reassessment_notification_service.dart';
+import '../../../shared/offline/action_feedback.dart';
+import '../../../shared/offline/offline_save.dart';
 import 'progress_update_screen.dart';
 import 'referral_screen.dart';
 
@@ -70,12 +72,21 @@ class _PostAssessmentResultsScreenState
         previousGad7: baseline?.gad7,
       );
 
-      await PostAssessmentRepository.saveResult(
+      final outcome = await PostAssessmentRepository.saveResult(
         uid: user.uid,
         spin: _currentSpin,
         gad7: _currentGad7,
         comparison: comparison,
       );
+      if (mounted && outcome == SaveOutcome.savedOffline) {
+        ActionFeedback.saved(
+          context,
+          outcome,
+          offlineMessage:
+              "You're offline. Your results are saved on this device and "
+              'will sync when you reconnect.',
+        );
+      }
 
       // Reschedule the on-device reminder for the new due date. Best-effort
       // — a failure here shouldn't turn a successfully-saved result into an
@@ -90,13 +101,24 @@ class _PostAssessmentResultsScreenState
         _comparison = comparison;
         _loading = false;
       });
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = 'Something went wrong saving your results. Please try again.';
+        _error = ActionFeedback.messageFor(
+          e,
+          fallback: 'Something went wrong saving your results. Please try again.',
+        );
       });
     }
+  }
+
+  void _retry() {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    _load();
   }
 
   void _continue() {
@@ -205,10 +227,25 @@ class _PostAssessmentResultsScreenState
           child: Center(
             child: Padding(
               padding: const EdgeInsets.all(24),
-              child: Text(
-                _error ?? 'Unable to load results.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Color(0xFFF5F1E8).withValues(alpha: 0.70), fontSize: 14),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    _error ?? 'Unable to load results.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Color(0xFFF5F1E8).withValues(alpha: 0.70), fontSize: 14),
+                  ),
+                  const SizedBox(height: 16),
+                  FilledButton.icon(
+                    onPressed: _retry,
+                    icon: const Icon(Icons.refresh_rounded),
+                    label: const Text('Try again'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFFF5F1E8),
+                      foregroundColor: _blue,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),

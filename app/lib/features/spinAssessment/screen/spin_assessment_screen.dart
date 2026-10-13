@@ -8,6 +8,8 @@ import '../../../shared/widgets/scroll_if_cramped.dart';
 import '../../dashboard/screen/dashboard_screen.dart';
 import 'low_score_exit_screen.dart';
 import 'spin_result_screen.dart';
+import '../../../shared/offline/action_feedback.dart';
+import '../../../shared/offline/offline_save.dart';
 import '../../../shared/theme/app_colors.dart';
 
 class SpinAssessmentScreen extends StatefulWidget {
@@ -152,15 +154,15 @@ class _SpinAssessmentScreenState extends State<SpinAssessmentScreen> {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       final ref = FirebaseFirestore.instance.collection('users').doc(user.uid);
-      final saved = await _saveWithRetryDialog(() async {
-        await ref.collection('spinAssessments').doc('initial').set({
+      final saved = await _saveWithRetryDialog((batch) {
+        batch.set(ref.collection('spinAssessments').doc('initial'), {
           'score': totalScore,
           'themeRawScores': themeRawScores,
           'themeAverages': themeAverages,
           'priorityScenario': priorityScenario,
           'completedAt': FieldValue.serverTimestamp(),
         });
-        await ref.set({
+        batch.set(ref, {
           'initialSpinScore': totalScore,
           'initialSpinCompleted': true,
           'initialSpinCompletedAt': FieldValue.serverTimestamp(),
@@ -190,10 +192,24 @@ class _SpinAssessmentScreenState extends State<SpinAssessmentScreen> {
   /// succeeds, or false if the user explicitly chooses to skip. Shared by
   /// every Firestore write in this screen that previously used a bare
   /// `catch (_) {}`.
-  Future<bool> _saveWithRetryDialog(Future<void> Function() save) async {
+  ///
+  /// Offline isn't a failure: [OfflineSave] queues the write on-device and
+  /// it syncs on reconnect, so the user just gets a heads-up and moves on.
+  Future<bool> _saveWithRetryDialog(
+    void Function(WriteBatch batch) build,
+  ) async {
     while (true) {
       try {
-        await save();
+        final outcome = await OfflineSave.run(build);
+        if (mounted && outcome == SaveOutcome.savedOffline) {
+          ActionFeedback.saved(
+            context,
+            outcome,
+            offlineMessage:
+                "You're offline. Your results are saved on this device and "
+                'will sync when you reconnect.',
+          );
+        }
         return true;
       } catch (e) {
         if (!mounted) return false;
@@ -202,11 +218,11 @@ class _SpinAssessmentScreenState extends State<SpinAssessmentScreen> {
           barrierDismissible: false,
           builder: (ctx) => AlertDialog(
             title: const Text("Couldn't Save Your Results"),
-            content: const Text(
-              "We couldn't save your assessment — please check your "
-              "internet connection. If you skip, your results won't be "
-              "remembered and you may be asked to complete this assessment "
-              "again next time you open the app.",
+            content: Text(
+              "${ActionFeedback.messageFor(e, fallback: "We couldn't save your assessment.")} "
+              "If you skip, your results won't be remembered and you may be "
+              "asked to complete this assessment again next time you open "
+              "the app.",
             ),
             actions: [
               TextButton(

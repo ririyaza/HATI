@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../../emotiondetection/themed_scenario/scenario_models.dart';
 import '../../emotiondetection/themed_scenario/scenario_play_page.dart';
+import '../../../shared/offline/offline_save.dart';
 import '../../../shared/theme/app_colors.dart';
 
 class ModulesScreen extends StatefulWidget {
@@ -605,19 +606,27 @@ Future<void> _saveLastScenario({
   final user = FirebaseAuth.instance.currentUser;
   if (user == null) return;
 
-  await FirebaseFirestore.instance
+  // Bookkeeping for the "continue where you left off" card — it must never
+  // hold up opening the scenario, offline or not.
+  final ref = FirebaseFirestore.instance
       .collection('users')
       .doc(user.uid)
       .collection('spinAssessments')
-      .doc('initial')
-      .set({
+      .doc('initial');
+  try {
+    await OfflineSave.run(
+      (batch) => batch.set(ref, {
         'lastScenario': {
           'scenarioTitle': scenarioTitle,
           'scenarioTheme': scenarioTheme,
           'scenarioKey': scenarioKey,
           'updatedAt': FieldValue.serverTimestamp(),
         },
-      }, SetOptions(merge: true));
+      }, SetOptions(merge: true)),
+    );
+  } catch (e) {
+    debugPrint('Saving last scenario failed: $e');
+  }
 }
 
 /// One module per SPIN theme; `scenarioKey` must match `THEME_SCENARIO_KEYS` in `scenario_engine.py`.

@@ -1,6 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../../../shared/offline/action_feedback.dart';
+import '../../../shared/offline/connectivity_service.dart';
+import '../../../shared/offline/offline_save.dart';
 import '../../../shared/theme/app_colors.dart';
 
 class ContactDeveloperScreen extends StatefulWidget {
@@ -36,48 +39,52 @@ class _ContactDeveloperScreenState extends State<ContactDeveloperScreen> {
     setState(() => _sending = true);
 
     try {
+      final userRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid);
       String? senderName;
       try {
-        final userDoc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .get();
+        // Offline, a default get() waits on the server before falling back
+        // to cache — read the cached profile straight away instead.
+        final userDoc = await userRef.get(
+          ConnectivityService.instance.isOnline
+              ? const GetOptions()
+              : const GetOptions(source: Source.cache),
+        );
         final raw = userDoc.data()?['displayName'] ?? userDoc.data()?['nickname'];
         if (raw is String && raw.trim().isNotEmpty) senderName = raw.trim();
       } catch (_) {}
 
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .collection('supportMessages')
-          .add({
-        'message': message,
-        'senderUid': user.uid,
-        'senderEmail': user.email ?? '',
-        'senderName': senderName ?? user.displayName ?? '',
-        'read': false,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+      final outcome = await OfflineSave.run(
+        (batch) => batch.set(userRef.collection('supportMessages').doc(), {
+          'message': message,
+          'senderUid': user.uid,
+          'senderEmail': user.email ?? '',
+          'senderName': senderName ?? user.displayName ?? '',
+          'read': false,
+          'createdAt': FieldValue.serverTimestamp(),
+        }),
+      );
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Message sent to the developer. Thank you!'),
-          backgroundColor: Color(0xFF4CAF50),
-        ),
+      ActionFeedback.saved(
+        context,
+        outcome,
+        savedMessage: 'Message sent to the developer. Thank you!',
+        offlineMessage:
+            "You're offline. Your message is saved and will be sent "
+            'automatically when you reconnect.',
       );
       Navigator.of(context).pop();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Couldn\'t send your message.\n$e',
-            style: const TextStyle(fontSize: 13),
-          ),
-          backgroundColor: Colors.red.shade700,
-          duration: const Duration(seconds: 6),
+      ActionFeedback.error(
+        context,
+        ActionFeedback.messageFor(
+          e,
+          fallback: "Couldn't send your message. Please try again.",
         ),
+        onRetry: _sendMessage,
       );
     } finally {
       if (mounted) setState(() => _sending = false);

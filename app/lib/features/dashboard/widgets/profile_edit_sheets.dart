@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import '../../../shared/offline/action_feedback.dart';
+import '../../../shared/offline/offline_save.dart';
 import '../../../shared/theme/app_colors.dart';
 
 /// Bottom sheets for editing profile fields that can be left unset (or
@@ -40,13 +42,19 @@ Future<void> showAvatarPickerSheet(
   if (selected == null) return;
 
   try {
-    await FirebaseFirestore.instance.collection('users').doc(uid).set({
-      'profilePicAssetPath': selected,
-      'profilePicSource': 'defaultProfile',
-      'profilePicUpdatedAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
-  } catch (_) {
-    if (context.mounted) _showSaveError(context);
+    final userRef = FirebaseFirestore.instance.collection('users').doc(uid);
+    final outcome = await OfflineSave.run(
+      (batch) => batch.set(userRef, {
+        'profilePicAssetPath': selected,
+        'profilePicSource': 'defaultProfile',
+        'profilePicUpdatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true)),
+    );
+    if (context.mounted) {
+      ActionFeedback.saved(context, outcome, savedMessage: 'Avatar updated');
+    }
+  } catch (e) {
+    if (context.mounted) _showSaveError(context, e);
   }
 }
 
@@ -191,19 +199,23 @@ class _EditNamePronounsSheetState extends State<_EditNamePronounsSheet> {
 
     setState(() => _saving = true);
     try {
-      await FirebaseFirestore.instance.collection('users').doc(widget.uid).set(
-        {
+      final userRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.uid);
+      final outcome = await OfflineSave.run(
+        (batch) => batch.set(userRef, {
           'displayName': name,
           'nickname': name,
           'pronouns': _selectedPronouns,
-        },
-        SetOptions(merge: true),
+        }, SetOptions(merge: true)),
       );
-      if (mounted) Navigator.pop(context);
-    } catch (_) {
+      if (!mounted) return;
+      ActionFeedback.saved(context, outcome, savedMessage: 'Profile updated');
+      Navigator.pop(context);
+    } catch (e) {
       if (mounted) {
         setState(() => _saving = false);
-        _showSaveError(context);
+        _showSaveError(context, e);
       }
     }
   }
@@ -414,15 +426,21 @@ class _EditGoalSheetState extends State<_EditGoalSheet> {
   Future<void> _save() async {
     setState(() => _saving = true);
     try {
-      await FirebaseFirestore.instance
+      final userRef = FirebaseFirestore.instance
           .collection('users')
-          .doc(widget.uid)
-          .set({'goal': _controller.text.trim()}, SetOptions(merge: true));
-      if (mounted) Navigator.pop(context);
-    } catch (_) {
+          .doc(widget.uid);
+      final outcome = await OfflineSave.run(
+        (batch) => batch.set(userRef, {
+          'goal': _controller.text.trim(),
+        }, SetOptions(merge: true)),
+      );
+      if (!mounted) return;
+      ActionFeedback.saved(context, outcome, savedMessage: 'Goal updated');
+      Navigator.pop(context);
+    } catch (e) {
       if (mounted) {
         setState(() => _saving = false);
-        _showSaveError(context);
+        _showSaveError(context, e);
       }
     }
   }
@@ -624,19 +642,27 @@ class _EditCopingSheetState extends State<_EditCopingSheet> {
         .collection('users')
         .doc(widget.uid);
     try {
-      await userRef.collection('spinAssessments').doc('initial').set({
-        'copingMechanism': coping,
-        'copingRecordedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
-      await userRef.set({
-        'initialCopingMechanism': coping,
-        'initialCopingRecordedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
-      if (mounted) Navigator.pop(context);
-    } catch (_) {
+      final outcome = await OfflineSave.run((batch) {
+        batch.set(userRef.collection('spinAssessments').doc('initial'), {
+          'copingMechanism': coping,
+          'copingRecordedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+        batch.set(userRef, {
+          'initialCopingMechanism': coping,
+          'initialCopingRecordedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      });
+      if (!mounted) return;
+      ActionFeedback.saved(
+        context,
+        outcome,
+        savedMessage: 'Coping preferences updated',
+      );
+      Navigator.pop(context);
+    } catch (e) {
       if (mounted) {
         setState(() => _saving = false);
-        _showSaveError(context);
+        _showSaveError(context, e);
       }
     }
   }
@@ -834,8 +860,6 @@ class _SheetHandle extends StatelessWidget {
   }
 }
 
-void _showSaveError(BuildContext context) {
-  ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(content: Text('Something went wrong. Please try again.')),
-  );
+void _showSaveError(BuildContext context, Object error) {
+  ActionFeedback.error(context, ActionFeedback.messageFor(error));
 }

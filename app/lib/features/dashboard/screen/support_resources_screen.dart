@@ -265,13 +265,19 @@ class _ContactRowState extends State<_ContactRow> {
 
   Future<void> _launch() async {
     final uri = switch (widget.kind) {
-      _ContactKind.phone => Uri(scheme: 'tel', path: widget.value),
-      _ContactKind.email => Uri(scheme: 'mailto', path: widget.value),
+      _ContactKind.phone => Uri(
+        scheme: 'tel',
+        path: widget.value.replaceAll(RegExp(r'[^0-9+]'), ''),
+      ),
+      _ContactKind.email => Uri(scheme: 'mailto', path: widget.value.trim()),
       _ContactKind.none => null,
     };
     if (uri == null) return;
     try {
-      final opened = await launchUrl(uri);
+      final opened = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
       if (opened) return;
     } catch (_) {
       // Fall through to the copy fallback below.
