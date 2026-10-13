@@ -91,7 +91,7 @@ class _ScenarioProgressDetailScreenState
       counts[entry.emotion] = (counts[entry.emotion] ?? 0) + 1;
       total++;
     }
-    return [
+    final scores = [
       for (final key in _trackedEmotions)
         _EmotionScore(
           key,
@@ -99,6 +99,16 @@ class _ScenarioProgressDetailScreenState
           total == 0 ? 0 : (counts[key] ?? 0) / total * 100,
         ),
     ];
+    // Highest to lowest so the bar chart reads left to right by how often
+    // each emotion was felt; ties keep the canonical order above.
+    scores.sort((a, b) {
+      final byValue = b.value.compareTo(a.value);
+      if (byValue != 0) return byValue;
+      return _trackedEmotions
+          .indexOf(a.key)
+          .compareTo(_trackedEmotions.indexOf(b.key));
+    });
+    return scores;
   }
 
   @override

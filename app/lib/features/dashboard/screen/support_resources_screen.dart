@@ -101,12 +101,6 @@ class SupportResourcesScreen extends StatelessWidget {
                     name: 'Maybelle P. de la Gente, MEd, RGC, JD',
                     email: 'univ-guidance@wvsu.edu.ph',
                   ),
-                  SizedBox(height: 12),
-                  _StaffGroup(
-                    officeLabel: 'UTC',
-                    name: 'Windy de la Cruz, RPm, RPsy',
-                    email: 'xxx-xxx-xxx@gmail.com',
-                  ),
                 ],
               ),
               const SizedBox(height: 14),

@@ -16,7 +16,7 @@
 import 'dart:async';
 
 import 'package:audioplayers/audioplayers.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Which looping background track should be playing. [scenario] covers
@@ -48,7 +48,7 @@ final AudioContext _kSharedAudioContext = AudioContext(
   ),
 );
 
-class HatiAudioService {
+class HatiAudioService with WidgetsBindingObserver {
   HatiAudioService._();
 
   static final HatiAudioService instance = HatiAudioService._();
@@ -90,6 +90,15 @@ class HatiAudioService {
   bool _musicWanted = false;
   bool _ducked = false;
 
+  // False while the app is backgrounded/hidden. Dialogue typewriter timers
+  // (e.g. the home screen's auto-advancing Hati bubbles) keep running in
+  // the background, so without this gate Hati's talk cue kept croaking
+  // after the user left the app.
+  bool _appInForeground = true;
+  // Set when a different track was requested while backgrounded, so the
+  // return to foreground starts that track instead of resuming the old one.
+  bool _trackChangedWhileHidden = false;
+
   // Which track is currently selected (null = nothing started yet this
   // scenario). Tracked separately from whatever volume the player is
   // actually sitting at right now ([_lastSetMusicVolume]) so a repeated
@@ -113,6 +122,7 @@ class HatiAudioService {
   }
 
   Future<void> _doInit() async {
+    WidgetsBinding.instance.addObserver(this);
     try {
       final prefs = await SharedPreferences.getInstance();
       musicEnabled = prefs.getBool(_kMusicEnabledKey) ?? true;
@@ -135,6 +145,29 @@ class HatiAudioService {
     if (!_initialized) await init();
   }
 
+  /// Silences everything while the app isn't on screen: pauses the music
+  /// (resumed on return if a screen still wants it) and blocks one-shot
+  /// SFX such as Hati's talk cue.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final foreground = state == AppLifecycleState.resumed;
+    if (foreground == _appInForeground) return;
+    _appInForeground = foreground;
+    if (!foreground) {
+      _musicPlayer.pause().catchError((_) {});
+      return;
+    }
+    final track = _currentTrack;
+    final changed = _trackChangedWhileHidden;
+    _trackChangedWhileHidden = false;
+    if (!_musicWanted || !musicEnabled || track == null) return;
+    if (changed) {
+      playScenarioMusic(track: track);
+    } else {
+      _musicPlayer.resume().catchError((_) {});
+    }
+  }
+
   /// `ReleaseMode.loop` should already restart the track natively when it
   /// finishes — this listener is a safety net for the case where it
   /// somehow doesn't (an OS-level audio interruption — a phone call, a
@@ -143,7 +176,7 @@ class HatiAudioService {
   /// loop cycle didn't restart itself. Waits a beat first so it doesn't
   /// race the native loop's own restart on every ordinary cycle.
   Future<void> _onMusicPlayerComplete() async {
-    if (!_musicWanted || !musicEnabled) return;
+    if (!_musicWanted || !musicEnabled || !_appInForeground) return;
     final track = _currentTrack;
     if (track == null) return;
     await Future.delayed(const Duration(milliseconds: 200));
@@ -214,6 +247,10 @@ class HatiAudioService {
     _musicWanted = true;
     final sameTrack = _currentTrack == track;
     _currentTrack = track;
+    if (!_appInForeground) {
+      if (!sameTrack) _trackChangedWhileHidden = true;
+      return;
+    }
     if (!musicEnabled) return;
     if (sameTrack && _musicPlayer.state == PlayerState.playing) return;
 
@@ -278,7 +315,7 @@ class HatiAudioService {
 
   Future<void> _playOneShot(String asset) async {
     await _ensureInitialized();
-    if (!sfxEnabled) return;
+    if (!sfxEnabled || !_appInForeground) return;
     try {
       final player = AudioPlayer();
       await player.setReleaseMode(ReleaseMode.release);
@@ -347,7 +384,7 @@ class HatiAudioService {
       try {
         await _musicPlayer.stop();
       } catch (_) {}
-    } else if (_musicWanted) {
+    } else if (_musicWanted && _appInForeground) {
       await playScenarioMusic(track: _currentTrack ?? HatiMusicTrack.scenario);
     }
   }

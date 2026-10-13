@@ -130,7 +130,11 @@ class _ScenarioShellState extends State<ScenarioShell> {
         // Covers the live scene (and its choices) while rewound.
         if (provider.isReplaying)
           const Positioned.fill(child: ScenarioReplayView()),
-        const Positioned.fill(child: DraggableHelpButton()),
+        // Starts higher than on the dashboard: SceneTopHeader's progress
+        // label begins ~32px below the status bar (back-arrow row + gap), so
+        // a 50px button whose top sits 20px above that inset ends just above
+        // it instead of covering the "x / 7" count and the bar's right end.
+        const Positioned.fill(child: DraggableHelpButton(topOffset: -20)),
         // Topmost so it's never hidden behind a scene's own layers.
         Positioned(
           left: 16,

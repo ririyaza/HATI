@@ -20,8 +20,8 @@ class DailyLoginReminderService {
 
   static const _firestoreField = 'dailyLoginNotificationsEnabled';
 
-  // Local time the daily reminder fires at.
-  static const _hour = 19;
+  // Local time the daily reminder fires at (7:00 AM).
+  static const _hour = 7;
   static const _minute = 0;
 
   static Future<bool> isEnabled(String uid) async {
@@ -62,8 +62,8 @@ class DailyLoginReminderService {
     await NotificationCore.ensureInitialized();
     await NotificationCore.plugin.zonedSchedule(
       id: _notificationId,
-      title: 'Time to check in with Hati',
-      body: "You haven't stopped by today — take a few minutes for HATI.",
+      title: 'Good morning from Hati!',
+      body: 'Start your day with a quick check-in — Hati is waiting for you.',
       scheduledDate: _nextOccurrence(),
       androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
       matchDateTimeComponents: DateTimeComponents.time,

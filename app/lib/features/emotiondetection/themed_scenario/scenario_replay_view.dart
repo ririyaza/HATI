@@ -43,7 +43,7 @@ class ScenarioRewindButton extends StatelessWidget {
           duration: const Duration(milliseconds: 200),
           opacity: enabled ? 1 : 0.4,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
             decoration: BoxDecoration(
               color: _kCream.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(20),
@@ -52,7 +52,16 @@ class ScenarioRewindButton extends StatelessWidget {
                 width: 1.2,
               ),
             ),
-            child: const Icon(Icons.replay_rounded, size: 15, color: _kCream),
+            // A labelled "Back" reads clearer than the bare replay icon
+            // that used to be here.
+            child: const Text(
+              'Back',
+              style: TextStyle(
+                color: _kCream,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
         ),
       ),

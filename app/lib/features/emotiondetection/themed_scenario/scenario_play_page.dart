@@ -19,6 +19,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../shared/audio/hati_audio_service.dart';
+import '../../dashboard/screen/dashboard_screen.dart';
 import 'app_theme.dart';
 import 'scenario_models.dart';
 import 'scenario_provider.dart';
@@ -172,79 +173,74 @@ class _ScenarioLoadingScreenState extends State<_ScenarioLoadingScreen>
       // flash when this hands off to the real scenario content.
       backgroundColor: const Color(0xFF0B28D9),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const HatiFrogAvatar(size: 160, mood: HatiMood.thinking),
-              const SizedBox(height: 28),
-              Text(
-                'Getting things ready…',
-                textAlign: TextAlign.center,
-                style: HatiTextStyles.heading3.copyWith(
-                  color: const Color(0xFFF5F1E8),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                "HATI takes a little longer to start up after being idle for "
-                "a while — this can take up to a minute. You can cancel "
-                "anytime and try again later.",
-                textAlign: TextAlign.center,
-                style: HatiTextStyles.bodyMedium.copyWith(
-                  color: const Color(0xFFF5F1E8).withValues(alpha: 0.8),
-                ),
-              ),
-              const SizedBox(height: 28),
-              AnimatedBuilder(
-                animation: _progress,
-                builder: (context, _) => ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: LinearProgressIndicator(
-                    value: _progress.value,
-                    minHeight: 10,
-                    backgroundColor: const Color(
-                      0xFFF5F1E8,
-                    ).withValues(alpha: 0.2),
-                    color: const Color(0xFFF5F1E8),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              // Lets the player back out of a long cold start instead of
-              // being stuck watching the bar. Popping disposes the page's
-              // ScenarioProvider; the still-in-flight start() response is
-              // then ignored (see ScenarioProvider.notifyListeners), and
-              // nothing was played yet, so there's no progress to lose.
-              TextButton.icon(
-                onPressed: () => Navigator.pop(context),
-                icon: const Icon(
-                  Icons.close_rounded,
-                  color: Color(0xFFF5F1E8),
-                ),
-                label: Text(
-                  'Cancel',
-                  style: HatiTextStyles.bodyMedium.copyWith(
-                    color: const Color(0xFFF5F1E8),
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 12,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(24),
-                    side: BorderSide(
-                      color: const Color(0xFFF5F1E8).withValues(alpha: 0.5),
+        child: Stack(
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const HatiFrogAvatar(size: 160, mood: HatiMood.thinking),
+                  const SizedBox(height: 28),
+                  Text(
+                    'Getting things ready…',
+                    textAlign: TextAlign.center,
+                    style: HatiTextStyles.heading3.copyWith(
+                      color: const Color(0xFFF5F1E8),
                     ),
                   ),
-                ),
+                  const SizedBox(height: 12),
+                  Text(
+                    "HATI takes a little longer to start up after being idle "
+                    "for a while — this can take up to a minute. Hang tight, "
+                    "or tap the back arrow to return home.",
+                    textAlign: TextAlign.center,
+                    style: HatiTextStyles.bodyMedium.copyWith(
+                      color: const Color(0xFFF5F1E8).withValues(alpha: 0.8),
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+                  AnimatedBuilder(
+                    animation: _progress,
+                    builder: (context, _) => ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: LinearProgressIndicator(
+                        value: _progress.value,
+                        minHeight: 10,
+                        backgroundColor: const Color(
+                          0xFFF5F1E8,
+                        ).withValues(alpha: 0.2),
+                        color: const Color(0xFFF5F1E8),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+            // Lets the user leave during a long cold start instead of
+            // waiting it out. Goes to the dashboard's Home tab; the pending
+            // start() request finishes harmlessly (ScenarioProvider ignores
+            // updates once disposed).
+            Positioned(
+              top: 4,
+              left: 4,
+              child: IconButton(
+                tooltip: 'Back to home',
+                icon: const Icon(
+                  Icons.arrow_back_rounded,
+                  color: Color(0xFFF5F1E8),
+                ),
+                onPressed: () {
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(
+                      builder: (_) => const DashboardScreen(initialIndex: 0),
+                    ),
+                    (route) => false,
+                  );
+                },
+              ),
+            ),
+          ],
         ),
       ),
     );

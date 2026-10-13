@@ -5,6 +5,7 @@ import '../../emotiondetection/themed_scenario/scenario_models.dart';
 import '../../emotiondetection/themed_scenario/scenario_play_page.dart';
 import '../../../shared/offline/offline_save.dart';
 import '../../../shared/theme/app_colors.dart';
+import '../data/in_progress_scenarios.dart';
 
 class ModulesScreen extends StatefulWidget {
   const ModulesScreen({super.key, this.gridKey});
@@ -30,9 +31,9 @@ class _ModulesScreenState extends State<ModulesScreen> {
   // updating in real time" even though the underlying data was live.
   late final Future<Map<String, double>> _themeAveragesFuture =
       _loadThemeAverages();
-  late final Stream<Map<String, _InProgressInfo>> _inProgressStream =
+  late final Stream<Map<String, InProgressScenario>> _inProgressStream =
       _watchInProgressScenarios();
-  late final Stream<Map<String, bool>> _difficultyStream =
+  late final Stream<Map<String, _CompletionStage>> _difficultyStream =
       _watchScenarioDifficulty();
 
   @override
@@ -79,7 +80,7 @@ class _ModulesScreenState extends State<ModulesScreen> {
   /// to rebuild — that one-shot version left the badge showing whatever it
   /// was at the last time this screen was freshly mounted, not the
   /// player's actual current progress.
-  Stream<Map<String, _InProgressInfo>> _watchInProgressScenarios() {
+  Stream<Map<String, InProgressScenario>> _watchInProgressScenarios() {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return Stream.value(const {});
 
@@ -88,75 +89,7 @@ class _ModulesScreenState extends State<ModulesScreen> {
         .doc(user.uid)
         .collection('scenarios')
         .snapshots()
-        .map(_parseInProgressScenarios);
-  }
-
-  Map<String, _InProgressInfo> _parseInProgressScenarios(
-    QuerySnapshot<Map<String, dynamic>> snapshot,
-  ) {
-    final result = <String, _InProgressInfo>{};
-    for (final doc in snapshot.docs) {
-      final data = doc.data();
-      final currentStep = (data['current_step'] ?? '').toString();
-      // 'complete' is the one step value scenario_engine.py sets once the
-      // player actually dismisses the finished-scenario screen (tapping
-      // "Close" on scene7_dashboard) — everything else, including
-      // scene7_dashboard itself, is still "in progress" as far as resuming
-      // goes, but scene7_dashboard specifically means the interactive part
-      // is already done, so it's excluded below via sceneForStep instead.
-      if (currentStep.isEmpty || currentStep == 'complete') continue;
-
-      final sessionState = data['session_state'];
-      final sessionData = sessionState is Map ? sessionState['data'] : null;
-      final scenarioKey = sessionData is Map
-          ? sessionData['scenario_key']?.toString()
-          : null;
-      if (scenarioKey == null || scenarioKey.isEmpty) continue;
-
-      final scene = sceneForStep(currentStep);
-      if (scene == SceneId.dashboard) continue;
-      // ScenarioPlayPage.initState() calls provider.start() the instant a
-      // scenario's intro screen is opened — before "Begin Scenario" is
-      // ever tapped — which immediately persists a session sitting at
-      // scene0_greet (SceneId.preScene, ordinal 0). Counting that as "in
-      // progress" made every scenario a user had merely glanced at (then
-      // backed out of) show a stray "0% complete"/"Easy Mode" pill here,
-      // even though nothing was actually played yet.
-      if (scene == SceneId.preScene) continue;
-
-      final difficulty = sessionData is Map
-          ? sessionData['difficulty']?.toString()
-          : null;
-      // A brand-new session (e.g. right after "Start Over") only has
-      // create_scenario's `created_at` — `updated_at` isn't written until
-      // the first real step transition — so comparing on `updated_at`
-      // alone left a fresh session's doc with no timestamp to compare,
-      // which meant Firestore's arbitrary doc ordering could pick a stale
-      // abandoned session over it and show its old progress% instead of
-      // resetting to 0%. Falling back to `created_at` guarantees every
-      // session doc has a real, comparable timestamp.
-      final updatedAt =
-          DateTime.tryParse(data['updated_at']?.toString() ?? '') ??
-          DateTime.tryParse(data['created_at']?.toString() ?? '');
-
-      // A scenario_key can have more than one session doc (e.g. replayed
-      // after finishing once before) — keep whichever was updated most
-      // recently for that key.
-      final existing = result[scenarioKey];
-      if (existing != null &&
-          existing.updatedAt != null &&
-          updatedAt != null &&
-          existing.updatedAt!.isAfter(updatedAt)) {
-        continue;
-      }
-
-      result[scenarioKey] = _InProgressInfo(
-        progress: sceneOrdinal(scene) / 7,
-        isDifficult: difficulty == 'difficult',
-        updatedAt: updatedAt,
-      );
-    }
-    return result;
+        .map((snap) => parseInProgressScenarios(snap.docs));
   }
 
   /// Which difficulty mode a scenario_key's NEXT attempt would auto-run in,
@@ -168,7 +101,7 @@ class _ModulesScreenState extends State<ModulesScreen> {
   /// `mark_scenario_difficulty_completed`: neither mode completed -> Easy;
   /// Easy completed, Difficult not -> Difficult; both completed -> Easy
   /// (matching the backend's picker-shown default).
-  Stream<Map<String, bool>> _watchScenarioDifficulty() {
+  Stream<Map<String, _CompletionStage>> _watchScenarioDifficulty() {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return Stream.value(const {});
 
@@ -180,15 +113,19 @@ class _ModulesScreenState extends State<ModulesScreen> {
         .map(_parseScenarioDifficulty);
   }
 
-  Map<String, bool> _parseScenarioDifficulty(
+  Map<String, _CompletionStage> _parseScenarioDifficulty(
     QuerySnapshot<Map<String, dynamic>> snapshot,
   ) {
-    final result = <String, bool>{};
+    final result = <String, _CompletionStage>{};
     for (final doc in snapshot.docs) {
       final data = doc.data();
       final easyDone = data['easy_completed'] == true;
       final difficultDone = data['difficult_completed'] == true;
-      result[doc.id] = easyDone && !difficultDone;
+      result[doc.id] = easyDone && difficultDone
+          ? _CompletionStage.bothDone
+          : easyDone
+          ? _CompletionStage.easyDone
+          : _CompletionStage.none;
     }
     return result;
   }
@@ -332,12 +269,12 @@ class _ModulesScreenState extends State<ModulesScreen> {
                         // progress %/difficulty badge updates the moment
                         // the player advances a step, even while this
                         // screen stays mounted underneath ScenarioPlayPage.
-                        return StreamBuilder<Map<String, _InProgressInfo>>(
+                        return StreamBuilder<Map<String, InProgressScenario>>(
                           stream: _inProgressStream,
                           builder: (context, inProgressSnapshot) {
                             final inProgress =
                                 inProgressSnapshot.data ?? const {};
-                            return StreamBuilder<Map<String, bool>>(
+                            return StreamBuilder<Map<String, _CompletionStage>>(
                               stream: _difficultyStream,
                               builder: (context, difficultySnapshot) {
                                 final difficulty =
@@ -542,19 +479,10 @@ class _InProgressPill extends StatelessWidget {
   }
 }
 
-/// Progress through an unfinished session for one scenario_key — see
-/// [_ModulesScreenState._loadInProgressScenarios].
-class _InProgressInfo {
-  final double progress;
-  final bool isDifficult;
-  final DateTime? updatedAt;
-
-  const _InProgressInfo({
-    required this.progress,
-    required this.isDifficult,
-    this.updatedAt,
-  });
-}
+/// How far a scenario_key's `scenario_progress` doc says the user has got:
+/// [easyDone] means the next attempt auto-runs in Hard mode, [bothDone]
+/// means both modes are finished and the user picks one.
+enum _CompletionStage { none, easyDone, bothDone }
 
 class _ScenarioTemplate {
   final String theme;
@@ -695,14 +623,33 @@ bool _matchesQuery(_ScenarioTemplate template, String query) {
 Widget _scenarioGrid(
   BuildContext context,
   Map<String, double> themeAverages,
-  Map<String, _InProgressInfo> inProgress,
-  Map<String, bool> difficulty, {
+  Map<String, InProgressScenario> inProgress,
+  Map<String, _CompletionStage> difficulty, {
   String query = '',
   Key? firstCardKey,
 }) {
-  final templates = _buildScenarioTemplates(
-    themeAverages,
-  ).where((template) => _matchesQuery(template, query)).toList();
+  // Group order: in progress, then Hard Mode next (Easy already done),
+  // then Easy Mode next, then both modes completed. Within a group, the
+  // match-% order from _buildScenarioTemplates is kept (List.sort isn't
+  // stable, so the original index breaks ties).
+  int group(_ScenarioTemplate t) {
+    if (inProgress.containsKey(t.scenarioKey)) return 0;
+    return switch (difficulty[t.scenarioKey] ?? _CompletionStage.none) {
+      _CompletionStage.easyDone => 1,
+      _CompletionStage.none => 2,
+      _CompletionStage.bothDone => 3,
+    };
+  }
+
+  final ranked = _buildScenarioTemplates(themeAverages);
+  final templates = ranked
+      .where((template) => _matchesQuery(template, query))
+      .toList()
+    ..sort((a, b) {
+      final byGroup = group(a).compareTo(group(b));
+      if (byGroup != 0) return byGroup;
+      return ranked.indexOf(a).compareTo(ranked.indexOf(b));
+    });
 
   if (templates.isEmpty) {
     return Padding(
@@ -726,8 +673,10 @@ Widget _scenarioGrid(
       // A genuinely in-progress session's own recorded difficulty wins
       // (it's the mode that attempt is actually running in); otherwise
       // fall back to the predicted next-attempt mode from scenario_progress.
+      final stage = difficulty[template.scenarioKey] ?? _CompletionStage.none;
       final isDifficult =
-          info?.isDifficult ?? (difficulty[template.scenarioKey] ?? false);
+          info?.isDifficult ?? (stage == _CompletionStage.easyDone);
+      final bothCompleted = stage == _CompletionStage.bothDone;
       return Padding(
         key: index == 0 ? firstCardKey : null,
         padding: EdgeInsets.only(
@@ -840,23 +789,60 @@ Widget _scenarioGrid(
                   ),
                 ),
                 const SizedBox(width: 10),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.creamSoft,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: AppColors.creamLine),
-                  ),
-                  child: Text(
-                    '${score.round()}% match',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF0B28D9),
-                    ),
+                // IntrinsicWidth + stretch: the column is exactly as wide as
+                // the "% match" pill, and "Scenario Completed" wraps onto two
+                // centered lines inside that width instead of widening the
+                // column and squeezing the title/pills in the middle.
+                IntrinsicWidth(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.creamSoft,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: AppColors.creamLine),
+                        ),
+                        child: Text(
+                          '${score.round()}% match',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF0B28D9),
+                          ),
+                        ),
+                      ),
+                      if (bothCompleted) ...[
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(
+                              0xFF2E7D32,
+                            ).withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Text(
+                            'Scenario\nCompleted',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF2E7D32),
+                              height: 1.2,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
               ],
