@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show LengthLimitingTextInputFormatter;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'email_verification_screen.dart';
 import '../../../shared/theme/app_colors.dart';
+import '../../../shared/audio/hati_tap_sound.dart';
 
 // Brand tokens shared with the loading screen and onboarding/consent flow —
 // keep these in sync with lib/features/onboarding/consent_flow_screen.dart
@@ -14,6 +16,47 @@ const _kBrandBorder = AppColors.creamLine;
 const _kTextDark = Color(0xFF1A1A2E);
 const _kTextMuted = Color(0xFF6B7280);
 const _kFieldBorder = AppColors.creamLine;
+const _kRuleMet = Color(0xFF2E7D32);
+
+// Password policy: 12–128 characters, with at least one uppercase letter,
+// one number and one special character. Long passphrases are allowed (the
+// 128 cap only guards against absurd input), and spaces count as characters.
+const kPasswordMinLength = 12;
+const kPasswordMaxLength = 128;
+
+/// One requirement in the signup password checklist.
+class _PasswordRule {
+  const _PasswordRule(this.label, this.test);
+
+  final String label;
+  final bool Function(String) test;
+}
+
+final _passwordRules = <_PasswordRule>[
+  _PasswordRule(
+    'At least $kPasswordMinLength characters',
+    (p) => p.length >= kPasswordMinLength,
+  ),
+  _PasswordRule('One uppercase letter (A–Z)', (p) => p.contains(RegExp('[A-Z]'))),
+  _PasswordRule('One number (0–9)', (p) => p.contains(RegExp('[0-9]'))),
+  // Anything that isn't a letter, digit or whitespace counts as special.
+  _PasswordRule(
+    r'One special character (e.g. ! @ # $ %)',
+    (p) => p.contains(RegExp(r'[^A-Za-z0-9\s]')),
+  ),
+];
+
+/// First unmet rule's message, or null when the password is acceptable.
+String? validateNewPassword(String? value) {
+  if (value == null || value.isEmpty) return 'Please enter your password';
+  if (value.length > kPasswordMaxLength) {
+    return 'Password must be at most $kPasswordMaxLength characters';
+  }
+  for (final rule in _passwordRules) {
+    if (!rule.test(value)) return 'Password needs: ${rule.label.toLowerCase()}';
+  }
+  return null;
+}
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -79,7 +122,10 @@ class _SignupScreenState extends State<SignupScreen> {
           message = 'Invalid email address.';
           break;
         case 'weak-password':
-          message = 'Password is too weak. Use at least 8 characters.';
+          message =
+              'Password is too weak. Use at least $kPasswordMinLength '
+              'characters with an uppercase letter, a number and a '
+              'special character.';
           break;
         case 'operation-not-allowed':
           message = 'Email sign-up is not enabled.';
@@ -177,32 +223,35 @@ class _SignupScreenState extends State<SignupScreen> {
                 TextFormField(
                   controller: _passwordController,
                   obscureText: _obscurePassword,
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  inputFormatters: [
+                    LengthLimitingTextInputFormatter(kPasswordMaxLength),
+                  ],
+                  // Rebuilds the checklist below as the user types.
+                  onChanged: (_) => setState(() {}),
                   decoration: _fieldDecoration(
-                    hintText: 'Enter at least 8 characters',
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscurePassword
-                            ? Icons.visibility_off_rounded
-                            : Icons.visibility_rounded,
-                        color: _kTextMuted,
+                    hintText: 'At least $kPasswordMinLength characters',
+                    suffixIcon: HatiTapSound.silent(
+                      child: IconButton(
+                        icon: Icon(
+                          _obscurePassword
+                              ? Icons.visibility_off_rounded
+                              : Icons.visibility_rounded,
+                          color: _kTextMuted,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _obscurePassword = !_obscurePassword;
+                          });
+                        },
                       ),
-                      onPressed: () {
-                        setState(() {
-                          _obscurePassword = !_obscurePassword;
-                        });
-                      },
                     ),
                   ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter your password';
-                    }
-                    if (value.length < 8) {
-                      return 'Password must be at least 8 characters';
-                    }
-                    return null;
-                  },
+                  validator: validateNewPassword,
                 ),
+                const SizedBox(height: 10),
+                _PasswordChecklist(password: _passwordController.text),
                 const SizedBox(height: 20),
                 // Confirm Password Field
                 Text(
@@ -218,18 +267,20 @@ class _SignupScreenState extends State<SignupScreen> {
                   obscureText: _obscureConfirmPassword,
                   decoration: _fieldDecoration(
                     hintText: 'Confirm your password',
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscureConfirmPassword
-                            ? Icons.visibility_off_rounded
-                            : Icons.visibility_rounded,
-                        color: _kTextMuted,
+                    suffixIcon: HatiTapSound.silent(
+                      child: IconButton(
+                        icon: Icon(
+                          _obscureConfirmPassword
+                              ? Icons.visibility_off_rounded
+                              : Icons.visibility_rounded,
+                          color: _kTextMuted,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _obscureConfirmPassword = !_obscureConfirmPassword;
+                          });
+                        },
                       ),
-                      onPressed: () {
-                        setState(() {
-                          _obscureConfirmPassword = !_obscureConfirmPassword;
-                        });
-                      },
                     ),
                   ),
                   validator: (value) {
@@ -287,15 +338,17 @@ class _SignupScreenState extends State<SignupScreen> {
                         color: _kTextMuted,
                       ),
                     ),
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.pop(context);
-                      },
-                      child: Text(
-                        'Login',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: _kBrand,
-                          fontWeight: FontWeight.w700,
+                    HatiTapSound.click(
+                      child: GestureDetector(
+                        onTap: () {
+                          Navigator.pop(context);
+                        },
+                        child: Text(
+                          'Login',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: _kBrand,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                     ),
@@ -339,6 +392,51 @@ InputDecoration _fieldDecoration({required String hintText, Widget? suffixIcon})
     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
     suffixIcon: suffixIcon,
   );
+}
+
+/// Live list of the password rules under the password field — each turns
+/// green with a check once the typed password satisfies it.
+class _PasswordChecklist extends StatelessWidget {
+  const _PasswordChecklist({required this.password});
+
+  final String password;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final rule in _passwordRules)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 2),
+            child: Row(
+              children: [
+                Icon(
+                  rule.test(password)
+                      ? Icons.check_circle_rounded
+                      : Icons.radio_button_unchecked_rounded,
+                  size: 16,
+                  color: rule.test(password) ? _kRuleMet : _kTextMuted,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    rule.label,
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      color: rule.test(password) ? _kRuleMet : _kTextMuted,
+                      fontWeight: rule.test(password)
+                          ? FontWeight.w600
+                          : FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
 }
 
 /// Small brand badge shared by login/signup — echoes the "HATI" wordmark

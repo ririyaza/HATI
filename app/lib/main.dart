@@ -6,6 +6,7 @@ import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'shared/audio/hati_audio_service.dart';
+import 'shared/audio/hati_tap_sound.dart';
 import 'shared/offline/connectivity_banner.dart';
 import 'shared/offline/connectivity_service.dart';
 
@@ -83,8 +84,9 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
-      builder: (context, child) =>
-          ConnectivityBanner(child: child ?? const SizedBox.shrink()),
+      builder: (context, child) => HatiTapSoundScope(
+        child: ConnectivityBanner(child: child ?? const SizedBox.shrink()),
+      ),
       home: const LoadingScreen(),
     );
   }

@@ -144,6 +144,11 @@ class _LowScoreExitScreenState extends State<LowScoreExitScreen> {
                       startDelay: Duration.zero,
                       persistBubble: true,
                       autoAdvance: true,
+                      // Dialogue still auto-advances on its own, but shows
+                      // the usual pulsing "tap to continue" cue as a
+                      // reminder that tapping anywhere skips ahead instead
+                      // of waiting out the auto-advance timer.
+                      showAdvanceCue: true,
                       onTypingComplete: () {
                         if (mounted) setState(() => _dialogueComplete = true);
                       },
@@ -163,31 +168,55 @@ class _LowScoreExitScreenState extends State<LowScoreExitScreen> {
                       ),
                       const SizedBox(height: 16),
                     ],
-                    if (canRetake) ...[
-                      _PrimaryButton(
-                        label: 'Retake Assessment',
-                        onPressed: _dialogueComplete ? _handleRetake : null,
+                    // The action buttons stay out of the tree entirely —
+                    // not just disabled — until Hati's dialogue has fully
+                    // finished typing, then pop in together. Previously
+                    // they were always visible but disabled, which read as
+                    // "broken" before the dialogue finished.
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 250),
+                      transitionBuilder: (child, animation) => FadeTransition(
+                        opacity: animation,
+                        child: ScaleTransition(
+                          scale: Tween<double>(begin: 0.92, end: 1).animate(
+                            CurvedAnimation(
+                              parent: animation,
+                              curve: Curves.easeOutBack,
+                            ),
+                          ),
+                          child: child,
+                        ),
                       ),
-                      const SizedBox(height: 12),
-                    ],
-                    if (canRetake)
-                      _OutlineButton(
-                        label: 'Exit the App',
-                        onPressed: _dialogueComplete
-                            ? () => SystemNavigator.pop()
-                            : null,
-                      )
-                    else
-                      _PrimaryButton(
-                        label: 'Exit the App',
-                        onPressed: _dialogueComplete
-                            ? () => SystemNavigator.pop()
-                            : null,
-                      ),
-                    const SizedBox(height: 12),
-                    _OutlineButton(
-                      label: 'Review Result',
-                      onPressed: _dialogueComplete ? _handleReviewResult : null,
+                      child: _dialogueComplete
+                          ? Column(
+                              key: const ValueKey('buttons'),
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                if (canRetake) ...[
+                                  _PrimaryButton(
+                                    label: 'Retake Assessment',
+                                    onPressed: _handleRetake,
+                                  ),
+                                  const SizedBox(height: 12),
+                                ],
+                                if (canRetake)
+                                  _OutlineButton(
+                                    label: 'Exit the App',
+                                    onPressed: () => SystemNavigator.pop(),
+                                  )
+                                else
+                                  _PrimaryButton(
+                                    label: 'Exit the App',
+                                    onPressed: () => SystemNavigator.pop(),
+                                  ),
+                                const SizedBox(height: 12),
+                                _OutlineButton(
+                                  label: 'Review Result',
+                                  onPressed: _handleReviewResult,
+                                ),
+                              ],
+                            )
+                          : const SizedBox.shrink(key: ValueKey('hidden')),
                     ),
                   ],
                 ),

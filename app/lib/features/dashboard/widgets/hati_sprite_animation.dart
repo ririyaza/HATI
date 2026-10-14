@@ -3,7 +3,7 @@ import 'dart:async' as async;
 import 'package:flutter/material.dart';
 
 import '../../emotiondetection/themed_scenario/shared_widgets.dart'
-    show HatiFrogAvatar, HatiSpeakingBlock, HatiTapToAdvance;
+    show HatiFrogAvatar, HatiMood, HatiSpeakingBlock, HatiTapToAdvance;
 
 /// Hati's speech bubble outside the themed scenarios (dashboard, onboarding,
 /// post-assessment, spin-assessment screens). Delegates the actual bubble +
@@ -24,6 +24,8 @@ class HatiSpriteAnimation extends StatefulWidget {
     this.onDismissed,
     this.onTypingComplete,
     this.bubbleGap = 8,
+    this.mood = HatiMood.idle,
+    this.showAdvanceCue,
   });
 
   final double size;
@@ -56,6 +58,19 @@ class HatiSpriteAnimation extends StatefulWidget {
   /// matching how scenario scenes gate their Continue/option buttons off
   /// [HatiCoachZone]'s `onSequenceComplete`.
   final VoidCallback? onTypingComplete;
+
+  /// Hati's expression. [HatiMood.happy] also swaps Hati's talk sound for
+  /// the happy croak — for good-news screens only (e.g. improved
+  /// post-assessment results), never the worsened/referral/low-score ones.
+  final HatiMood mood;
+
+  /// Overrides whether the pulsing "tap to continue" chevron shows once a
+  /// line finishes typing. Left null (the default), it falls back to
+  /// `!autoAdvance` — auto-advancing dialogue doesn't need the cue since it
+  /// moves on by itself. Pass true to show it anyway, as a reminder that
+  /// tapping (anywhere on screen, via HatiTapToAdvance below) still skips
+  /// ahead of the auto-advance timer for anyone who doesn't want to wait.
+  final bool? showAdvanceCue;
 
   @override
   State<HatiSpriteAnimation> createState() => _HatiSpriteAnimationState();
@@ -93,6 +108,7 @@ class _HatiSpriteAnimationState extends State<HatiSpriteAnimation> {
                 key: const ValueKey('hati-speaking'),
                 persistentMessage: widget.message,
                 frogSize: widget.size,
+                mood: widget.mood,
                 bubbleGap: widget.bubbleGap,
                 dissolveBubble: !widget.persistBubble,
                 autoAdvance: widget.autoAdvance,
@@ -101,11 +117,13 @@ class _HatiSpriteAnimationState extends State<HatiSpriteAnimation> {
                 onSequenceComplete: widget.onTypingComplete,
                 // Auto-advancing dialogue doesn't need a "tap to continue"
                 // prompt — it moves on by itself. Tap-paced dialogue does.
-                showAdvanceCue: !widget.autoAdvance,
+                // (widget.showAdvanceCue overrides this when explicitly set.)
+                showAdvanceCue: widget.showAdvanceCue ?? !widget.autoAdvance,
               )
             : HatiFrogAvatar(
                 key: const ValueKey('hati-waiting'),
                 size: widget.size,
+                mood: widget.mood,
               ),
       ),
     );

@@ -6,6 +6,7 @@ import 'scenario_progress_detail_screen.dart';
 import 'weekly_progress_data.dart';
 import 'weekly_progress_detail_screen.dart';
 import '../../../shared/theme/app_colors.dart';
+import '../../../shared/audio/hati_tap_sound.dart';
 
 /// Legacy module-progress doc IDs that predate the current scenario-key
 /// naming in [kScenarioConfigs] — mapped onto their modern equivalent so
@@ -213,40 +214,42 @@ class _ProgressContent extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    InkWell(
-                      key: weeklyKey,
-                      borderRadius: BorderRadius.circular(16),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const WeeklyProgressDetailScreen(),
-                          ),
-                        );
-                      },
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              const Text(
-                                'This Week',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.black,
+                    HatiTapSound.click(
+                      child: InkWell(
+                        key: weeklyKey,
+                        borderRadius: BorderRadius.circular(16),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const WeeklyProgressDetailScreen(),
+                            ),
+                          );
+                        },
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Text(
+                                  'This Week',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.black,
+                                  ),
                                 ),
-                              ),
-                              const Spacer(),
-                              const Icon(
-                                Icons.chevron_right_rounded,
-                                color: Colors.black26,
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          _WeeklyStreakCard(currentStreak: data.currentStreak),
-                        ],
+                                const Spacer(),
+                                const Icon(
+                                  Icons.chevron_right_rounded,
+                                  color: Colors.black26,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            _WeeklyStreakCard(currentStreak: data.currentStreak),
+                          ],
+                        ),
                       ),
                     ),
                     const SizedBox(height: 24),
@@ -273,19 +276,21 @@ class _ProgressContent extends StatelessWidget {
                         (entry) => Padding(
                           key: entry.$1 == 0 ? modulesKey : null,
                           padding: const EdgeInsets.only(bottom: 10),
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(16),
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => ScenarioProgressDetailScreen(
-                                    scenarioKey: entry.$2.id,
+                          child: HatiTapSound.click(
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(16),
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => ScenarioProgressDetailScreen(
+                                      scenarioKey: entry.$2.id,
+                                    ),
                                   ),
-                                ),
-                              );
-                            },
-                            child: _ModuleProgressCard(module: entry.$2),
+                                );
+                              },
+                              child: _ModuleProgressCard(module: entry.$2),
+                            ),
                           ),
                         ),
                       ),
@@ -538,15 +543,17 @@ class _WeekNavButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final enabled = onTap != null;
-    return InkWell(
-      borderRadius: BorderRadius.circular(16),
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.all(4),
-        child: Icon(
-          icon,
-          size: 22,
-          color: const Color(0xFFF5F1E8).withValues(alpha: enabled ? 1 : 0.25),
+    return HatiTapSound.click(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(4),
+          child: Icon(
+            icon,
+            size: 22,
+            color: const Color(0xFFF5F1E8).withValues(alpha: enabled ? 1 : 0.25),
+          ),
         ),
       ),
     );
@@ -770,55 +777,57 @@ class _BadgeTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => _showDescription(context),
-      onLongPress: () => _showDescription(context),
-      child: Opacity(
-        opacity: badge.earned ? 1.0 : 0.35,
-        child: Container(
-          // Was 80 — just wide enough for "Sharpshooter" (the one label
-          // with no natural word-break point, unlike "5-Day\nStreak" /
-          // "Quick\nThinker" which pick their own line break) to wrap
-          // mid-word instead of fitting on one line. This is in a
-          // horizontally-scrolling row, so widening every tile a bit costs
-          // nothing layout-wise.
-          width: 90,
-          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
-          decoration: BoxDecoration(
-            color: badge.earned
-                ? const Color(0xFF0B28D9).withOpacity(0.07)
-                : AppColors.creamDeep,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
+    return HatiTapSound.click(
+      child: GestureDetector(
+        onTap: () => _showDescription(context),
+        onLongPress: () => _showDescription(context),
+        child: Opacity(
+          opacity: badge.earned ? 1.0 : 0.35,
+          child: Container(
+            // Was 80 — just wide enough for "Sharpshooter" (the one label
+            // with no natural word-break point, unlike "5-Day\nStreak" /
+            // "Quick\nThinker" which pick their own line break) to wrap
+            // mid-word instead of fitting on one line. This is in a
+            // horizontally-scrolling row, so widening every tile a bit costs
+            // nothing layout-wise.
+            width: 90,
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+            decoration: BoxDecoration(
               color: badge.earned
-                  ? const Color(0xFF0B28D9).withOpacity(0.2)
-                  : AppColors.creamLine,
+                  ? const Color(0xFF0B28D9).withOpacity(0.07)
+                  : AppColors.creamDeep,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: badge.earned
+                    ? const Color(0xFF0B28D9).withOpacity(0.2)
+                    : AppColors.creamLine,
+              ),
             ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Image.asset(
-                badge.image,
-                width: 40,
-                height: 40,
-                fit: BoxFit.contain,
-              ),
-              const SizedBox(height: 6),
-              Text(
-                badge.label,
-                textAlign: TextAlign.center,
-                softWrap: true,
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  color: badge.earned
-                      ? const Color(0xFF0B28D9)
-                      : Colors.black38,
-                  height: 1.3,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Image.asset(
+                  badge.image,
+                  width: 40,
+                  height: 40,
+                  fit: BoxFit.contain,
                 ),
-              ),
-            ],
+                const SizedBox(height: 6),
+                Text(
+                  badge.label,
+                  textAlign: TextAlign.center,
+                  softWrap: true,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: badge.earned
+                        ? const Color(0xFF0B28D9)
+                        : Colors.black38,
+                    height: 1.3,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../shared/widgets/scroll_if_cramped.dart';
 import '../../spinAssessment/models/spin_question_model.dart';
 import '../../../shared/theme/app_colors.dart';
+import '../../../shared/audio/hati_tap_sound.dart';
 
 /// Generic question-flow screen: one Likert-scale question at a time, with
 /// a progress header and Back/Next controls.
@@ -319,53 +320,55 @@ class _OptionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-        decoration: BoxDecoration(
-          color: selected ? AppColors.blueTint : const Color(0xFFF5F1E8),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: selected ? _blue : AppColors.creamLine,
-            width: selected ? 2 : 1,
+    return HatiTapSound.option(
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+          decoration: BoxDecoration(
+            color: selected ? AppColors.blueTint : const Color(0xFFF5F1E8),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: selected ? _blue : AppColors.creamLine,
+              width: selected ? 2 : 1,
+            ),
           ),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                  color: selected ? _blue : Colors.black87,
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                    color: selected ? _blue : Colors.black87,
+                  ),
                 ),
               ),
-            ),
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              width: 22,
-              height: 22,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: selected ? _blue : const Color(0xFFF5F1E8),
-                border: Border.all(
-                  color: selected ? _blue : const Color(0xFFCCCCCC),
-                  width: 1.5,
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                width: 22,
+                height: 22,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: selected ? _blue : const Color(0xFFF5F1E8),
+                  border: Border.all(
+                    color: selected ? _blue : const Color(0xFFCCCCCC),
+                    width: 1.5,
+                  ),
                 ),
+                child: selected
+                    ? const Icon(
+                        Icons.check,
+                        size: 14,
+                        color: const Color(0xFFF5F1E8),
+                      )
+                    : null,
               ),
-              child: selected
-                  ? const Icon(
-                      Icons.check,
-                      size: 14,
-                      color: const Color(0xFFF5F1E8),
-                    )
-                  : null,
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

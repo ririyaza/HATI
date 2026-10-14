@@ -4,10 +4,13 @@ import 'package:flutter/material.dart';
 
 import '../../auth/screen/login_screen.dart';
 import '../../../shared/theme/app_colors.dart';
+import 'admin_activity_tab.dart';
+import 'admin_assessments_tab.dart';
 
 /// Landing screen for the admin/developer account (see `navigateAfterAuth`):
-/// a flat, cross-user inbox of every message sent through "Contact
-/// Developer", newest first.
+/// an Inbox tab with every "Contact Developer" message (newest first), an
+/// Assessments tab with every user's SPIN/GAD-7 scores, and an Activity tab
+/// with each user's scenario practice history.
 class AdminInboxScreen extends StatelessWidget {
   const AdminInboxScreen({super.key});
 
@@ -22,87 +25,111 @@ class AdminInboxScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F1E8),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF0B28D9),
-        foregroundColor: const Color(0xFFF5F1E8),
-        title: const Text(
-          'Developer Inbox',
-          style: TextStyle(fontWeight: FontWeight.w700),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout_rounded),
-            tooltip: 'Sign out',
-            onPressed: () => _signOut(context),
+    return DefaultTabController(
+      length: 3,
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF5F1E8),
+        appBar: AppBar(
+          backgroundColor: const Color(0xFF0B28D9),
+          foregroundColor: const Color(0xFFF5F1E8),
+          title: const Text(
+            'Developer Console',
+            style: TextStyle(fontWeight: FontWeight.w700),
           ),
-        ],
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.logout_rounded),
+              tooltip: 'Sign out',
+              onPressed: () => _signOut(context),
+            ),
+          ],
+          bottom: const TabBar(
+            labelColor: Color(0xFFF5F1E8),
+            unselectedLabelColor: Color(0xB3F5F1E8),
+            indicatorColor: Color(0xFFF5F1E8),
+            tabs: [
+              Tab(icon: Icon(Icons.inbox_rounded), text: 'Inbox'),
+              Tab(icon: Icon(Icons.assessment_rounded), text: 'Assessments'),
+              Tab(icon: Icon(Icons.timeline_rounded), text: 'Activity'),
+            ],
+          ),
+        ),
+        body: const TabBarView(
+          children: [_InboxTab(), AdminAssessmentsTab(), AdminActivityTab()],
+        ),
       ),
-      body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-        // No orderBy here on purpose: an unordered collectionGroup query
-        // needs no Firestore index at all, unlike one with orderBy/where.
-        // With the small volume of support messages this inbox will ever
-        // hold, sorting the fetched docs client-side (below) is simpler
-        // and more robust than depending on a manually-created index.
-        stream: FirebaseFirestore.instance
-            .collectionGroup('supportMessages')
-            .snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text(
-                      'Unable to load messages.',
-                      style: TextStyle(color: Colors.black87, fontSize: 14),
+    );
+  }
+}
+
+class _InboxTab extends StatelessWidget {
+  const _InboxTab();
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      // No orderBy here on purpose: an unordered collectionGroup query
+      // needs no Firestore index at all, unlike one with orderBy/where.
+      // With the small volume of support messages this inbox will ever
+      // hold, sorting the fetched docs client-side (below) is simpler
+      // and more robust than depending on a manually-created index.
+      stream: FirebaseFirestore.instance
+          .collectionGroup('supportMessages')
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Unable to load messages.',
+                    style: TextStyle(color: Colors.black87, fontSize: 14),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    snapshot.error.toString(),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.black45,
+                      fontSize: 11,
+                      height: 1.4,
                     ),
-                    const SizedBox(height: 16),
-                    Text(
-                      snapshot.error.toString(),
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Colors.black45,
-                        fontSize: 11,
-                        height: 1.4,
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            );
-          }
-          if (!snapshot.hasData) {
-            return const Center(
-              child: CircularProgressIndicator(color: Color(0xFF0B28D9)),
-            );
-          }
-          final docs = [...snapshot.data!.docs]..sort((a, b) {
+            ),
+          );
+        }
+        if (!snapshot.hasData) {
+          return const Center(
+            child: CircularProgressIndicator(color: Color(0xFF0B28D9)),
+          );
+        }
+        final docs = [...snapshot.data!.docs]
+          ..sort((a, b) {
             final aTime = (a.data()['createdAt'] as Timestamp?)?.toDate();
             final bTime = (b.data()['createdAt'] as Timestamp?)?.toDate();
             if (aTime == null || bTime == null) return 0;
             return bTime.compareTo(aTime);
           });
-          if (docs.isEmpty) {
-            return const Center(
-              child: Text(
-                'No messages yet.',
-                style: TextStyle(color: Colors.black45),
-              ),
-            );
-          }
-          return ListView.separated(
-            padding: const EdgeInsets.all(16),
-            itemCount: docs.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 10),
-            itemBuilder: (context, index) =>
-                _MessageCard(doc: docs[index]),
+        if (docs.isEmpty) {
+          return const Center(
+            child: Text(
+              'No messages yet.',
+              style: TextStyle(color: Colors.black45),
+            ),
           );
-        },
-      ),
+        }
+        return ListView.separated(
+          padding: const EdgeInsets.all(16),
+          itemCount: docs.length,
+          separatorBuilder: (_, _) => const SizedBox(height: 10),
+          itemBuilder: (context, index) => _MessageCard(doc: docs[index]),
+        );
+      },
     );
   }
 }
@@ -189,8 +216,18 @@ class _MessageCard extends StatelessWidget {
 
   static String _formatTimestamp(DateTime date) {
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     final hour12 = date.hour % 12 == 0 ? 12 : date.hour % 12;
     final minute = date.minute.toString().padLeft(2, '0');

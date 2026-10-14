@@ -1,10 +1,11 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:flutter/gestures.dart' show kTouchSlop;
 import 'package:flutter/material.dart';
 
 import '../../emotiondetection/themed_scenario/shared_widgets.dart'
-    show HatiFrogAvatar;
+    show HatiFrogAvatar, HatiMood;
 import '../../hatiChat/widgets/hati_chat_entry_bar.dart';
 import '../../postAssessment/widgets/reassessment_banner.dart';
 import '../widgets/hati_sprite_animation.dart';
@@ -59,9 +60,17 @@ class _HomeScreenState extends State<HomeScreen> {
   static const _maxIdleJitter = Duration(seconds: 55);
   static const _holdAfterTyping = Duration(seconds: 5);
 
+  /// Chance that a tap on Hati makes him briefly happy — kept low so it
+  /// feels like a little surprise rather than a reaction to every tap.
+  static const _happyTapChance = 0.2;
+  static const _happyDuration = Duration(milliseconds: 2500);
+
   final _random = Random();
 
   Timer? _idleTimer;
+  Timer? _happyTimer;
+  HatiMood _mood = HatiMood.idle;
+  Offset? _tapDownPosition;
   bool _started = false;
   int? _currentTipIndex;
   int _messageVersion = 0;
@@ -83,7 +92,20 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     _idleTimer?.cancel();
+    _happyTimer?.cancel();
     super.dispose();
+  }
+
+  /// Called on a tap (not a drag/scroll) on Hati. Only occasionally swaps
+  /// him to [HatiMood.happy], and ignores taps while he's already happy so
+  /// spamming taps can't keep him there.
+  void _onHatiTapped() {
+    if (_mood == HatiMood.happy) return;
+    if (_random.nextDouble() >= _happyTapChance) return;
+    setState(() => _mood = HatiMood.happy);
+    _happyTimer = Timer(_happyDuration, () {
+      if (mounted) setState(() => _mood = HatiMood.idle);
+    });
   }
 
   void _maybeStart() {
@@ -172,8 +194,25 @@ class _HomeScreenState extends State<HomeScreen> {
                               120.0,
                               300.0,
                             );
+                            // A raw Listener (not a GestureDetector) so it
+                            // doesn't compete with HatiTapToAdvance / the
+                            // tap sound for the gesture. The Stack inside
+                            // only hit-tests within the frog's box, so this
+                            // fires for taps on Hati himself.
                             return Center(
-                              child: _started
+                              child: Listener(
+                                onPointerDown: (e) =>
+                                    _tapDownPosition = e.position,
+                                onPointerUp: (e) {
+                                  final down = _tapDownPosition;
+                                  _tapDownPosition = null;
+                                  if (down != null &&
+                                      (e.position - down).distance <
+                                          kTouchSlop) {
+                                    _onHatiTapped();
+                                  }
+                                },
+                                child: _started
                                   ? HatiSpriteAnimation(
                                       key: ValueKey(_messageVersion),
                                       message: _currentMessage,
@@ -189,8 +228,13 @@ class _HomeScreenState extends State<HomeScreen> {
                                       // HatiSpeakingBlock.bubbleGap's doc
                                       // comment. Scaled with the frog.
                                       bubbleGap: -40 * (frogSize / 300),
+                                      mood: _mood,
                                     )
-                                  : HatiFrogAvatar(size: frogSize),
+                                  : HatiFrogAvatar(
+                                      size: frogSize,
+                                      mood: _mood,
+                                    ),
+                              ),
                             );
                           },
                         ),

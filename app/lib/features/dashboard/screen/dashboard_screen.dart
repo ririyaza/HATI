@@ -55,7 +55,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       weeklyKey: _tourKeys.progressWeeklyKey,
       modulesKey: _tourKeys.progressModulesKey,
     ),
-    ProfileScreen(onNavigateTab: _onItemTapped),
+    const ProfileScreen(),
   ];
 
   @override
@@ -169,7 +169,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
           children: [
             IndexedStack(
               index: _selectedIndex,
-              children: _screens,
+              // IndexedStack keeps hidden tabs alive (and their timers
+              // running), so the Home tab's auto-advancing Hati dialogue
+              // kept talking/typing out loud from behind other tabs.
+              // TickerMode marks which tab is actually on screen — the
+              // speech bubble only plays sound while it's enabled (see
+              // _AnimatedHatiSpeechBubbleState._audible), and hidden tabs'
+              // animations pause too.
+              children: [
+                for (final (i, screen) in _screens.indexed)
+                  TickerMode(enabled: i == _selectedIndex, child: screen),
+              ],
             ),
             if (_selectedIndex != _profileTabIndex || _tourActive)
               Positioned.fill(

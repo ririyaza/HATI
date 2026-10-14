@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../data/spin_scoring.dart';
 import 'spin_result_visuals.dart';
+import '../../../shared/audio/hati_tap_sound.dart';
+import '../../../shared/audio/score_sounds.dart';
 
 /// Read-only revisit of the SPIN result, reached via "View Result" /
 /// "Review Result" from [AssessmentCompleteScreen] or [LowScoreExitScreen].
@@ -27,6 +29,7 @@ class _SpinResultReviewScreenState extends State<SpinResultReviewScreen>
   late final AnimationController _animCtrl;
   late final Animation<double> _arcAnim;
   late final Animation<double> _fadeAnim;
+  late final ScoreAnimationSounds _scoreSounds;
 
   @override
   void initState() {
@@ -47,11 +50,13 @@ class _SpinResultReviewScreenState extends State<SpinResultReviewScreen>
       curve: const Interval(0.4, 1.0, curve: Curves.easeOut),
     );
 
+    _scoreSounds = ScoreAnimationSounds(_arcAnim);
     _animCtrl.forward();
   }
 
   @override
   void dispose() {
+    _scoreSounds.dispose();
     _animCtrl.dispose();
     super.dispose();
   }
@@ -144,18 +149,20 @@ class _BackButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF5F1E8).withOpacity(0.2),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: const Icon(
-          Icons.arrow_back_rounded,
-          color: const Color(0xFFF5F1E8),
-          size: 20,
+    return HatiTapSound.click(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF5F1E8).withOpacity(0.2),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: const Icon(
+            Icons.arrow_back_rounded,
+            color: const Color(0xFFF5F1E8),
+            size: 20,
+          ),
         ),
       ),
     );

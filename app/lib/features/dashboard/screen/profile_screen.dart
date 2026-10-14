@@ -11,16 +11,14 @@ import '../../../shared/audio/audio_settings_sheet.dart';
 import '../data/dashboard_user_data.dart';
 import '../widgets/help_center_sheet.dart';
 import '../widgets/profile_edit_sheets.dart';
+import 'assessment_result_detail_screen.dart';
 import 'privacy_policy_screen.dart';
+import 'profile_stat_detail_screen.dart';
 import '../../../shared/theme/app_colors.dart';
+import '../../../shared/audio/hati_tap_sound.dart';
 
 class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({super.key, this.onNavigateTab});
-
-  /// Switches the dashboard's bottom-nav tab (0=Home, 1=Modules,
-  /// 2=Progress, 3=Profile) — used by the stat cards so each one opens its
-  /// own page. Null leaves the cards non-tappable.
-  final ValueChanged<int>? onNavigateTab;
+  const ProfileScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -43,10 +41,7 @@ class ProfileScreen extends StatelessWidget {
             if (!snapshot.hasData) {
               return const _StateScaffold.loading();
             }
-            return _ProfileContent(
-              data: snapshot.data!,
-              onNavigateTab: onNavigateTab,
-            );
+            return _ProfileContent(data: snapshot.data!);
           },
         );
       },
@@ -192,10 +187,9 @@ class _LogoutConfirmDialog extends StatelessWidget {
 }
 
 class _ProfileContent extends StatelessWidget {
-  const _ProfileContent({required this.data, this.onNavigateTab});
+  const _ProfileContent({required this.data});
 
   final DashboardUserData data;
-  final ValueChanged<int>? onNavigateTab;
 
   @override
   Widget build(BuildContext context) {
@@ -249,20 +243,24 @@ class _ProfileContent extends StatelessWidget {
                                     ),
                                   ),
                                   const SizedBox(width: 6),
-                                  InkWell(
-                                    borderRadius: BorderRadius.circular(20),
-                                    onTap: () => showEditNameAndPronounsSheet(
-                                      context,
-                                      uid: data.uid,
-                                      currentName: data.displayName,
-                                      currentPronouns: data.pronouns,
-                                    ),
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(4),
-                                      child: Icon(
-                                        Icons.edit_outlined,
-                                        size: 16,
-                                        color: Color(0xFFF5F1E8).withValues(alpha: 0.70),
+                                  HatiTapSound.click(
+                                    child: InkWell(
+                                      borderRadius: BorderRadius.circular(20),
+                                      onTap: () => showEditNameAndPronounsSheet(
+                                        context,
+                                        uid: data.uid,
+                                        currentName: data.displayName,
+                                        currentPronouns: data.pronouns,
+                                      ),
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(4),
+                                        child: Icon(
+                                          Icons.edit_outlined,
+                                          size: 16,
+                                          color: Color(
+                                            0xFFF5F1E8,
+                                          ).withValues(alpha: 0.70),
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -303,7 +301,7 @@ class _ProfileContent extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _StatsRow(data: data, onNavigateTab: onNavigateTab),
+                    _StatsRow(data: data),
                     const SizedBox(height: 24),
                     const Text(
                       '2-Week Check-in',
@@ -346,7 +344,10 @@ class _ProfileContent extends StatelessWidget {
                         body: 'No assessment scores have been recorded yet.',
                       )
                     else
-                      _AssessmentScoresSection(entries: data.assessments),
+                      _AssessmentScoresSection(
+                        uid: data.uid,
+                        entries: data.assessments,
+                      ),
                     const SizedBox(height: 24),
                     _SectionTitle(
                       title: 'Coping Preferences',
@@ -394,22 +395,24 @@ class _ProfileContent extends StatelessWidget {
                       onTap: () => showHelpCenterSheet(context),
                     ),
                     const SizedBox(height: 12),
-                    GestureDetector(
-                      onTap: () => _handleLogout(context),
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFD9250B),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        alignment: Alignment.center,
-                        child: const Text(
-                          'Log Out',
-                          style: TextStyle(
-                            color: Color(0xFFF5F1E8),
-                            fontWeight: FontWeight.w700,
-                            fontSize: 15,
+                    HatiTapSound.click(
+                      child: GestureDetector(
+                        onTap: () => _handleLogout(context),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFD9250B),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          alignment: Alignment.center,
+                          child: const Text(
+                            'Log Out',
+                            style: TextStyle(
+                              color: Color(0xFFF5F1E8),
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15,
+                            ),
                           ),
                         ),
                       ),
@@ -434,35 +437,37 @@ class _EditableProfileAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => showAvatarPickerSheet(
-        context,
-        uid: uid,
-        currentAssetPath: photoUrl.startsWith('assets/') ? photoUrl : null,
-      ),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          _ProfileAvatar(photoUrl: photoUrl),
-          Positioned(
-            bottom: -2,
-            right: -2,
-            child: Container(
-              width: 26,
-              height: 26,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: const Color(0xFF0B28D9),
-                border: Border.all(color: const Color(0xFFF5F1E8), width: 2),
-              ),
-              child: const Icon(
-                Icons.edit_rounded,
-                size: 12,
-                color: const Color(0xFFF5F1E8),
+    return HatiTapSound.click(
+      child: GestureDetector(
+        onTap: () => showAvatarPickerSheet(
+          context,
+          uid: uid,
+          currentAssetPath: photoUrl.startsWith('assets/') ? photoUrl : null,
+        ),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            _ProfileAvatar(photoUrl: photoUrl),
+            Positioned(
+              bottom: -2,
+              right: -2,
+              child: Container(
+                width: 26,
+                height: 26,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFF0B28D9),
+                  border: Border.all(color: const Color(0xFFF5F1E8), width: 2),
+                ),
+                child: const Icon(
+                  Icons.edit_rounded,
+                  size: 12,
+                  color: const Color(0xFFF5F1E8),
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -551,15 +556,17 @@ class _SectionTitle extends StatelessWidget {
         ),
         if (onEdit != null) ...[
           const Spacer(),
-          InkWell(
-            borderRadius: BorderRadius.circular(20),
-            onTap: onEdit,
-            child: const Padding(
-              padding: EdgeInsets.all(4),
-              child: Icon(
-                Icons.edit_outlined,
-                size: 18,
-                color: Color(0xFF0B28D9),
+          HatiTapSound.click(
+            child: InkWell(
+              borderRadius: BorderRadius.circular(20),
+              onTap: onEdit,
+              child: const Padding(
+                padding: EdgeInsets.all(4),
+                child: Icon(
+                  Icons.edit_outlined,
+                  size: 18,
+                  color: Color(0xFF0B28D9),
+                ),
               ),
             ),
           ),
@@ -569,18 +576,17 @@ class _SectionTitle extends StatelessWidget {
   }
 }
 
-// Dashboard tab indexes the stat cards open.
-const _modulesTabIndex = 1;
-const _progressTabIndex = 2;
-
 class _StatsRow extends StatelessWidget {
-  const _StatsRow({required this.data, this.onNavigateTab});
+  const _StatsRow({required this.data});
 
   final DashboardUserData data;
-  final ValueChanged<int>? onNavigateTab;
 
-  VoidCallback? _goTo(int tab) =>
-      onNavigateTab == null ? null : () => onNavigateTab!(tab);
+  // Each card opens its own breakdown page (profile_stat_detail_screen.dart)
+  // rather than switching to the Modules/Progress tab.
+  VoidCallback _open(BuildContext context, ProfileStat stat) =>
+      () => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => ProfileStatDetailScreen(stat: stat)),
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -589,21 +595,19 @@ class _StatsRow extends StatelessWidget {
         _StatCard(
           value: '${data.modulesStarted}',
           label: 'Modules\nStarted',
-          onTap: _goTo(_modulesTabIndex),
+          onTap: _open(context, ProfileStat.modulesStarted),
         ),
         const SizedBox(width: 10),
-        // Scenario completion and the day streak both live on the Progress
-        // tab (scenario module cards and the "This Week" streak card).
         _StatCard(
           value: '${data.modesCompleted}',
           label: 'Modes\nCompleted',
-          onTap: _goTo(_progressTabIndex),
+          onTap: _open(context, ProfileStat.modesCompleted),
         ),
         const SizedBox(width: 10),
         _StatCard(
           value: '${data.currentStreak}',
           label: 'Day\nStreak',
-          onTap: _goTo(_progressTabIndex),
+          onTap: _open(context, ProfileStat.dayStreak),
         ),
       ],
     );
@@ -623,10 +627,12 @@ class _StatCard extends StatelessWidget {
       child: Material(
         color: const Color(0xFF0B28D9).withOpacity(0.07),
         borderRadius: BorderRadius.circular(14),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(14),
-          onTap: onTap,
-          child: _statBody(),
+        child: HatiTapSound.click(
+          child: InkWell(
+            borderRadius: BorderRadius.circular(14),
+            onTap: onTap,
+            child: _statBody(),
+          ),
         ),
       ),
     );
@@ -664,8 +670,9 @@ class _StatCard extends StatelessWidget {
 }
 
 class _AssessmentScoresSection extends StatelessWidget {
-  const _AssessmentScoresSection({required this.entries});
+  const _AssessmentScoresSection({required this.uid, required this.entries});
 
+  final String uid;
   final List<AssessmentScoreData> entries;
 
   @override
@@ -675,7 +682,14 @@ class _AssessmentScoresSection extends StatelessWidget {
           .map(
             (entry) => Padding(
               padding: const EdgeInsets.only(bottom: 12),
-              child: _AssessmentEntryCard(entry: entry),
+              child: _AssessmentEntryCard(
+                entry: entry,
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => AssessmentResultDetailScreen(uid: uid),
+                  ),
+                ),
+              ),
             ),
           )
           .toList(),
@@ -684,9 +698,10 @@ class _AssessmentScoresSection extends StatelessWidget {
 }
 
 class _AssessmentEntryCard extends StatelessWidget {
-  const _AssessmentEntryCard({required this.entry});
+  const _AssessmentEntryCard({required this.entry, required this.onTap});
 
   final AssessmentScoreData entry;
+  final VoidCallback onTap;
 
   Color _scoreColor(int? score) {
     if (score == null) return Colors.black38;
@@ -710,86 +725,108 @@ class _AssessmentEntryCard extends StatelessWidget {
         ? null
         : entry.postScore! - entry.preScore!;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFFF5F1E8),
+    return Material(
+      color: const Color(0xFFF5F1E8),
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.creamLine),
+        side: const BorderSide(color: AppColors.creamLine),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
-            child: Row(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0B28D9).withOpacity(0.08),
-                    borderRadius: BorderRadius.circular(10),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0B28D9).withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      entry.icon,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF0B28D9),
+                      ),
+                    ),
                   ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    entry.icon,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      entry.name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ),
+                  if (gain != null) _GainChip(gain: gain),
+                ],
+              ),
+            ),
+            const Divider(height: 1, color: AppColors.creamLine),
+            Padding(
+              padding: const EdgeInsets.all(14),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _ScoreColumn(
+                      label: 'Initial',
+                      date: _formatDate(entry.preDate),
+                      score: entry.preScore,
+                      maxScore: entry.maxScore,
+                      color: _scoreColor(entry.preScore),
+                      grade: _grade(entry.preScore),
+                    ),
+                  ),
+                  Container(
+                    width: 1,
+                    height: 80,
+                    color: AppColors.creamLine,
+                    margin: const EdgeInsets.symmetric(horizontal: 14),
+                  ),
+                  Expanded(
+                    child: _ScoreColumn(
+                      label: 'Post',
+                      date: _formatDate(entry.postDate),
+                      score: entry.postScore,
+                      maxScore: entry.maxScore,
+                      color: _scoreColor(entry.postScore),
+                      grade: _grade(entry.postScore),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1, color: AppColors.creamLine),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              child: Row(
+                children: [
+                  Text(
+                    'View result details',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
                       color: Color(0xFF0B28D9),
                     ),
                   ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    entry.name,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14,
-                      color: Colors.black87,
-                    ),
-                  ),
-                ),
-                if (gain != null) _GainChip(gain: gain),
-              ],
+                  Spacer(),
+                  Icon(Icons.chevron_right, color: Color(0xFF0B28D9), size: 20),
+                ],
+              ),
             ),
-          ),
-          const Divider(height: 1, color: AppColors.creamLine),
-          Padding(
-            padding: const EdgeInsets.all(14),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _ScoreColumn(
-                    label: 'Initial',
-                    date: _formatDate(entry.preDate),
-                    score: entry.preScore,
-                    maxScore: entry.maxScore,
-                    color: _scoreColor(entry.preScore),
-                    grade: _grade(entry.preScore),
-                  ),
-                ),
-                Container(
-                  width: 1,
-                  height: 80,
-                  color: AppColors.creamLine,
-                  margin: const EdgeInsets.symmetric(horizontal: 14),
-                ),
-                Expanded(
-                  child: _ScoreColumn(
-                    label: 'Post',
-                    date: _formatDate(entry.postDate),
-                    score: entry.postScore,
-                    maxScore: entry.maxScore,
-                    color: _scoreColor(entry.postScore),
-                    grade: _grade(entry.postScore),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -972,69 +1009,71 @@ class _CheckInStatusCard extends StatelessWidget {
 
         final canStartNow = status.isDue || status.snoozedUntil != null;
 
-        return GestureDetector(
-          onTap: canStartNow
-              ? () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const PostAssessmentIntroScreen(),
+        return HatiTapSound.click(
+          child: GestureDetector(
+            onTap: canStartNow
+                ? () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const PostAssessmentIntroScreen(),
+                    ),
+                  )
+                : null,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF5F1E8),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.creamLine),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: color.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      Icons.event_available_rounded,
+                      color: color,
+                      size: 20,
+                    ),
                   ),
-                )
-              : null,
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF5F1E8),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.creamLine),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(
-                    Icons.event_available_rounded,
-                    color: color,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: color,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: color,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        subtitle,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.black45,
-                          height: 1.35,
+                        const SizedBox(height: 3),
+                        Text(
+                          subtitle,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.black45,
+                            height: 1.35,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-                if (canStartNow)
-                  const Icon(
-                    Icons.chevron_right,
-                    color: Colors.black26,
-                    size: 22,
-                  ),
-              ],
+                  if (canStartNow)
+                    const Icon(
+                      Icons.chevron_right,
+                      color: Colors.black26,
+                      size: 22,
+                    ),
+                ],
+              ),
             ),
           ),
         );
@@ -1383,32 +1422,34 @@ class _SettingsTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF5F1E8),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.creamLine),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, color: const Color(0xFF0B28D9), size: 22),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87,
+    return HatiTapSound.click(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF5F1E8),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.creamLine),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, color: const Color(0xFF0B28D9), size: 22),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                  ),
                 ),
               ),
-            ),
-            const Icon(Icons.chevron_right, color: Colors.black26, size: 22),
-          ],
+              const Icon(Icons.chevron_right, color: Colors.black26, size: 22),
+            ],
+          ),
         ),
       ),
     );

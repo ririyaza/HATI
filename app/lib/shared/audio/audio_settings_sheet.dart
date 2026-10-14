@@ -135,10 +135,7 @@ class _SoundSettingsSheetState extends State<_SoundSettingsSheet> {
             ),
             if (_audio.sfxEnabled) ...[
               const SizedBox(height: 10),
-              _VolumeSlider(
-                value: _audio.sfxVolume,
-                onChanged: _setSfxVolume,
-              ),
+              _VolumeSlider(value: _audio.sfxVolume, onChanged: _setSfxVolume),
             ],
           ],
         ),
@@ -196,11 +193,7 @@ class _AudioToggleRow extends StatelessWidget {
               ],
             ),
           ),
-          Switch(
-            value: value,
-            activeThumbColor: _kBlue,
-            onChanged: onChanged,
-          ),
+          Switch(value: value, activeThumbColor: _kBlue, onChanged: onChanged),
         ],
       ),
     );
@@ -222,7 +215,11 @@ class _VolumeSlider extends StatelessWidget {
       padding: const EdgeInsets.only(left: 16, right: 8),
       child: Row(
         children: [
-          const Icon(Icons.volume_down_rounded, size: 18, color: Colors.black38),
+          const Icon(
+            Icons.volume_down_rounded,
+            size: 18,
+            color: Colors.black38,
+          ),
           Expanded(
             child: SliderTheme(
               data: SliderTheme.of(context).copyWith(
@@ -233,10 +230,7 @@ class _VolumeSlider extends StatelessWidget {
                 thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
                 overlayColor: _kBlue.withValues(alpha: 0.15),
               ),
-              child: Slider(
-                value: value.clamp(0.0, 1.0),
-                onChanged: onChanged,
-              ),
+              child: Slider(value: value.clamp(0.0, 1.0), onChanged: onChanged),
             ),
           ),
           const Icon(Icons.volume_up_rounded, size: 18, color: Colors.black38),

@@ -9,6 +9,8 @@ import 'profile_setup_screen.dart';
 import '../../shared/offline/action_feedback.dart';
 import '../../shared/offline/offline_save.dart';
 import '../../shared/theme/app_colors.dart';
+import '../../shared/audio/hati_audio_service.dart';
+import '../../shared/audio/hati_tap_sound.dart';
 
 class ConsentFlowScreen extends StatefulWidget {
   const ConsentFlowScreen({super.key});
@@ -154,6 +156,7 @@ class _ConsentFlowScreenState extends State<ConsentFlowScreen>
 
     if (!mounted) return;
 
+    HatiAudioService.instance.playConsentRecorded();
     showDialog<void>(
       context: context,
       barrierDismissible: false,
@@ -446,18 +449,20 @@ class _Header extends StatelessWidget {
               // Back button row
               Row(
                 children: [
-                  GestureDetector(
-                    onTap: onBack,
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF5F1E8).withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(
-                        Icons.arrow_back_rounded,
-                        color: const Color(0xFFF5F1E8),
-                        size: 20,
+                  HatiTapSound.click(
+                    child: GestureDetector(
+                      onTap: onBack,
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF5F1E8).withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(
+                          Icons.arrow_back_rounded,
+                          color: const Color(0xFFF5F1E8),
+                          size: 20,
+                        ),
                       ),
                     ),
                   ),
@@ -716,62 +721,64 @@ class _ConsentCheckItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => onChanged(!checked),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-        decoration: BoxDecoration(
-          color: checked ? AppColors.blueTint : const Color(0xFFF5F1E8),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: checked
-                ? const Color(0xFF0B28D9).withOpacity(0.5)
-                : AppColors.creamLine,
-            width: 1.2,
+    return HatiTapSound.option(
+      child: GestureDetector(
+        onTap: () => onChanged(!checked),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          decoration: BoxDecoration(
+            color: checked ? AppColors.blueTint : const Color(0xFFF5F1E8),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: checked
+                  ? const Color(0xFF0B28D9).withOpacity(0.5)
+                  : AppColors.creamLine,
+              width: 1.2,
+            ),
           ),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              width: 22,
-              height: 22,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: checked ? const Color(0xFF0B28D9) : const Color(0xFFF5F1E8),
-                border: Border.all(
-                  color: checked
-                      ? const Color(0xFF0B28D9)
-                      : const Color(0xFFCBD5E1),
-                  width: 1.5,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: 22,
+                height: 22,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: checked ? const Color(0xFF0B28D9) : const Color(0xFFF5F1E8),
+                  border: Border.all(
+                    color: checked
+                        ? const Color(0xFF0B28D9)
+                        : const Color(0xFFCBD5E1),
+                    width: 1.5,
+                  ),
+                ),
+                child: checked
+                    ? const Icon(
+                        Icons.check_rounded,
+                        size: 13,
+                        color: const Color(0xFFF5F1E8),
+                      )
+                    : null,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: checked
+                        ? const Color(0xFF1A1A2E)
+                        : const Color(0xFF64748B),
+                    fontWeight: checked ? FontWeight.w600 : FontWeight.w400,
+                    height: 1.45,
+                  ),
                 ),
               ),
-              child: checked
-                  ? const Icon(
-                      Icons.check_rounded,
-                      size: 13,
-                      color: const Color(0xFFF5F1E8),
-                    )
-                  : null,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: checked
-                      ? const Color(0xFF1A1A2E)
-                      : const Color(0xFF64748B),
-                  fontWeight: checked ? FontWeight.w600 : FontWeight.w400,
-                  height: 1.45,
-                ),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

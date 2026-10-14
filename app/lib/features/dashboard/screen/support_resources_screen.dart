@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'dashboard_screen.dart';
 import '../../../shared/theme/app_colors.dart';
+import '../../../shared/audio/hati_tap_sound.dart';
 
 class SupportResourcesScreen extends StatelessWidget {
   const SupportResourcesScreen({super.key});
@@ -351,10 +352,12 @@ class _ContactRowState extends State<_ContactRow> {
 
     if (!_actionable) return row;
 
-    return InkWell(
-      onTap: _launch,
-      borderRadius: BorderRadius.circular(6),
-      child: row,
+    return HatiTapSound.click(
+      child: InkWell(
+        onTap: _launch,
+        borderRadius: BorderRadius.circular(6),
+        child: row,
+      ),
     );
   }
 }

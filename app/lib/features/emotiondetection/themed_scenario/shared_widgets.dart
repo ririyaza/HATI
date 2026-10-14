@@ -16,6 +16,7 @@
 
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
@@ -30,6 +31,7 @@ import 'package:rive/rive.dart'
         RiveWidget,
         RiveWidgetBuilder;
 import '../../../shared/audio/hati_audio_service.dart';
+import '../../../shared/audio/hati_tap_sound.dart';
 import 'app_theme.dart';
 import 'scenario_replay_view.dart';
 import '../../../shared/theme/app_colors.dart';
@@ -250,38 +252,41 @@ class PIESChip extends StatelessWidget {
     return AnimatedOpacity(
       duration: const Duration(milliseconds: 350),
       opacity: enabled ? 1 : 0.4,
-      child: GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-          decoration: BoxDecoration(
-            color: selected
-                ? (selectedColor ?? HatiColors.mossGreen)
-                : HatiColors.surface,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(
+      child: HatiTapSound.option(
+        child: GestureDetector(
+          onTap: onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+            decoration: BoxDecoration(
               color: selected
                   ? (selectedColor ?? HatiColors.mossGreen)
-                  : HatiColors.divider,
-              width: 1.5,
-            ),
-            boxShadow: selected
-                ? [
-                    BoxShadow(
-                      color: (selectedColor ?? HatiColors.mossGreen).withValues(
-                        alpha: 0.25,
+                  : HatiColors.surface,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: selected
+                    ? (selectedColor ?? HatiColors.mossGreen)
+                    : HatiColors.divider,
+                width: 1.5,
+              ),
+              boxShadow: selected
+                  ? [
+                      BoxShadow(
+                        color: (selectedColor ?? HatiColors.mossGreen)
+                            .withValues(alpha: 0.25),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
                       ),
-                      blurRadius: 6,
-                      offset: const Offset(0, 2),
-                    ),
-                  ]
-                : [],
-          ),
-          child: Text(
-            label,
-            style: HatiTextStyles.buttonSmall.copyWith(
-              color: selected ? const Color(0xFFF5F1E8) : HatiColors.textMedium,
+                    ]
+                  : [],
+            ),
+            child: Text(
+              label,
+              style: HatiTextStyles.buttonSmall.copyWith(
+                color: selected
+                    ? const Color(0xFFF5F1E8)
+                    : HatiColors.textMedium,
+              ),
             ),
           ),
         ),
@@ -314,76 +319,80 @@ class ScriptOptionCard extends StatelessWidget {
     return AnimatedOpacity(
       duration: const Duration(milliseconds: 350),
       opacity: enabled ? 1 : 0.4,
-      child: GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          margin: const EdgeInsets.only(bottom: 10),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: selected ? const Color(0xFF0B28D9) : const Color(0xFFF5F1E8),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: selected ? const Color(0xFF0B28D9) : HatiColors.divider,
-              width: selected ? 2 : 1,
+      child: HatiTapSound.option(
+        child: GestureDetector(
+          onTap: onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: selected
+                  ? const Color(0xFF0B28D9)
+                  : const Color(0xFFF5F1E8),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: selected ? const Color(0xFF0B28D9) : HatiColors.divider,
+                width: selected ? 2 : 1,
+              ),
+              boxShadow: selected
+                  ? [
+                      BoxShadow(
+                        color: const Color(0xFF0B28D9).withValues(alpha: 0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ]
+                  : [],
             ),
-            boxShadow: selected
-                ? [
-                    BoxShadow(
-                      color: const Color(0xFF0B28D9).withValues(alpha: 0.3),
-                      blurRadius: 8,
-                      offset: const Offset(0, 3),
-                    ),
-                  ]
-                : [],
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: selected
-                      ? const Color(0xFFF5F1E8)
-                      : HatiColors.surface,
-                  shape: BoxShape.circle,
-                  border: Border.all(
+            child: Row(
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
                     color: selected
                         ? const Color(0xFFF5F1E8)
-                        : HatiColors.divider,
-                  ),
-                ),
-                child: Center(
-                  child: Text(
-                    label,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
+                        : HatiColors.surface,
+                    shape: BoxShape.circle,
+                    border: Border.all(
                       color: selected
-                          ? const Color(0xFF0B28D9)
-                          : HatiColors.textMedium,
-                      fontSize: 13,
+                          ? const Color(0xFFF5F1E8)
+                          : HatiColors.divider,
+                    ),
+                  ),
+                  child: Center(
+                    child: Text(
+                      label,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: selected
+                            ? const Color(0xFF0B28D9)
+                            : HatiColors.textMedium,
+                        fontSize: 13,
+                      ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  script,
-                  style: HatiTextStyles.bodyMedium.copyWith(
-                    color: selected
-                        ? const Color(0xFFF5F1E8)
-                        : HatiColors.textMedium,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    script,
+                    style: HatiTextStyles.bodyMedium.copyWith(
+                      color: selected
+                          ? const Color(0xFFF5F1E8)
+                          : HatiColors.textMedium,
+                    ),
                   ),
                 ),
-              ),
-              if (selected)
-                const Icon(
-                  Icons.check_circle,
-                  color: const Color(0xFFF5F1E8),
-                  size: 20,
-                ),
-            ],
+                if (selected)
+                  const Icon(
+                    Icons.check_circle,
+                    color: const Color(0xFFF5F1E8),
+                    size: 20,
+                  ),
+              ],
+            ),
           ),
         ),
       ),
@@ -433,26 +442,28 @@ class HatiButton extends StatelessWidget {
       ],
     );
 
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        width: fullWidth ? double.infinity : null,
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-        decoration: BoxDecoration(
-          color: onTap != null ? bg : bg.withValues(alpha: 0.4),
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: onTap != null
-              ? [
-                  BoxShadow(
-                    color: bg.withValues(alpha: 0.35),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
-              : [],
+    return HatiTapSound.click(
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          width: fullWidth ? double.infinity : null,
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+          decoration: BoxDecoration(
+            color: onTap != null ? bg : bg.withValues(alpha: 0.4),
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: onTap != null
+                ? [
+                    BoxShadow(
+                      color: bg.withValues(alpha: 0.35),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                : [],
+          ),
+          child: content,
         ),
-        child: content,
       ),
     );
   }
@@ -481,24 +492,26 @@ class HatiOutlineButton extends StatelessWidget {
     return AnimatedOpacity(
       duration: const Duration(milliseconds: 350),
       opacity: enabled ? 1 : 0.4,
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          decoration: BoxDecoration(
-            color: Colors.transparent,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: borderColor ?? const Color(0xFF0B28D9),
-              width: 1.5,
-            ),
-          ),
-          child: Center(
-            child: Text(
-              label,
-              style: HatiTextStyles.button.copyWith(
+      child: HatiTapSound.click(
+        child: GestureDetector(
+          onTap: onTap,
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            decoration: BoxDecoration(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
                 color: borderColor ?? const Color(0xFF0B28D9),
+                width: 1.5,
+              ),
+            ),
+            child: Center(
+              child: Text(
+                label,
+                style: HatiTextStyles.button.copyWith(
+                  color: borderColor ?? const Color(0xFF0B28D9),
+                ),
               ),
             ),
           ),
@@ -1098,87 +1111,91 @@ class _TextResponseCardState extends State<TextResponseCard> {
     // _ApproachInputBar in scene3_interaction.dart already solved this
     // the same way, which is what this now mirrors.
     final micEnabled = !widget.isLoading && !_isTranscribing;
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        if (widget.onSubmitAudio != null)
-          SizedBox(
-            width: 44,
-            height: 44,
-            child: _isTranscribing
-                ? const Center(
-                    child: SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2.4),
-                    ),
-                  )
-                // While recording, the send-slot button below is the one
-                // stop control — dim and disable this one instead of also
-                // wiring it to _stopRecording, so there's only one active
-                // stop affordance on screen at a time.
-                : IgnorePointer(
-                    ignoring: _isRecording,
-                    child: Opacity(
-                      opacity: _isRecording ? 0.35 : 1.0,
-                      child: IconButton(
-                        icon: Icon(
-                          Icons.mic_none_rounded,
-                          color: micEnabled ? blue : Colors.grey,
+    return HatiTapSound.silent(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          if (widget.onSubmitAudio != null)
+            SizedBox(
+              width: 44,
+              height: 44,
+              child: _isTranscribing
+                  ? const Center(
+                      child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2.4),
+                      ),
+                    )
+                  // While recording, the send-slot button below is the one
+                  // stop control — dim and disable this one instead of also
+                  // wiring it to _stopRecording, so there's only one active
+                  // stop affordance on screen at a time.
+                  : IgnorePointer(
+                      ignoring: _isRecording,
+                      child: Opacity(
+                        opacity: _isRecording ? 0.35 : 1.0,
+                        child: IconButton(
+                          icon: Icon(
+                            Icons.mic_none_rounded,
+                            color: micEnabled ? blue : Colors.grey,
+                          ),
+                          onPressed: micEnabled ? _startRecording : null,
                         ),
-                        onPressed: micEnabled ? _startRecording : null,
                       ),
                     ),
-                  ),
-          ),
-        Expanded(
-          child: TextField(
-            controller: _controller,
-            maxLines: widget.maxLines,
-            minLines: 1,
-            enabled: !busy,
-            onChanged: (_) => setState(() {}),
-            onSubmitted: (_) {
-              if (canSubmit) widget.onSubmit(_controller.text.trim());
-            },
-            decoration: InputDecoration(
-              hintText: _isRecording
-                  ? 'Listening…'
-                  : (_isTranscribing
-                        ? 'Converting your voice…'
-                        : widget.hintText),
-              hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 15),
-              filled: true,
-              fillColor: AppColors.creamSoft,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 12,
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(24),
-                borderSide: BorderSide.none,
+            ),
+          Expanded(
+            child: TextField(
+              controller: _controller,
+              maxLines: widget.maxLines,
+              minLines: 1,
+              enabled: !busy,
+              onChanged: (_) => setState(() {}),
+              onSubmitted: (_) {
+                if (canSubmit) widget.onSubmit(_controller.text.trim());
+              },
+              decoration: InputDecoration(
+                hintText: _isRecording
+                    ? 'Listening…'
+                    : (_isTranscribing
+                          ? 'Converting your voice…'
+                          : widget.hintText),
+                hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 15),
+                filled: true,
+                fillColor: AppColors.creamSoft,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(24),
+                  borderSide: BorderSide.none,
+                ),
               ),
             ),
           ),
-        ),
-        // Send used to live as this TextField's own suffixIcon — but
-        // during recording it needs to double as the stop button, and a
-        // suffixIcon inside a TextField(enabled: false) is untappable, the
-        // exact bug already fixed for the mic button above (see its own
-        // comment). Living outside the TextField as its own sibling avoids
-        // that regardless of the field's enabled state.
-        IconButton(
-          icon: Icon(
-            _isRecording ? Icons.stop_circle_rounded : Icons.send_rounded,
-            color: _isRecording ? Colors.red : (canSubmit ? blue : Colors.grey),
+          // Send used to live as this TextField's own suffixIcon — but
+          // during recording it needs to double as the stop button, and a
+          // suffixIcon inside a TextField(enabled: false) is untappable, the
+          // exact bug already fixed for the mic button above (see its own
+          // comment). Living outside the TextField as its own sibling avoids
+          // that regardless of the field's enabled state.
+          IconButton(
+            icon: Icon(
+              _isRecording ? Icons.stop_circle_rounded : Icons.send_rounded,
+              color: _isRecording
+                  ? Colors.red
+                  : (canSubmit ? blue : Colors.grey),
+            ),
+            onPressed: _isRecording
+                ? _stopRecording
+                : (canSubmit
+                      ? () => widget.onSubmit(_controller.text.trim())
+                      : null),
           ),
-          onPressed: _isRecording
-              ? _stopRecording
-              : (canSubmit
-                    ? () => widget.onSubmit(_controller.text.trim())
-                    : null),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -1199,6 +1216,15 @@ class HatiSpeechSequence extends StatefulWidget {
   /// Forwarded to [_AnimatedHatiSpeechBubble.showAdvanceCue].
   final bool showAdvanceCue;
 
+  /// Forwarded to [_AnimatedHatiSpeechBubble.bubbleAlignment],
+  /// [_AnimatedHatiSpeechBubble.tailTargetX] and
+  /// [_AnimatedHatiSpeechBubble.textAlign] — without these a persistent
+  /// bubble above a left-pinned frog (Scene 3's medium picker) stayed
+  /// centered with its tail pointing at the lane's middle, not at Hati.
+  final AlignmentGeometry bubbleAlignment;
+  final double? tailTargetX;
+  final TextAlign textAlign;
+
   const HatiSpeechSequence({
     super.key,
     required this.introMessage,
@@ -1208,6 +1234,9 @@ class HatiSpeechSequence extends StatefulWidget {
     this.holdAfterTyping = const Duration(seconds: 2),
     this.playTalkSound = true,
     this.showAdvanceCue = false,
+    this.bubbleAlignment = Alignment.bottomCenter,
+    this.tailTargetX,
+    this.textAlign = TextAlign.center,
   });
 
   @override
@@ -1233,6 +1262,9 @@ class _HatiSpeechSequenceState extends State<HatiSpeechSequence> {
         holdAfterTyping: widget.holdAfterTyping,
         playTalkSound: widget.playTalkSound,
         showAdvanceCue: widget.showAdvanceCue,
+        bubbleAlignment: widget.bubbleAlignment,
+        tailTargetX: widget.tailTargetX,
+        textAlign: widget.textAlign,
       );
     }
 
@@ -1247,6 +1279,9 @@ class _HatiSpeechSequenceState extends State<HatiSpeechSequence> {
       holdAfterTyping: widget.holdAfterTyping,
       playTalkSound: widget.playTalkSound,
       showAdvanceCue: widget.showAdvanceCue,
+      bubbleAlignment: widget.bubbleAlignment,
+      tailTargetX: widget.tailTargetX,
+      textAlign: widget.textAlign,
     );
   }
 }
@@ -1683,6 +1718,29 @@ class _AnimatedHatiSpeechBubbleState extends State<_AnimatedHatiSpeechBubble>
   bool _dissolved = false;
   bool _dissolving = false;
 
+  // Whether this bubble is actually on screen. TickerMode is off for a
+  // hidden dashboard tab (see DashboardScreen's IndexedStack) and for a
+  // page covered by another route, so e.g. the Home tab's auto-advancing
+  // Hati dialogue goes quiet as soon as the user leaves Home. Read without
+  // a dependency because it's checked from timer callbacks.
+  ValueListenable<TickerModeData>? _tickerMode;
+
+  bool get _audible => _tickerMode?.value.enabled ?? true;
+
+  void _onTickerModeChanged() {
+    if (!_audible) HatiAudioService.instance.stopTyping(this);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final notifier = TickerMode.getValuesNotifier(context);
+    if (notifier != _tickerMode) {
+      _tickerMode?.removeListener(_onTickerModeChanged);
+      _tickerMode = notifier..addListener(_onTickerModeChanged);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -1777,8 +1835,19 @@ class _AnimatedHatiSpeechBubbleState extends State<_AnimatedHatiSpeechBubble>
     // it paginates into), not once per bubble — only the first sentence of
     // this widget instance triggers it, so a long message tapped through
     // several bubbles plays the cue once instead of once per tap.
-    if (widget.playTalkSound && _sentenceIndex == 0) {
-      HatiAudioService.instance.playHatiTalk();
+    if (_sentenceIndex == 0 && _audible) {
+      if (widget.playTalkSound) {
+        // A happy Hati croaks instead of the regular talk blip.
+        if (_HatiHappyVoice.of(context)) {
+          HatiAudioService.instance.playHappyFrog();
+        } else {
+          HatiAudioService.instance.playHatiTalk();
+        }
+      }
+      // Typing sound for every speaker's dialogue (NPC/narrator too), on
+      // the same once-per-section rule — runs only while this section's
+      // first line is typing; _onSentenceFullyShown stops it.
+      HatiAudioService.instance.startTyping(this);
     }
     _scheduleNextChar(sentence);
   }
@@ -1809,6 +1878,7 @@ class _AnimatedHatiSpeechBubbleState extends State<_AnimatedHatiSpeechBubble>
   // [_AnimatedHatiSpeechBubble.holdAfterTyping], for companion-style
   // dialogue that shouldn't require the player to tap through it.
   void _onSentenceFullyShown() {
+    HatiAudioService.instance.stopTyping(this);
     final isLast = _sentenceIndex >= _sentences.length - 1;
     if (isLast && !widget.dissolves) {
       widget.onTypingComplete?.call();
@@ -1863,6 +1933,8 @@ class _AnimatedHatiSpeechBubbleState extends State<_AnimatedHatiSpeechBubble>
   @override
   void dispose() {
     HatiDialogueTapController.removeListener(_handleTap);
+    _tickerMode?.removeListener(_onTickerModeChanged);
+    HatiAudioService.instance.stopTyping(this);
     _typewriterTimer?.cancel();
     _autoAdvanceTimer?.cancel();
     _entranceController.dispose();
@@ -2261,10 +2333,32 @@ class HatiFrogAvatar extends StatefulWidget {
     this.size = HatiLayout.frogSize,
     this.widthScale = 1,
     this.mood = HatiMood.idle,
+    this.playHappySoundOnAppear = false,
   });
+
+  /// Croaks once when this frog first appears — for a happy Hati shown on
+  /// its own, without a speech bubble whose talk cue would croak instead
+  /// (e.g. the scenario's "Nice work!" completion card).
+  final bool playHappySoundOnAppear;
 
   @override
   State<HatiFrogAvatar> createState() => _HatiFrogAvatarState();
+}
+
+/// Tells the speech bubbles below it whether the Hati they belong to is
+/// happy, so the bubble's talk cue plays Hati's happy croak instead of the
+/// regular blip — provided by [HatiSpeakingBlock] and [HatiCoachZone],
+/// which own both the bubble and the frog's [HatiMood].
+class _HatiHappyVoice extends InheritedWidget {
+  const _HatiHappyVoice({required this.happy, required super.child});
+
+  final bool happy;
+
+  static bool of(BuildContext context) =>
+      context.getInheritedWidgetOfExactType<_HatiHappyVoice>()?.happy ?? false;
+
+  @override
+  bool updateShouldNotify(_HatiHappyVoice oldWidget) => false;
 }
 
 /// Animated speech bubble + frog avatar — use wherever Hati is talking.
@@ -2393,6 +2487,9 @@ class HatiSpeakingBlock extends StatelessWidget {
         autoAdvance: autoAdvance,
         holdAfterTyping: holdAfterTyping,
         showAdvanceCue: showAdvanceCue,
+        bubbleAlignment: bubbleAlignment,
+        tailTargetX: tailTargetX,
+        textAlign: textAlign,
       );
     }
 
@@ -2415,7 +2512,7 @@ class HatiSpeakingBlock extends StatelessWidget {
         Positioned(
           bottom: frogSize + bubbleGap,
           left: pinnedLeft ? 0 : null,
-          child: bubble,
+          child: _HatiHappyVoice(happy: mood == HatiMood.happy, child: bubble),
         ),
       ],
     );
@@ -2517,6 +2614,9 @@ class HatiCoachSpeech extends StatelessWidget {
       onSequenceComplete: onSequenceComplete,
       playTalkSound: playTalkSound,
       showAdvanceCue: showAdvanceCue,
+      bubbleAlignment: bubbleAlignment,
+      tailTargetX: tailTargetX,
+      textAlign: textAlign,
     );
   }
 }
@@ -2564,20 +2664,23 @@ class HatiCoachZone extends StatelessWidget {
               right: HatiLayout.horizontalPadding,
               child: Align(
                 alignment: Alignment.bottomCenter,
-                child: HatiCoachSpeech(
-                  key: ValueKey(replacementMessage ?? persistentMessage),
-                  introMessage: introMessage,
-                  persistentMessage: persistentMessage,
-                  replacementMessage: replacementMessage,
-                  onSequenceComplete: onSequenceComplete,
-                  onBubbleDismissed: onBubbleDismissed,
-                  dissolveBubble: dissolveBubble,
-                  holdAfterTyping: holdAfterTyping,
-                  // Every HatiCoachZone caller is Hati talking, tap (or
-                  // wait) to continue — always show the cue rather than
-                  // making each of the 4+ scenes that use this opt in
-                  // individually, which is exactly how it went missing.
-                  showAdvanceCue: true,
+                child: _HatiHappyVoice(
+                  happy: mood == HatiMood.happy,
+                  child: HatiCoachSpeech(
+                    key: ValueKey(replacementMessage ?? persistentMessage),
+                    introMessage: introMessage,
+                    persistentMessage: persistentMessage,
+                    replacementMessage: replacementMessage,
+                    onSequenceComplete: onSequenceComplete,
+                    onBubbleDismissed: onBubbleDismissed,
+                    dissolveBubble: dissolveBubble,
+                    holdAfterTyping: holdAfterTyping,
+                    // Every HatiCoachZone caller is Hati talking, tap (or
+                    // wait) to continue — always show the cue rather than
+                    // making each of the 4+ scenes that use this opt in
+                    // individually, which is exactly how it went missing.
+                    showAdvanceCue: true,
+                  ),
                 ),
               ),
             ),
@@ -2929,6 +3032,9 @@ class _HatiFrogAvatarState extends State<HatiFrogAvatar> {
       _hatiMoodAsset(widget.mood),
       riveFactory: Factory.rive,
     );
+    if (widget.playHappySoundOnAppear) {
+      HatiAudioService.instance.playHappyFrog();
+    }
   }
 
   @override
@@ -2944,6 +3050,15 @@ class _HatiFrogAvatarState extends State<HatiFrogAvatar> {
 
   @override
   Widget build(BuildContext context) {
+    // Tapping Hati croaks instead of the regular button click. This only
+    // swaps the sound — any tap-to-advance around Hati still works as is.
+    return HatiTapSound(
+      sound: HatiAudioService.instance.playHappyFrog,
+      child: _buildFrog(),
+    );
+  }
+
+  Widget _buildFrog() {
     return SizedBox(
       // Unlike Image.asset, RiveWidget has no self-sizing behavior — it
       // expands to fill unbounded width, so an explicit width is required

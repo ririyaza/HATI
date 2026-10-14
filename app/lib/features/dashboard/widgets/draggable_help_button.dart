@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'help_center_sheet.dart';
+import '../../../shared/audio/hati_tap_sound.dart';
 
 /// Floating "?" help button that can be dragged anywhere within its parent
 /// [Stack]. Meant to be used as `Positioned.fill(child: DraggableHelpButton())`
@@ -65,38 +66,40 @@ class _DraggableHelpButtonState extends State<DraggableHelpButton> {
             Positioned(
               left: clamped.dx,
               top: clamped.dy,
-              child: GestureDetector(
-                onPanUpdate: (details) {
-                  setState(() {
-                    _topLeft = Offset(
-                      (clamped.dx + details.delta.dx).clamp(0.0, maxX),
-                      (clamped.dy + details.delta.dy).clamp(0.0, maxY),
-                    );
-                  });
-                },
-                onTap: () => showHelpCenterSheet(
-                  context,
-                  onReplayTour: widget.onReplayTour,
-                ),
-                child: Container(
-                  key: widget.buttonKey,
-                  width: _size,
-                  height: _size,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: const Color(0xFF0B28D9),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.25),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
+              child: HatiTapSound.click(
+                child: GestureDetector(
+                  onPanUpdate: (details) {
+                    setState(() {
+                      _topLeft = Offset(
+                        (clamped.dx + details.delta.dx).clamp(0.0, maxX),
+                        (clamped.dy + details.delta.dy).clamp(0.0, maxY),
+                      );
+                    });
+                  },
+                  onTap: () => showHelpCenterSheet(
+                    context,
+                    onReplayTour: widget.onReplayTour,
                   ),
-                  child: const Icon(
-                    Icons.support_agent_rounded,
-                    color: const Color(0xFFF5F1E8),
-                    size: 28,
+                  child: Container(
+                    key: widget.buttonKey,
+                    width: _size,
+                    height: _size,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: const Color(0xFF0B28D9),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.25),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.support_agent_rounded,
+                      color: const Color(0xFFF5F1E8),
+                      size: 28,
+                    ),
                   ),
                 ),
               ),

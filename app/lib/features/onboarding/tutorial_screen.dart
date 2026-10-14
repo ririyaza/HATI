@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import '../../shared/offline/offline_save.dart';
 import '../../shared/theme/app_colors.dart';
 import '../dashboard/screen/dashboard_screen.dart';
+import '../../shared/audio/hati_tap_sound.dart';
 
 // ──────────────────────────────────────────────
 // Tutorial data model
@@ -254,23 +255,25 @@ class _TutorialScreenState extends State<TutorialScreen>
                     AnimatedOpacity(
                       opacity: isLast ? 0.0 : 1.0,
                       duration: const Duration(milliseconds: 200),
-                      child: GestureDetector(
-                        onTap: isLast ? null : _skipTutorial,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.cream.withValues(alpha: 0.18),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: const Text(
-                            'Skip',
-                            style: TextStyle(
-                              color: AppColors.cream,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
+                      child: HatiTapSound.click(
+                        child: GestureDetector(
+                          onTap: isLast ? null : _skipTutorial,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.cream.withValues(alpha: 0.18),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: const Text(
+                              'Skip',
+                              style: TextStyle(
+                                color: AppColors.cream,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
                         ),
@@ -316,46 +319,48 @@ class _TutorialScreenState extends State<TutorialScreen>
                       ),
                     ),
                     const SizedBox(height: 24),
-                    GestureDetector(
-                      onTap: _nextPage,
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 300),
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        decoration: BoxDecoration(
-                          color: isLast ? slide.accentColor : AppColors.cream,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: (isLast ? slide.accentColor : Colors.black)
-                                  .withValues(alpha: 0.25),
-                              blurRadius: 16,
-                              offset: const Offset(0, 6),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              isLast ? "Let's Get Started" : 'Next',
-                              style: TextStyle(
-                                color: isLast
-                                    ? AppColors.cream
-                                    : const Color(0xFF0B28D9),
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
+                    HatiTapSound.click(
+                      child: GestureDetector(
+                        onTap: _nextPage,
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 300),
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          decoration: BoxDecoration(
+                            color: isLast ? slide.accentColor : AppColors.cream,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: (isLast ? slide.accentColor : Colors.black)
+                                    .withValues(alpha: 0.25),
+                                blurRadius: 16,
+                                offset: const Offset(0, 6),
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            Icon(
-                              Icons.arrow_forward_rounded,
-                              color: isLast
-                                  ? const Color(0xFFF5F1E8)
-                                  : const Color(0xFF0B28D9),
-                              size: 18,
-                            ),
-                          ],
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                isLast ? "Let's Get Started" : 'Next',
+                                style: TextStyle(
+                                  color: isLast
+                                      ? AppColors.cream
+                                      : const Color(0xFF0B28D9),
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Icon(
+                                Icons.arrow_forward_rounded,
+                                color: isLast
+                                    ? const Color(0xFFF5F1E8)
+                                    : const Color(0xFF0B28D9),
+                                size: 18,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),

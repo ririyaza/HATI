@@ -9,6 +9,7 @@ import 'package:record/record.dart';
 import '../../emotiondetection/themed_scenario/shared_widgets.dart'
     show HatiFrogAvatar, HatiMood;
 import '../data/hati_chat_service.dart';
+import '../../../shared/audio/hati_tap_sound.dart';
 import '../../../shared/offline/connectivity_service.dart';
 
 /// Free-form chat with Hati, entered from the homepage. Uses the same deep
@@ -538,74 +539,76 @@ class _GlassInputBar extends StatelessWidget {
     // `sending` — so the transcript can't be edited or sent out from under
     // an in-flight recording.
     final locked = sending || isRecording || isTranscribing;
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-        child: _GlassPanel(
-          borderRadius: 28,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            child: Row(
-              children: [
-                Semantics(
-                  button: true,
-                  label: isRecording ? 'Stop recording' : 'Record a message',
-                  child: IconButton(
-                    icon: isTranscribing
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2.2,
-                              color: const Color(0xFFF5F1E8),
+    return HatiTapSound.silent(
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+          child: _GlassPanel(
+            borderRadius: 28,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Row(
+                children: [
+                  Semantics(
+                    button: true,
+                    label: isRecording ? 'Stop recording' : 'Record a message',
+                    child: IconButton(
+                      icon: isTranscribing
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.2,
+                                color: const Color(0xFFF5F1E8),
+                              ),
+                            )
+                          : Icon(
+                              isRecording
+                                  ? Icons.stop_circle_rounded
+                                  : Icons.mic_none_rounded,
+                              color: isRecording
+                                  ? const Color(0xFFFF8A6B)
+                                  : const Color(0xFFF5F1E8),
                             ),
-                          )
-                        : Icon(
-                            isRecording
-                                ? Icons.stop_circle_rounded
-                                : Icons.mic_none_rounded,
-                            color: isRecording
-                                ? const Color(0xFFFF8A6B)
-                                : const Color(0xFFF5F1E8),
-                          ),
-                    onPressed: (sending || isTranscribing) ? null : onMicTap,
-                  ),
-                ),
-                Expanded(
-                  child: TextField(
-                    controller: controller,
-                    enabled: !locked,
-                    minLines: 1,
-                    maxLines: 4,
-                    textCapitalization: TextCapitalization.sentences,
-                    style: const TextStyle(color: const Color(0xFFF5F1E8)),
-                    cursorColor: const Color(0xFFF5F1E8),
-                    decoration: InputDecoration(
-                      hintText: isRecording
-                          ? 'Listening...'
-                          : (isTranscribing
-                                ? 'Converting your voice...'
-                                : 'Type a message...'),
-                      hintStyle: TextStyle(
-                        color: const Color(0xFFF5F1E8).withValues(alpha: 0.6),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
-                      ),
-                      border: InputBorder.none,
+                      onPressed: (sending || isTranscribing) ? null : onMicTap,
                     ),
-                    onSubmitted: locked ? null : (_) => onSend(),
                   ),
-                ),
-                const SizedBox(width: 4),
-                IconButton(
-                  icon: const Icon(Icons.send),
-                  color: const Color(0xFFF5F1E8),
-                  onPressed: locked ? null : onSend,
-                ),
-              ],
+                  Expanded(
+                    child: TextField(
+                      controller: controller,
+                      enabled: !locked,
+                      minLines: 1,
+                      maxLines: 4,
+                      textCapitalization: TextCapitalization.sentences,
+                      style: const TextStyle(color: const Color(0xFFF5F1E8)),
+                      cursorColor: const Color(0xFFF5F1E8),
+                      decoration: InputDecoration(
+                        hintText: isRecording
+                            ? 'Listening...'
+                            : (isTranscribing
+                                  ? 'Converting your voice...'
+                                  : 'Type a message...'),
+                        hintStyle: TextStyle(
+                          color: const Color(0xFFF5F1E8).withValues(alpha: 0.6),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        border: InputBorder.none,
+                      ),
+                      onSubmitted: locked ? null : (_) => onSend(),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  IconButton(
+                    icon: const Icon(Icons.send),
+                    color: const Color(0xFFF5F1E8),
+                    onPressed: locked ? null : onSend,
+                  ),
+                ],
+              ),
             ),
           ),
         ),

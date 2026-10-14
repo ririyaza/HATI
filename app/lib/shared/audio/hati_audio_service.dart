@@ -72,6 +72,14 @@ class HatiAudioService with WidgetsBindingObserver {
   static const String _badgeAsset = 'SFX/badge_completion.wav';
   static const String _scenarioCompleteAsset = 'SFX/scenario_complete.wav';
   static const String _sceneTransitionAsset = 'SFX/scene_transition.mp3';
+  static const String _buttonAsset = 'SFX/button_sound.mp3';
+  static const String _happyFrogAsset = 'SFX/happy_frog.wav';
+  static const String _optionSelectAsset = 'SFX/option_select.mp3';
+  static const String _completeScreenAsset = 'SFX/complete_screen.mp3';
+  static const String _consentRecordedAsset = 'SFX/consent_recorded.mp3';
+  static const String _scoreTickAsset = 'SFX/score_tick.mp3';
+  static const String _scoreRevealAsset = 'SFX/score_reveal.mp3';
+  static const String _typingAsset = 'SFX/typing_sound.wav';
 
   final AudioPlayer _musicPlayer = AudioPlayer();
 
@@ -114,6 +122,38 @@ class HatiAudioService with WidgetsBindingObserver {
   // the sound almost continuously instead of once per line of dialogue.
   static const _hatiTalkThrottle = Duration(milliseconds: 260);
 
+  DateTime? _lastButtonAt;
+  // A double-tap or a tap that both pops a route and lands on the next
+  // screen's button shouldn't stack two clicks on top of each other.
+  static const _buttonThrottle = Duration(milliseconds: 80);
+  // Button clicks sit under the other SFX — they fire constantly, so at the
+  // full SFX volume they'd quickly get tiring.
+  static const double _buttonVolumeFactor = 0.6;
+  // Preloaded so a click lands on the tap itself — a fresh AudioPlayer per
+  // click (like _playOneShot) has a noticeable load delay on Android. Same
+  // for the other short sounds that fire in quick succession.
+  Future<AudioPool?>? _buttonPool;
+  Future<AudioPool?>? _optionPool;
+  Future<AudioPool?>? _scoreTickPool;
+  DateTime? _lastOptionAt;
+  // Answer options and score ticks repeat quickly too — same reasoning as
+  // the button click's lower volume.
+  static const double _optionVolumeFactor = 0.6;
+  static const double _scoreTickVolumeFactor = 0.5;
+
+  // Dialogue typing loop: one dedicated player, started when a dialogue
+  // section begins typing and stopped the moment its first line is done.
+  // [_typingOwner] is whichever bubble started it, so a bubble finishing or
+  // disposing never cuts off a newer bubble's typing.
+  final AudioPlayer _typingPlayer = AudioPlayer();
+  Object? _typingOwner;
+  static const double _typingVolumeFactor = 0.5;
+
+  DateTime? _lastHappyFrogAt;
+  // Long enough that tapping Hati repeatedly, or a mood flip landing right
+  // after a tap, doesn't turn into a continuous croak.
+  static const _happyFrogThrottle = Duration(milliseconds: 1200);
+
   /// Loads persisted settings. Safe to call from multiple places (main(),
   /// the settings sheet, a scenario screen) — only the first call actually
   /// hits shared_preferences; the rest await that same in-flight load.
@@ -139,6 +179,11 @@ class HatiAudioService with WidgetsBindingObserver {
       debugPrint('HatiAudioService.init failed: $e\n$st');
     }
     _initialized = true;
+    // Warm the click pool in the background so the very first tap isn't
+    // the one that pays the asset-load cost.
+    _buttonPool ??= _createPool(_buttonAsset);
+    _optionPool ??= _createPool(_optionSelectAsset);
+    _scoreTickPool ??= _createPool(_scoreTickAsset);
   }
 
   Future<void> _ensureInitialized() async {
@@ -155,6 +200,8 @@ class HatiAudioService with WidgetsBindingObserver {
     _appInForeground = foreground;
     if (!foreground) {
       _musicPlayer.pause().catchError((_) {});
+      final typingOwner = _typingOwner;
+      if (typingOwner != null) stopTyping(typingOwner);
       return;
     }
     final track = _currentTrack;
@@ -337,9 +384,7 @@ class HatiAudioService with WidgetsBindingObserver {
       }
 
       unawaited(player.onPlayerComplete.first.then((_) => disposeOnce()));
-      unawaited(
-        Future.delayed(const Duration(seconds: 8), disposeOnce),
-      );
+      unawaited(Future.delayed(const Duration(seconds: 8), disposeOnce));
 
       await player.play(AssetSource(asset), ctx: _kSharedAudioContext);
     } catch (e, st) {
@@ -371,6 +416,119 @@ class HatiAudioService with WidgetsBindingObserver {
 
   Future<void> playSceneTransition() => _playOneShot(_sceneTransitionAsset);
 
+  /// Entering the scenario's Closing scene (step 6 of 7).
+  Future<void> playCompleteScreen() => _playOneShot(_completeScreenAsset);
+
+  /// The "Consent Recorded" dialog in the onboarding consent flow.
+  Future<void> playConsentRecorded() => _playOneShot(_consentRecordedAsset);
+
+  /// The SPIN result gauge landing on the final score.
+  Future<void> playScoreReveal() => _playOneShot(_scoreRevealAsset);
+
+  /// One step of the SPIN result gauge filling up (see score_sounds.dart).
+  Future<void> playScoreTick() => _playFromPool(
+    _scoreTickPool ??= _createPool(_scoreTickAsset),
+    _scoreTickVolumeFactor,
+  );
+
+  /// Hati's happy croak — replaces [playHatiTalk] whenever Hati is in
+  /// HatiMood.happy, and plays when the user taps Hati (see
+  /// _HatiHappyVoice and HatiFrogAvatar in shared_widgets.dart).
+  Future<void> playHappyFrog() async {
+    final now = DateTime.now();
+    final last = _lastHappyFrogAt;
+    if (last != null && now.difference(last) < _happyFrogThrottle) return;
+    _lastHappyFrogAt = now;
+    await _playOneShot(_happyFrogAsset);
+  }
+
+  /// The tap click for buttons app-wide — fired by HatiTapSoundScope
+  /// (shared/audio/hati_tap_sound.dart), not called per button.
+  Future<void> playButton() async {
+    final now = DateTime.now();
+    final last = _lastButtonAt;
+    if (last != null && now.difference(last) < _buttonThrottle) return;
+    _lastButtonAt = now;
+    await _playFromPool(
+      _buttonPool ??= _createPool(_buttonAsset),
+      _buttonVolumeFactor,
+    );
+  }
+
+  /// Selecting an answer option / radio-style choice — fired by
+  /// `HatiTapSound.option` markers, not called per option.
+  Future<void> playOptionSelect() async {
+    final now = DateTime.now();
+    final last = _lastOptionAt;
+    if (last != null && now.difference(last) < _buttonThrottle) return;
+    _lastOptionAt = now;
+    await _playFromPool(
+      _optionPool ??= _createPool(_optionSelectAsset),
+      _optionVolumeFactor,
+    );
+  }
+
+  /// Starts the dialogue typing sound for [owner] (a speech bubble),
+  /// looping until [stopTyping]. Called once per dialogue section, like
+  /// [playHatiTalk], and stopped as soon as that section's first line has
+  /// finished typing.
+  Future<void> startTyping(Object owner) async {
+    await _ensureInitialized();
+    if (!sfxEnabled || !_appInForeground) return;
+    _typingOwner = owner;
+    try {
+      await _typingPlayer.stop();
+      await _typingPlayer.setReleaseMode(ReleaseMode.loop);
+      await _typingPlayer.setVolume(sfxVolume * _typingVolumeFactor);
+      // The line may already have finished typing (or a newer bubble taken
+      // over) while the calls above were awaiting.
+      if (_typingOwner != owner) return;
+      await _typingPlayer.play(
+        AssetSource(_typingAsset),
+        ctx: _kSharedAudioContext,
+      );
+    } catch (e, st) {
+      debugPrint('HatiAudioService.startTyping failed: $e\n$st');
+    }
+  }
+
+  /// Stops the typing sound, but only if [owner] is the one playing it.
+  Future<void> stopTyping(Object owner) async {
+    if (_typingOwner != owner) return;
+    _typingOwner = null;
+    try {
+      await _typingPlayer.stop();
+    } catch (_) {}
+  }
+
+  Future<void> _playFromPool(
+    Future<AudioPool?> pool,
+    double volumeFactor,
+  ) async {
+    await _ensureInitialized();
+    if (!sfxEnabled || !_appInForeground) return;
+    try {
+      final loaded = await pool;
+      if (loaded == null) return;
+      await loaded.start(volume: sfxVolume * volumeFactor);
+    } catch (e, st) {
+      debugPrint('HatiAudioService._playFromPool failed: $e\n$st');
+    }
+  }
+
+  Future<AudioPool?> _createPool(String asset) async {
+    try {
+      return await AudioPool.create(
+        source: AssetSource(asset),
+        maxPlayers: 4,
+        audioContext: _kSharedAudioContext,
+      );
+    } catch (e, st) {
+      debugPrint('HatiAudioService: pool for $asset failed to load: $e\n$st');
+      return null;
+    }
+  }
+
   // ── Settings (read by audio_settings_sheet.dart) ──────────────────────
 
   Future<void> setMusicEnabled(bool value) async {
@@ -392,6 +550,8 @@ class HatiAudioService with WidgetsBindingObserver {
   Future<void> setSfxEnabled(bool value) async {
     await _ensureInitialized();
     sfxEnabled = value;
+    final typingOwner = _typingOwner;
+    if (!value && typingOwner != null) await stopTyping(typingOwner);
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_kSfxEnabledKey, value);

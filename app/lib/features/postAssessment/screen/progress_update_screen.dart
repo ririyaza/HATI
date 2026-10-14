@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../dashboard/screen/dashboard_screen.dart';
 import '../../dashboard/widgets/hati_sprite_animation.dart';
+import '../../emotiondetection/themed_scenario/shared_widgets.dart'
+    show HatiMood;
 import '../data/assessment_comparison.dart';
 import '../../../shared/theme/app_colors.dart';
 
@@ -90,6 +92,13 @@ class ProgressUpdateScreen extends StatelessWidget {
                       message: _hatiMessage,
                       startDelay: Duration.zero,
                       persistBubble: true,
+                      // Happy Hati (and his happy croak) for actual
+                      // improvement only — "about the same" stays calm.
+                      mood:
+                          category ==
+                              PostAssessmentCategory.noChangeNotElevated
+                          ? HatiMood.idle
+                          : HatiMood.happy,
                     ),
                   ),
                 ),

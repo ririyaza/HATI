@@ -6,6 +6,7 @@ import 'email_verification_screen.dart';
 import '../auth_navigation.dart';
 import '../services/social_auth_service.dart';
 import '../../../shared/theme/app_colors.dart';
+import '../../../shared/audio/hati_tap_sound.dart';
 
 // Brand tokens shared with the loading screen and onboarding/consent flow —
 // keep these in sync with lib/features/onboarding/consent_flow_screen.dart
@@ -285,18 +286,20 @@ class _LoginScreenState extends State<LoginScreen> {
                   obscureText: _obscurePassword,
                   decoration: _fieldDecoration(
                     hintText: 'Enter your password',
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscurePassword
-                            ? Icons.visibility_off_rounded
-                            : Icons.visibility_rounded,
-                        color: _kTextMuted,
+                    suffixIcon: HatiTapSound.silent(
+                      child: IconButton(
+                        icon: Icon(
+                          _obscurePassword
+                              ? Icons.visibility_off_rounded
+                              : Icons.visibility_rounded,
+                          color: _kTextMuted,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _obscurePassword = !_obscurePassword;
+                          });
+                        },
                       ),
-                      onPressed: () {
-                        setState(() {
-                          _obscurePassword = !_obscurePassword;
-                        });
-                      },
                     ),
                   ),
                   validator: (value) {
@@ -318,13 +321,15 @@ class _LoginScreenState extends State<LoginScreen> {
                         color: _kTextMuted,
                       ),
                     ),
-                    GestureDetector(
-                      onTap: _isLoading ? null : _handleForgotPassword,
-                      child: Text(
-                        'Reset it',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: _kBrand,
-                          fontWeight: FontWeight.w700,
+                    HatiTapSound.click(
+                      child: GestureDetector(
+                        onTap: _isLoading ? null : _handleForgotPassword,
+                        child: Text(
+                          'Reset it',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: _kBrand,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                     ),
@@ -481,20 +486,22 @@ class _LoginScreenState extends State<LoginScreen> {
                         color: _kTextMuted,
                       ),
                     ),
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const SignupScreen(),
+                    HatiTapSound.click(
+                      child: GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const SignupScreen(),
+                            ),
+                          );
+                        },
+                        child: Text(
+                          'Create one',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: _kBrand,
+                            fontWeight: FontWeight.w700,
                           ),
-                        );
-                      },
-                      child: Text(
-                        'Create one',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: _kBrand,
-                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),

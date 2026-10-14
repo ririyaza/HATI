@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../shared/offline/action_feedback.dart';
 import '../../../shared/offline/offline_save.dart';
 import '../../../shared/theme/app_colors.dart';
+import '../../../shared/audio/hati_tap_sound.dart';
 
 /// Bottom sheets for editing profile fields that can be left unset (or
 /// changed) after onboarding: name & pronouns, profile picture, goal, and
@@ -103,17 +104,19 @@ class _AvatarPickerSheet extends StatelessWidget {
               itemBuilder: (context, index) {
                 final avatar = _defaultProfileAvatars[index];
                 final isSelected = avatar == currentAssetPath;
-                return GestureDetector(
-                  onTap: () => Navigator.pop(context, avatar),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 180),
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: isSelected ? _blue : AppColors.creamLine,
-                    ),
-                    child: ClipOval(
-                      child: Image.asset(avatar, fit: BoxFit.cover),
+                return HatiTapSound.option(
+                  child: GestureDetector(
+                    onTap: () => Navigator.pop(context, avatar),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: isSelected ? _blue : AppColors.creamLine,
+                      ),
+                      child: ClipOval(
+                        child: Image.asset(avatar, fit: BoxFit.cover),
+                      ),
                     ),
                   ),
                 );
@@ -302,46 +305,48 @@ class _EditNamePronounsSheetState extends State<_EditNamePronounsSheet> {
                 children: _pronounOptions.map((opt) {
                   final (label, icon) = opt;
                   final selected = _selectedPronouns == label;
-                  return GestureDetector(
-                    onTap: () => setState(() => _selectedPronouns = label),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 180),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 9,
-                      ),
-                      decoration: BoxDecoration(
-                        color: selected ? _blue : const Color(0xFFF5F1E8),
-                        borderRadius: BorderRadius.circular(30),
-                        border: Border.all(
-                          color: selected ? _blue : AppColors.creamLine,
-                          width: 1.5,
+                  return HatiTapSound.option(
+                    child: GestureDetector(
+                      onTap: () => setState(() => _selectedPronouns = label),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 180),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 9,
                         ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            icon,
-                            size: 15,
-                            color: selected
-                                ? const Color(0xFFF5F1E8)
-                                : const Color(0xFF94A3B8),
+                        decoration: BoxDecoration(
+                          color: selected ? _blue : const Color(0xFFF5F1E8),
+                          borderRadius: BorderRadius.circular(30),
+                          border: Border.all(
+                            color: selected ? _blue : AppColors.creamLine,
+                            width: 1.5,
                           ),
-                          const SizedBox(width: 7),
-                          Text(
-                            label,
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: selected
-                                  ? FontWeight.w700
-                                  : FontWeight.w500,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              icon,
+                              size: 15,
                               color: selected
                                   ? const Color(0xFFF5F1E8)
-                                  : const Color(0xFF475569),
+                                  : const Color(0xFF94A3B8),
                             ),
-                          ),
-                        ],
+                            const SizedBox(width: 7),
+                            Text(
+                              label,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: selected
+                                    ? FontWeight.w700
+                                    : FontWeight.w500,
+                                color: selected
+                                    ? const Color(0xFFF5F1E8)
+                                    : const Color(0xFF475569),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   );
@@ -706,52 +711,54 @@ class _EditCopingSheetState extends State<_EditCopingSheet> {
                   children: _copingChips.map((chip) {
                     final (label, icon) = chip;
                     final selected = _selectedChips.contains(label);
-                    return GestureDetector(
-                      onTap: () => setState(() {
-                        if (selected) {
-                          _selectedChips.remove(label);
-                        } else {
-                          _selectedChips.add(label);
-                        }
-                      }),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 180),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 9,
-                        ),
-                        decoration: BoxDecoration(
-                          color: selected ? _blue : const Color(0xFFF5F1E8),
-                          borderRadius: BorderRadius.circular(30),
-                          border: Border.all(
-                            color: selected ? _blue : AppColors.creamLine,
-                            width: 1.5,
+                    return HatiTapSound.option(
+                      child: GestureDetector(
+                        onTap: () => setState(() {
+                          if (selected) {
+                            _selectedChips.remove(label);
+                          } else {
+                            _selectedChips.add(label);
+                          }
+                        }),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 180),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 9,
                           ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              icon,
-                              size: 15,
-                              color: selected
-                                  ? const Color(0xFFF5F1E8)
-                                  : const Color(0xFF94A3B8),
+                          decoration: BoxDecoration(
+                            color: selected ? _blue : const Color(0xFFF5F1E8),
+                            borderRadius: BorderRadius.circular(30),
+                            border: Border.all(
+                              color: selected ? _blue : AppColors.creamLine,
+                              width: 1.5,
                             ),
-                            const SizedBox(width: 7),
-                            Text(
-                              label,
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: selected
-                                    ? FontWeight.w700
-                                    : FontWeight.w500,
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                icon,
+                                size: 15,
                                 color: selected
                                     ? const Color(0xFFF5F1E8)
-                                    : const Color(0xFF475569),
+                                    : const Color(0xFF94A3B8),
                               ),
-                            ),
-                          ],
+                              const SizedBox(width: 7),
+                              Text(
+                                label,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: selected
+                                      ? FontWeight.w700
+                                      : FontWeight.w500,
+                                  color: selected
+                                      ? const Color(0xFFF5F1E8)
+                                      : const Color(0xFF475569),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     );

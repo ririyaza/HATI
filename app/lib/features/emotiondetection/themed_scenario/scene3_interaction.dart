@@ -35,6 +35,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:record/record.dart';
 import '../../../shared/audio/hati_audio_service.dart';
+import '../../../shared/audio/hati_tap_sound.dart';
 import 'scenario_models.dart';
 import 'scenario_provider.dart';
 import 'shared_widgets.dart';
@@ -1565,63 +1566,65 @@ class _MediumTileState extends State<_MediumTile> {
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: '${widget.label}: ${widget.caption}',
-      child: GestureDetector(
-        onTapDown: (_) => setState(() => _pressed = true),
-        onTapCancel: () => setState(() => _pressed = false),
-        onTapUp: (_) => setState(() => _pressed = false),
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          constraints: const BoxConstraints(minHeight: 56),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: _pressed
-                ? _kApproachBlue.withValues(alpha: 0.12)
-                : _kApproachBlue.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: _kApproachBlue.withValues(alpha: _pressed ? 0.6 : 0.3),
-              width: _pressed ? 2 : 1,
+    return HatiTapSound.option(
+      child: Semantics(
+        button: true,
+        label: '${widget.label}: ${widget.caption}',
+        child: GestureDetector(
+          onTapDown: (_) => setState(() => _pressed = true),
+          onTapCancel: () => setState(() => _pressed = false),
+          onTapUp: (_) => setState(() => _pressed = false),
+          onTap: widget.onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            constraints: const BoxConstraints(minHeight: 56),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: _pressed
+                  ? _kApproachBlue.withValues(alpha: 0.12)
+                  : _kApproachBlue.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: _kApproachBlue.withValues(alpha: _pressed ? 0.6 : 0.3),
+                width: _pressed ? 2 : 1,
+              ),
             ),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: _kApproachBlue.withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: _kApproachBlue.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(widget.icon, color: _kApproachBlue),
                 ),
-                child: Icon(widget.icon, color: _kApproachBlue),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      widget.label,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 15,
-                        color: _kApproachBlue,
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.label,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                          color: _kApproachBlue,
+                        ),
                       ),
-                    ),
-                    Text(
-                      widget.caption,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey.shade600,
+                      Text(
+                        widget.caption,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade600,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -1645,43 +1648,45 @@ class _CustomResponseCard extends StatelessWidget {
     return AnimatedOpacity(
       duration: const Duration(milliseconds: 350),
       opacity: enabled ? 1 : 0.4,
-      child: GestureDetector(
-        onTap: enabled ? onTap : null,
-        child: Container(
-          decoration: BoxDecoration(
-            color: _kApproachBlue.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: _kApproachBlue.withValues(alpha: 0.4)),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: _kApproachBlue.withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.edit_rounded,
-                    size: 16,
-                    color: _kApproachBlue,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Text(
-                    'Write your own response',
-                    style: TextStyle(
+      child: HatiTapSound.option(
+        child: GestureDetector(
+          onTap: enabled ? onTap : null,
+          child: Container(
+            decoration: BoxDecoration(
+              color: _kApproachBlue.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: _kApproachBlue.withValues(alpha: 0.4)),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: _kApproachBlue.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.edit_rounded,
+                      size: 16,
                       color: _kApproachBlue,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
                     ),
                   ),
-                ),
-              ],
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Text(
+                      'Write your own response',
+                      style: TextStyle(
+                        color: _kApproachBlue,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -1711,42 +1716,44 @@ class _VoiceOnlyInputPanel extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Semantics(
-          button: true,
-          label: isRecording ? 'Stop recording' : 'Start recording',
-          child: GestureDetector(
-            onTap: enabled ? onMicTap : null,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              width: 88,
-              height: 88,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: isRecording
-                    ? Colors.red.withValues(alpha: 0.08)
-                    : _kApproachBlue.withValues(alpha: 0.06),
-                border: Border.all(
-                  color: isRecording ? Colors.red : _kApproachBlue,
-                  width: 3,
+        HatiTapSound.silent(
+          child: Semantics(
+            button: true,
+            label: isRecording ? 'Stop recording' : 'Start recording',
+            child: GestureDetector(
+              onTap: enabled ? onMicTap : null,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: 88,
+                height: 88,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isRecording
+                      ? Colors.red.withValues(alpha: 0.08)
+                      : _kApproachBlue.withValues(alpha: 0.06),
+                  border: Border.all(
+                    color: isRecording ? Colors.red : _kApproachBlue,
+                    width: 3,
+                  ),
                 ),
-              ),
-              child: Center(
-                child: isTranscribing
-                    ? const SizedBox(
-                        width: 28,
-                        height: 28,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.6,
-                          color: _kApproachBlue,
+                child: Center(
+                  child: isTranscribing
+                      ? const SizedBox(
+                          width: 28,
+                          height: 28,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.6,
+                            color: _kApproachBlue,
+                          ),
+                        )
+                      : Icon(
+                          isRecording
+                              ? Icons.stop_rounded
+                              : Icons.graphic_eq_rounded,
+                          size: 36,
+                          color: isRecording ? Colors.red : _kApproachBlue,
                         ),
-                      )
-                    : Icon(
-                        isRecording
-                            ? Icons.stop_rounded
-                            : Icons.graphic_eq_rounded,
-                        size: 36,
-                        color: isRecording ? Colors.red : _kApproachBlue,
-                      ),
+                ),
               ),
             ),
           ),
@@ -1787,91 +1794,95 @@ class _ApproachInputBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: const Color(0xFFF5F1E8),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-          child: Row(
-            children: [
-              if (showMic)
-                SizedBox(
-                  width: 48,
-                  height: 48,
-                  child: isTranscribing
-                      ? const Center(
-                          child: SizedBox(
-                            width: 22,
-                            height: 22,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2.4,
-                              color: _kApproachBlue,
+    return HatiTapSound.silent(
+      child: Container(
+        color: const Color(0xFFF5F1E8),
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+            child: Row(
+              children: [
+                if (showMic)
+                  SizedBox(
+                    width: 48,
+                    height: 48,
+                    child: isTranscribing
+                        ? const Center(
+                            child: SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.4,
+                                color: _kApproachBlue,
+                              ),
                             ),
-                          ),
-                        )
-                      : IgnorePointer(
-                          ignoring: isRecording,
-                          child: Opacity(
-                            opacity: isRecording ? 0.35 : 1.0,
-                            child: Semantics(
-                              button: true,
-                              label: 'Record voice message',
-                              child: IconButton(
-                                icon: Icon(
-                                  Icons.mic_none_rounded,
-                                  color: enabled ? _kApproachBlue : Colors.grey,
-                                  size: 28,
+                          )
+                        : IgnorePointer(
+                            ignoring: isRecording,
+                            child: Opacity(
+                              opacity: isRecording ? 0.35 : 1.0,
+                              child: Semantics(
+                                button: true,
+                                label: 'Record voice message',
+                                child: IconButton(
+                                  icon: Icon(
+                                    Icons.mic_none_rounded,
+                                    color: enabled
+                                        ? _kApproachBlue
+                                        : Colors.grey,
+                                    size: 28,
+                                  ),
+                                  onPressed: enabled ? onMicTap : null,
                                 ),
-                                onPressed: enabled ? onMicTap : null,
                               ),
                             ),
                           ),
-                        ),
-                ),
-              Expanded(
-                child: TextField(
-                  controller: controller,
-                  enabled: enabled,
-                  onSubmitted: enabled ? (_) => onSend() : null,
-                  decoration: InputDecoration(
-                    hintText: hintText,
-                    hintStyle: TextStyle(
-                      color: Colors.grey.shade500,
-                      fontSize: 15,
-                    ),
-                    filled: true,
-                    fillColor: AppColors.creamSoft,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(24),
-                      borderSide: BorderSide.none,
+                  ),
+                Expanded(
+                  child: TextField(
+                    controller: controller,
+                    enabled: enabled,
+                    onSubmitted: enabled ? (_) => onSend() : null,
+                    decoration: InputDecoration(
+                      hintText: hintText,
+                      hintStyle: TextStyle(
+                        color: Colors.grey.shade500,
+                        fontSize: 15,
+                      ),
+                      filled: true,
+                      fillColor: AppColors.creamSoft,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(24),
+                        borderSide: BorderSide.none,
+                      ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 4),
-              Semantics(
-                button: true,
-                label: showMic && isRecording ? 'Stop recording' : 'Send',
-                child: IconButton(
-                  icon: Icon(
-                    showMic && isRecording
-                        ? Icons.stop_circle_rounded
-                        : Icons.send_rounded,
-                    color: showMic && isRecording
-                        ? Colors.red
-                        : (enabled ? _kApproachBlue : Colors.grey),
+                const SizedBox(width: 4),
+                Semantics(
+                  button: true,
+                  label: showMic && isRecording ? 'Stop recording' : 'Send',
+                  child: IconButton(
+                    icon: Icon(
+                      showMic && isRecording
+                          ? Icons.stop_circle_rounded
+                          : Icons.send_rounded,
+                      color: showMic && isRecording
+                          ? Colors.red
+                          : (enabled ? _kApproachBlue : Colors.grey),
+                    ),
+                    onPressed: showMic && isRecording
+                        ? onMicTap
+                        : (enabled ? onSend : null),
                   ),
-                  onPressed: showMic && isRecording
-                      ? onMicTap
-                      : (enabled ? onSend : null),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

@@ -6,6 +6,7 @@ import '../../emotiondetection/themed_scenario/scenario_play_page.dart';
 import '../../../shared/offline/offline_save.dart';
 import '../../../shared/theme/app_colors.dart';
 import '../data/in_progress_scenarios.dart';
+import '../../../shared/audio/hati_tap_sound.dart';
 
 class ModulesScreen extends StatefulWidget {
   const ModulesScreen({super.key, this.gridKey});
@@ -379,54 +380,56 @@ Widget _recentActivityCard(BuildContext context) {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  GestureDetector(
-                    onTap: () async {
-                      await _saveLastScenario(
-                        scenarioTitle: scenarioTitle,
-                        scenarioTheme: scenarioTheme,
-                        scenarioKey: scenarioKey,
-                      );
+                  HatiTapSound.click(
+                    child: GestureDetector(
+                      onTap: () async {
+                        await _saveLastScenario(
+                          scenarioTitle: scenarioTitle,
+                          scenarioTheme: scenarioTheme,
+                          scenarioKey: scenarioKey,
+                        );
 
-                      if (!context.mounted) return;
-                      if (scenarioKey.isEmpty) return;
+                        if (!context.mounted) return;
+                        if (scenarioKey.isEmpty) return;
 
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => ScenarioPlayPage(
-                            scenarioTitle: scenarioTitle,
-                            scenarioTheme: scenarioTheme,
-                            scenarioKey: scenarioKey,
-                          ),
-                        ),
-                      );
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 22,
-                        vertical: 10,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF5F1E8),
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.play_arrow_rounded,
-                            color: Color(0xFF0BA2D9),
-                            size: 18,
-                          ),
-                          const SizedBox(width: 4),
-                          const Text(
-                            'Continue',
-                            style: TextStyle(
-                              color: Color(0xFF0BA2D9),
-                              fontWeight: FontWeight.w700,
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ScenarioPlayPage(
+                              scenarioTitle: scenarioTitle,
+                              scenarioTheme: scenarioTheme,
+                              scenarioKey: scenarioKey,
                             ),
                           ),
-                        ],
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 22,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF5F1E8),
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.play_arrow_rounded,
+                              color: Color(0xFF0BA2D9),
+                              size: 18,
+                            ),
+                            const SizedBox(width: 4),
+                            const Text(
+                              'Continue',
+                              style: TextStyle(
+                                color: Color(0xFF0BA2D9),
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -682,170 +685,172 @@ Widget _scenarioGrid(
         padding: EdgeInsets.only(
           bottom: index == templates.length - 1 ? 0 : 14,
         ),
-        child: GestureDetector(
-          onTap: () async {
-            await _saveLastScenario(
-              scenarioTitle: template.title,
-              scenarioTheme: template.theme,
-              scenarioKey: template.scenarioKey,
-            );
-            if (!context.mounted) return;
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => ScenarioPlayPage(
-                  scenarioTitle: template.title,
-                  scenarioTheme: template.theme,
-                  scenarioKey: template.scenarioKey,
+        child: HatiTapSound.click(
+          child: GestureDetector(
+            onTap: () async {
+              await _saveLastScenario(
+                scenarioTitle: template.title,
+                scenarioTheme: template.theme,
+                scenarioKey: template.scenarioKey,
+              );
+              if (!context.mounted) return;
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ScenarioPlayPage(
+                    scenarioTitle: template.title,
+                    scenarioTheme: template.theme,
+                    scenarioKey: template.scenarioKey,
+                  ),
                 ),
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF5F1E8),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: AppColors.creamLine),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.04),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
-            );
-          },
-          child: Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF5F1E8),
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: AppColors.creamLine),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.04),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(14),
-                  child: Container(
-                    width: 84,
-                    height: 84,
-                    // Placeholder art isn't square (tall rectangular
-                    // illustrations) — contain + a neutral fill shows the
-                    // full picture, letterboxed, instead of cropping into it.
-                    color: AppColors.creamSoft,
-                    child: Image.asset(
-                      _placeholderAssetForScenario(template.scenarioKey),
-                      fit: BoxFit.contain,
+              child: Row(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+                    child: Container(
+                      width: 84,
+                      height: 84,
+                      // Placeholder art isn't square (tall rectangular
+                      // illustrations) — contain + a neutral fill shows the
+                      // full picture, letterboxed, instead of cropping into it.
+                      color: AppColors.creamSoft,
+                      child: Image.asset(
+                        _placeholderAssetForScenario(template.scenarioKey),
+                        fit: BoxFit.contain,
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        template.title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 15,
-                          color: Colors.black,
-                          height: 1.25,
-                        ),
-                      ),
-                      const SizedBox(height: 5),
-                      Text(
-                        template.theme,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 12.5,
-                          color: Colors.black45,
-                          height: 1.3,
-                        ),
-                      ),
-                      // The difficulty pill always shows — which mode a
-                      // fresh attempt would auto-run in (or, if a session
-                      // is genuinely in progress, that attempt's actual
-                      // difficulty instead) — so the user knows what mode
-                      // a scenario is currently in before ever opening it.
-                      // "% complete" only shows once a session is truly in
-                      // progress (real advancement past the FSM's shared
-                      // 7-scene numbering — see sceneOrdinal).
-                      const SizedBox(height: 6),
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 4,
-                        children: [
-                          if (info != null)
-                            _InProgressPill(
-                              label: '${(info.progress * 100).round()}% complete',
-                              color: const Color(0xFF0B28D9),
-                            ),
-                          _InProgressPill(
-                            label: isDifficult ? 'Hard Mode' : 'Easy Mode',
-                            color: isDifficult
-                                ? const Color(0xFFC62828)
-                                : const Color(0xFF2E7D32),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 10),
-                // IntrinsicWidth + stretch: the column is exactly as wide as
-                // the "% match" pill, and "Scenario Completed" wraps onto two
-                // centered lines inside that width instead of widening the
-                // column and squeezing the title/pills in the middle.
-                IntrinsicWidth(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.creamSoft,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: AppColors.creamLine),
-                        ),
-                        child: Text(
-                          '${score.round()}% match',
-                          textAlign: TextAlign.center,
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          template.title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                            fontSize: 11,
                             fontWeight: FontWeight.w700,
-                            color: Color(0xFF0B28D9),
+                            fontSize: 15,
+                            color: Colors.black,
+                            height: 1.25,
                           ),
                         ),
-                      ),
-                      if (bothCompleted) ...[
+                        const SizedBox(height: 5),
+                        Text(
+                          template.theme,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            color: Colors.black45,
+                            height: 1.3,
+                          ),
+                        ),
+                        // The difficulty pill always shows — which mode a
+                        // fresh attempt would auto-run in (or, if a session
+                        // is genuinely in progress, that attempt's actual
+                        // difficulty instead) — so the user knows what mode
+                        // a scenario is currently in before ever opening it.
+                        // "% complete" only shows once a session is truly in
+                        // progress (real advancement past the FSM's shared
+                        // 7-scene numbering — see sceneOrdinal).
                         const SizedBox(height: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 5,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(
-                              0xFF2E7D32,
-                            ).withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Text(
-                            'Scenario\nCompleted',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF2E7D32),
-                              height: 1.2,
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 4,
+                          children: [
+                            if (info != null)
+                              _InProgressPill(
+                                label: '${(info.progress * 100).round()}% complete',
+                                color: const Color(0xFF0B28D9),
+                              ),
+                            _InProgressPill(
+                              label: isDifficult ? 'Hard Mode' : 'Easy Mode',
+                              color: isDifficult
+                                  ? const Color(0xFFC62828)
+                                  : const Color(0xFF2E7D32),
                             ),
-                          ),
+                          ],
                         ),
                       ],
-                    ],
+                    ),
                   ),
-                ),
-              ],
+                  const SizedBox(width: 10),
+                  // IntrinsicWidth + stretch: the column is exactly as wide as
+                  // the "% match" pill, and "Scenario Completed" wraps onto two
+                  // centered lines inside that width instead of widening the
+                  // column and squeezing the title/pills in the middle.
+                  IntrinsicWidth(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.creamSoft,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: AppColors.creamLine),
+                          ),
+                          child: Text(
+                            '${score.round()}% match',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF0B28D9),
+                            ),
+                          ),
+                        ),
+                        if (bothCompleted) ...[
+                          const SizedBox(height: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(
+                                0xFF2E7D32,
+                              ).withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Text(
+                              'Scenario\nCompleted',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF2E7D32),
+                                height: 1.2,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

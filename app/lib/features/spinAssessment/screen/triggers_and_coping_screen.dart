@@ -5,6 +5,7 @@ import 'assessment_complete_screen.dart';
 import '../../../shared/offline/action_feedback.dart';
 import '../../../shared/offline/offline_save.dart';
 import '../../../shared/theme/app_colors.dart';
+import '../../../shared/audio/hati_tap_sound.dart';
 
 class TriggersAndCopingScreen extends StatefulWidget {
   final int score;
@@ -540,47 +541,49 @@ class _CopingChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          color: selected
-              ? const Color(0xFF0B28D9)
-              : AppColors.creamSoft,
-          borderRadius: BorderRadius.circular(30),
-          border: Border.all(
+    return HatiTapSound.option(
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
             color: selected
                 ? const Color(0xFF0B28D9)
-                : AppColors.creamLine,
-            width: 1.5,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 15,
+                : AppColors.creamSoft,
+            borderRadius: BorderRadius.circular(30),
+            border: Border.all(
               color: selected
-                  ? const Color(0xFFF5F1E8)
-                  : const Color(0xFF94A3B8),
+                  ? const Color(0xFF0B28D9)
+                  : AppColors.creamLine,
+              width: 1.5,
             ),
-            const SizedBox(width: 7),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 13.5,
-                fontWeight:
-                    selected ? FontWeight.w700 : FontWeight.w500,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 15,
                 color: selected
                     ? const Color(0xFFF5F1E8)
-                    : const Color(0xFF475569),
+                    : const Color(0xFF94A3B8),
               ),
-            ),
-          ],
+              const SizedBox(width: 7),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13.5,
+                  fontWeight:
+                      selected ? FontWeight.w700 : FontWeight.w500,
+                  color: selected
+                      ? const Color(0xFFF5F1E8)
+                      : const Color(0xFF475569),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -6,6 +6,7 @@ import '../spinAssessment/screen/spin_assessment_screen.dart';
 import '../../shared/offline/action_feedback.dart';
 import '../../shared/offline/offline_save.dart';
 import '../../shared/theme/app_colors.dart';
+import '../../shared/audio/hati_tap_sound.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
   const ProfileSetupScreen({super.key});
@@ -344,68 +345,70 @@ class _AvatarPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          // White ring pops against both the blue header and white card
-          Container(
-            width: 108,
-            height: 108,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: const Color(0xFFF5F1E8),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF0B28D9).withOpacity(0.22),
-                  blurRadius: 24,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-              border: Border.all(color: const Color(0xFFF5F1E8), width: 4),
-            ),
-            child: ClipOval(
-              child: Container(
-                color: AppColors.blueTint,
-                child: assetPath == null
-                    ? Icon(
-                        Icons.person_rounded,
-                        size: 56,
-                        color: const Color(0xFF0B28D9).withOpacity(0.35),
-                      )
-                    : Image.asset(assetPath!, fit: BoxFit.cover),
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: 2,
-            right: 2,
-            child: Container(
-              width: 32,
-              height: 32,
+    return HatiTapSound.click(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            // White ring pops against both the blue header and white card
+            Container(
+              width: 108,
+              height: 108,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: onTap == null
-                    ? const Color(0xFF94A3B8)
-                    : const Color(0xFF0B28D9),
-                border: Border.all(color: const Color(0xFFF5F1E8), width: 2.5),
+                color: const Color(0xFFF5F1E8),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.14),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
+                    color: const Color(0xFF0B28D9).withOpacity(0.22),
+                    blurRadius: 24,
+                    offset: const Offset(0, 8),
                   ),
                 ],
+                border: Border.all(color: const Color(0xFFF5F1E8), width: 4),
               ),
-              child: const Icon(
-                Icons.face_retouching_natural_rounded,
-                size: 15,
-                color: const Color(0xFFF5F1E8),
+              child: ClipOval(
+                child: Container(
+                  color: AppColors.blueTint,
+                  child: assetPath == null
+                      ? Icon(
+                          Icons.person_rounded,
+                          size: 56,
+                          color: const Color(0xFF0B28D9).withOpacity(0.35),
+                        )
+                      : Image.asset(assetPath!, fit: BoxFit.cover),
+                ),
               ),
             ),
-          ),
-        ],
+            Positioned(
+              bottom: 2,
+              right: 2,
+              child: Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: onTap == null
+                      ? const Color(0xFF94A3B8)
+                      : const Color(0xFF0B28D9),
+                  border: Border.all(color: const Color(0xFFF5F1E8), width: 2.5),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.14),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.face_retouching_natural_rounded,
+                  size: 15,
+                  color: const Color(0xFFF5F1E8),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -462,19 +465,21 @@ class _DefaultAvatarSheet extends StatelessWidget {
               itemBuilder: (context, index) {
                 final avatar = avatars[index];
                 final isSelected = avatar == selectedAvatar;
-                return GestureDetector(
-                  onTap: () => Navigator.pop(context, avatar),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 180),
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: isSelected
-                          ? const Color(0xFF0B28D9)
-                          : AppColors.creamLine,
-                    ),
-                    child: ClipOval(
-                      child: Image.asset(avatar, fit: BoxFit.cover),
+                return HatiTapSound.option(
+                  child: GestureDetector(
+                    onTap: () => Navigator.pop(context, avatar),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: isSelected
+                            ? const Color(0xFF0B28D9)
+                            : AppColors.creamLine,
+                      ),
+                      child: ClipOval(
+                        child: Image.asset(avatar, fit: BoxFit.cover),
+                      ),
                     ),
                   ),
                 );
@@ -620,50 +625,52 @@ class _PronounsSelector extends StatelessWidget {
       children: options.map((opt) {
         final (label, icon) = opt;
         final isSelected = selected == label;
-        return GestureDetector(
-          onTap: () => onSelect(label),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? const Color(0xFF0B28D9)
-                  : AppColors.creamSoft,
-              borderRadius: BorderRadius.circular(30),
-              border: Border.all(
+        return HatiTapSound.option(
+          child: GestureDetector(
+            onTap: () => onSelect(label),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
                 color: isSelected
                     ? const Color(0xFF0B28D9)
-                    : AppColors.creamLine,
-                width: 1.5,
+                    : AppColors.creamSoft,
+                borderRadius: BorderRadius.circular(30),
+                border: Border.all(
+                  color: isSelected
+                      ? const Color(0xFF0B28D9)
+                      : AppColors.creamLine,
+                  width: 1.5,
+                ),
+                boxShadow: isSelected
+                    ? [
+                        BoxShadow(
+                          color: const Color(0xFF0B28D9).withOpacity(0.25),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
+                        ),
+                      ]
+                    : null,
               ),
-              boxShadow: isSelected
-                  ? [
-                      BoxShadow(
-                        color: const Color(0xFF0B28D9).withOpacity(0.25),
-                        blurRadius: 8,
-                        offset: const Offset(0, 3),
-                      ),
-                    ]
-                  : null,
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  icon,
-                  size: 15,
-                  color: isSelected ? const Color(0xFFF5F1E8) : const Color(0xFF94A3B8),
-                ),
-                const SizedBox(width: 7),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 13.5,
-                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                    color: isSelected ? const Color(0xFFF5F1E8) : const Color(0xFF475569),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    icon,
+                    size: 15,
+                    color: isSelected ? const Color(0xFFF5F1E8) : const Color(0xFF94A3B8),
                   ),
-                ),
-              ],
+                  const SizedBox(width: 7),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                      color: isSelected ? const Color(0xFFF5F1E8) : const Color(0xFF475569),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         );

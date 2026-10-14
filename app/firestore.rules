@@ -31,6 +31,25 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Admin-only read access for the Developer Console's Assessments tab:
+    // every user profile (name, email, initial SPIN) and every user's
+    // post-assessment history. Read-only — admins can't edit scores.
+    match /users/{userId} {
+      allow read: if isAdmin();
+    }
+    match /{path=**}/reassessments/{reassessmentId} {
+      allow read: if isAdmin();
+    }
+
+    // Admin-only read access for the Developer Console's Activity tab:
+    // every user's scenario sessions and day-streak summary. Read-only.
+    match /{path=**}/scenarios/{sessionId} {
+      allow read: if isAdmin();
+    }
+    match /{path=**}/badge_progress/{docId} {
+      allow read: if isAdmin();
+    }
+
     // Admin-only cross-user read of Contact-Developer messages, plus
     // the ability to toggle their `read` flag — nothing else.
     match /{path=**}/supportMessages/{messageId} {

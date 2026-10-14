@@ -70,6 +70,10 @@ class _ScenarioShellState extends State<ScenarioShell> {
     if (previous == null || previous == scene) return;
     if (scene == SceneId.dashboard) {
       HatiAudioService.instance.playScenarioComplete();
+    } else if (scene == SceneId.closing) {
+      // Closing (6/7) is the "you finished" screen, so it gets its own
+      // completion cue instead of the generic scene transition.
+      HatiAudioService.instance.playCompleteScreen();
     } else {
       HatiAudioService.instance.playSceneTransition();
     }
@@ -566,7 +570,11 @@ class _ScenarioDashboardScene extends StatelessWidget {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const HatiFrogAvatar(size: 160, mood: HatiMood.happy),
+                        const HatiFrogAvatar(
+                          size: 160,
+                          mood: HatiMood.happy,
+                          playHappySoundOnAppear: true,
+                        ),
                         const SizedBox(height: 20),
                         Text(
                           'Nice work!',

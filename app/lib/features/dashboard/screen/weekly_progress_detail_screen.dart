@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import 'weekly_progress_data.dart';
+import '../../../shared/audio/hati_tap_sound.dart';
 
 /// Detail view opened from "This Week" on the Progress screen: a 3-page
 /// swipeable breakdown (Summary / Trigger Patterns / Emotion Trends), backed
@@ -269,24 +270,26 @@ class _PageTabBar extends StatelessWidget {
         children: List.generate(labels.length, (i) {
           final active = i == currentPage;
           return Expanded(
-            child: GestureDetector(
-              onTap: () => onSelected(i),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                decoration: BoxDecoration(
-                  color: active ? const Color(0xFFF5F1E8) : Colors.transparent,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  labels[i],
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: active ? FontWeight.w700 : FontWeight.w600,
-                    color: active
-                        ? const Color(0xFF0B28D9)
-                        : const Color(0xFFF5F1E8).withValues(alpha: 0.6),
+            child: HatiTapSound.click(
+              child: GestureDetector(
+                onTap: () => onSelected(i),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  decoration: BoxDecoration(
+                    color: active ? const Color(0xFFF5F1E8) : Colors.transparent,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    labels[i],
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: active ? FontWeight.w700 : FontWeight.w600,
+                      color: active
+                          ? const Color(0xFF0B28D9)
+                          : const Color(0xFFF5F1E8).withValues(alpha: 0.6),
+                    ),
                   ),
                 ),
               ),
@@ -329,29 +332,31 @@ class _SummaryPage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          InkWell(
-            onTap: onTapMonth,
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    monthLabel,
-                    style: const TextStyle(
-                      color: const Color(0xFFF5F1E8),
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      decoration: TextDecoration.underline,
+          HatiTapSound.click(
+            child: InkWell(
+              onTap: onTapMonth,
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      monthLabel,
+                      style: const TextStyle(
+                        color: const Color(0xFFF5F1E8),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        decoration: TextDecoration.underline,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 4),
-                  const Icon(
-                    Icons.keyboard_arrow_down_rounded,
-                    color: const Color(0xFFF5F1E8),
-                    size: 18,
-                  ),
-                ],
+                    const SizedBox(width: 4),
+                    const Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      color: const Color(0xFFF5F1E8),
+                      size: 18,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

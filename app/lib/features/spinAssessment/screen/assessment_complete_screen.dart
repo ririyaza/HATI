@@ -163,6 +163,11 @@ class _AssessmentCompleteScreenState extends State<AssessmentCompleteScreen> {
                       startDelay: Duration.zero,
                       persistBubble: true,
                       autoAdvance: true,
+                      // Dialogue still auto-advances on its own, but shows
+                      // the usual pulsing "tap to continue" cue as a
+                      // reminder that tapping anywhere skips ahead instead
+                      // of waiting out the auto-advance timer.
+                      showAdvanceCue: true,
                       onTypingComplete: () {
                         if (mounted) setState(() => _dialogueComplete = true);
                       },
@@ -170,71 +175,93 @@ class _AssessmentCompleteScreenState extends State<AssessmentCompleteScreen> {
                   ),
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    SizedBox(
-                      height: 52,
-                      child: FilledButton(
-                        style: FilledButton.styleFrom(
-                          backgroundColor: const Color(0xFF007AFF),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(26),
-                          ),
-                        ),
-                        onPressed: (_dialogueComplete && !_isNavigatingToApp)
-                            ? _handleContinueToApp
-                            : null,
-                        child: _isNavigatingToApp
-                            ? const SizedBox(
-                                height: 22,
-                                width: 22,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.5,
-                                  color: const Color(0xFFF5F1E8),
+              // Buttons stay out of the tree entirely — not just disabled —
+              // until Hati's dialogue has fully finished typing, then pop in
+              // together. Previously they were always visible but disabled,
+              // which read as "broken" before the dialogue finished.
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 250),
+                transitionBuilder: (child, animation) => FadeTransition(
+                  opacity: animation,
+                  child: ScaleTransition(
+                    scale: Tween<double>(begin: 0.92, end: 1).animate(
+                      CurvedAnimation(
+                        parent: animation,
+                        curve: Curves.easeOutBack,
+                      ),
+                    ),
+                    child: child,
+                  ),
+                ),
+                child: _dialogueComplete
+                    ? Padding(
+                        key: const ValueKey('buttons'),
+                        padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            SizedBox(
+                              height: 52,
+                              child: FilledButton(
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: const Color(0xFF007AFF),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(26),
+                                  ),
                                 ),
-                              )
-                            : const Text(
-                                'Continue to App',
-                                style: TextStyle(
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.w600,
-                                  color: const Color(0xFFF5F1E8),
+                                onPressed: !_isNavigatingToApp
+                                    ? _handleContinueToApp
+                                    : null,
+                                child: _isNavigatingToApp
+                                    ? const SizedBox(
+                                        height: 22,
+                                        width: 22,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2.5,
+                                          color: Color(0xFFF5F1E8),
+                                        ),
+                                      )
+                                    : const Text(
+                                        'Continue to App',
+                                        style: TextStyle(
+                                          fontSize: 17,
+                                          fontWeight: FontWeight.w600,
+                                          color: Color(0xFFF5F1E8),
+                                        ),
+                                      ),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            SizedBox(
+                              height: 52,
+                              child: OutlinedButton(
+                                style: OutlinedButton.styleFrom(
+                                  side: const BorderSide(
+                                    color: Colors.black,
+                                    width: 1.5,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(26),
+                                  ),
+                                  backgroundColor: const Color(0xFFF5F1E8),
+                                ),
+                                onPressed: !_isNavigatingToApp
+                                    ? _handleViewResult
+                                    : null,
+                                child: const Text(
+                                  'View Result',
+                                  style: TextStyle(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.black,
+                                  ),
                                 ),
                               ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      height: 52,
-                      child: OutlinedButton(
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(
-                            color: Colors.black,
-                            width: 1.5,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(26),
-                          ),
-                          backgroundColor: const Color(0xFFF5F1E8),
+                            ),
+                          ],
                         ),
-                        onPressed: (_dialogueComplete && !_isNavigatingToApp)
-                            ? _handleViewResult
-                            : null,
-                        child: const Text(
-                          'View Result',
-                          style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                      )
+                    : const SizedBox.shrink(key: ValueKey('hidden')),
               ),
             ],
           ),

@@ -9,6 +9,7 @@ import 'low_score_exit_screen.dart';
 import '../../../shared/offline/action_feedback.dart';
 import '../../../shared/offline/connectivity_service.dart';
 import '../../../shared/offline/offline_save.dart';
+import '../../../shared/audio/score_sounds.dart';
 
 // ─────────────────────────────────────────────
 // Main Screen
@@ -28,6 +29,7 @@ class _SpinResultScreenState extends State<SpinResultScreen>
   late AnimationController _animCtrl;
   late Animation<double> _arcAnim;
   late Animation<double> _fadeAnim;
+  late final ScoreAnimationSounds _scoreSounds;
 
   SpinScoreTier get _tier => spinScoreTierFor(widget.score);
 
@@ -52,11 +54,13 @@ class _SpinResultScreenState extends State<SpinResultScreen>
       curve: const Interval(0.4, 1.0, curve: Curves.easeOut),
     );
 
+    _scoreSounds = ScoreAnimationSounds(_arcAnim);
     _animCtrl.forward();
   }
 
   @override
   void dispose() {
+    _scoreSounds.dispose();
     _animCtrl.dispose();
     super.dispose();
   }

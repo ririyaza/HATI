@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../screen/hati_chat_screen.dart';
+import '../../../shared/audio/hati_tap_sound.dart';
 
 /// Homepage entry point into the free-form Hati chat — styled like a
 /// disabled "compose" pill sitting on the homepage's blue background, so
@@ -14,35 +15,37 @@ class HatiChatEntryBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const HatiChatScreen()),
-        );
-      },
-      child: Container(
-        height: 52,
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF5F1E8).withValues(alpha: 0.16),
-          borderRadius: BorderRadius.circular(26),
-          border: Border.all(color: Color(0xFFF5F1E8).withValues(alpha: 0.24)),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                'Ask Hati anything...',
-                style: TextStyle(
-                  color: Color(0xFFF5F1E8).withValues(alpha: 0.70),
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
+    return HatiTapSound.click(
+      child: GestureDetector(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const HatiChatScreen()),
+          );
+        },
+        child: Container(
+          height: 52,
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF5F1E8).withValues(alpha: 0.16),
+            borderRadius: BorderRadius.circular(26),
+            border: Border.all(color: Color(0xFFF5F1E8).withValues(alpha: 0.24)),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Ask Hati anything...',
+                  style: TextStyle(
+                    color: Color(0xFFF5F1E8).withValues(alpha: 0.70),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
-            ),
-            Icon(Icons.chat_bubble_outline_rounded, color: const Color(0xFFF5F1E8), size: 20),
-          ],
+              Icon(Icons.chat_bubble_outline_rounded, color: const Color(0xFFF5F1E8), size: 20),
+            ],
+          ),
         ),
       ),
     );
